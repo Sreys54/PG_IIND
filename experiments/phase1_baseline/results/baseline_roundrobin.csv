@@ -1,0 +1,2 @@
+algorithm,seed,sim_date,total_ev_served,total_profits,total_energy_charged,average_user_satisfaction,total_transformer_overload
+RoundRobin,42,2022-04-25 05:00:00,92,-274.35116230063124,1259.736243815109,0.9999529616724738,0.0

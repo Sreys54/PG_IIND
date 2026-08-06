@@ -164,7 +164,7 @@ wandb/
 *.lp
 *.mps
 replay/
-results/
+/results/
 model.lp
 vscode/
 .vscode/settings.json
@@ -173,7 +173,7 @@ saved_models/
 trajectories/
 logs/
 eval_logs/
-results/
+/results/
 models_RL/
 plots/
 plot_results_dict.pkl

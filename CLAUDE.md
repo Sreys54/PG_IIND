@@ -122,11 +122,35 @@ folder already holds this repo's own Sphinx documentation, don't touch it):
   alone is NOT enough — also needed `pandapower`, `numba`, `multicopula`
   (missing from a strict `requirements.txt` install; `gurobipy` is listed
   but still needs an actual license activated).
-- **Next concrete task:** edit
-  `experiments/phase1_baseline/configs/station_v0_bogota.yaml` (currently a
-  copy of `ev2gym/example_config_files/V2Ggrid.yaml`) to reflect the chosen
-  representative Colombian station, then run the AFAP baseline and save
-  results to `experiments/phase1_baseline/results/baseline_afap.csv`.
+- **Environment reproduced locally (2026-08-05):** `pip install -e .` +
+  `pandapower`, `numba`, `multicopula` installed on this machine (Python
+  3.11.9, Windows). `ev2gym` + `ev2gym.baselines.heuristics` import cleanly;
+  no changes made to `ev2gym/models/` or `ev2gym/rl_agent/`.
+- **Baseline run status: executed, but NOT validated — numbers don't
+  match reference (2026-08-05).** Ran `experiments/phase1_baseline/run_baseline.py`
+  (AFAP + Round Robin, 96 steps, seed=42) against
+  `station_v0_bogota.yaml` as it exists today. Result: 92 EVs served for
+  both algorithms, ~1260 kWh charged, 0 kWh transformer overload — vs. the
+  previously reported reference (AFAP: 11 EVs/206 kWh/42.17 kWh overload;
+  RR: 13 EVs/191 kWh/0 kWh overload). **Does not match, even
+  approximately.** Full diagnosis and numbers in
+  `thesis_docs/chapters/00_lab_log.md`.
+- **Two likely causes, unconfirmed:** (1) `station_v0_bogota.yaml` is
+  still an untouched copy of `V2Ggrid.yaml` (150 charging stations,
+  `spawn_multiplier: 5`) — the Week 1 checklist item to edit it down to a
+  single representative Bogotá station was never actually done, so this
+  config is much larger-scale than whatever produced the reference numbers.
+  (2) `random_day: True` in the config means there is no fixed calendar
+  date to reproduce from — the day is only fixed if an explicit seed is
+  passed to `EV2Gym(...)`, and no such seed was recorded anywhere in this
+  repo for the original reference run.
+- **Next concrete task:** with the user, (a) decide and edit
+  `station_v0_bogota.yaml` to reflect one specific, sized Bogotá public
+  station (`number_of_charging_stations`, `spawn_multiplier`, connector
+  type), and (b) decide + record a fixed seed/date convention for
+  reproducibility, before treating any run's numbers as the Week 1
+  baseline. Do not carry the current (unmatched) numbers forward into the
+  thesis as validated.
 
 ## Useful Commands (reference, don't re-derive these each time)
 

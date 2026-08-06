@@ -1,0 +1,65 @@
+{
+  "seed": 42,
+  "afap": {
+    "sim_date": "2022-04-25 05:00:00",
+    "stats": {
+      "total_ev_served": "92",
+      "total_profits": -280.5215116067345,
+      "total_energy_charged": 1260.3799837013153,
+      "total_energy_discharged": "0",
+      "average_user_satisfaction": 1.0,
+      "power_tracker_violation": 1092.6367187888825,
+      "tracking_error": 720697.5671715167,
+      "energy_tracking_error": 1508.2824691353323,
+      "energy_user_satisfaction": 100.0,
+      "std_energy_user_satisfaction": 0.0,
+      "min_energy_user_satisfaction": 100.0,
+      "total_steps_min_emergency_battery_capacity_violation": 0,
+      "total_transformer_overload": 0.0,
+      "battery_degradation": 0.00287097858258336,
+      "battery_degradation_calendar": 0.0014786773925476561,
+      "battery_degradation_cycling": 0.0013923011900357043,
+      "total_reward": -120497.54293687124,
+      "saved_grid_energy": [
+        0.0
+      ],
+      "voltage_violation": [
+        -0.11273534349597399
+      ],
+      "voltage_violation_counter": "47",
+      "voltage_violation_counter_per_step": "12",
+      "action_mask": "[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0.]"
+    }
+  },
+  "round_robin": {
+    "sim_date": "2022-04-25 05:00:00",
+    "stats": {
+      "total_ev_served": "92",
+      "total_profits": -274.35116230063124,
+      "total_energy_charged": 1259.736243815109,
+      "total_energy_discharged": "0",
+      "average_user_satisfaction": 0.9999529616724738,
+      "power_tracker_violation": 2.9646291356044685e-05,
+      "tracking_error": 382445.6544189886,
+      "energy_tracking_error": 962.6078644502429,
+      "energy_user_satisfaction": 99.9916149068323,
+      "std_energy_user_satisfaction": 0.07998869080204209,
+      "min_energy_user_satisfaction": 99.22857142857143,
+      "total_steps_min_emergency_battery_capacity_violation": 0,
+      "total_transformer_overload": 0.0,
+      "battery_degradation": 0.002833195806553742,
+      "battery_degradation_calendar": 0.0014500835090667545,
+      "battery_degradation_cycling": 0.0013831122974869874,
+      "total_reward": -46760.96818926759,
+      "saved_grid_energy": [
+        0.0
+      ],
+      "voltage_violation": [
+        -0.11222650728065382
+      ],
+      "voltage_violation_counter": "47",
+      "voltage_violation_counter_per_step": "12",
+      "action_mask": "[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n 0. 0. 0. 0. 0. 0.]"
+    }
+  }
+}
