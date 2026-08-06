@@ -126,31 +126,29 @@ folder already holds this repo's own Sphinx documentation, don't touch it):
   `pandapower`, `numba`, `multicopula` installed on this machine (Python
   3.11.9, Windows). `ev2gym` + `ev2gym.baselines.heuristics` import cleanly;
   no changes made to `ev2gym/models/` or `ev2gym/rl_agent/`.
-- **Baseline run status: executed, but NOT validated — numbers don't
-  match reference (2026-08-05).** Ran `experiments/phase1_baseline/run_baseline.py`
-  (AFAP + Round Robin, 96 steps, seed=42) against
-  `station_v0_bogota.yaml` as it exists today. Result: 92 EVs served for
-  both algorithms, ~1260 kWh charged, 0 kWh transformer overload — vs. the
-  previously reported reference (AFAP: 11 EVs/206 kWh/42.17 kWh overload;
-  RR: 13 EVs/191 kWh/0 kWh overload). **Does not match, even
-  approximately.** Full diagnosis and numbers in
-  `thesis_docs/chapters/00_lab_log.md`.
-- **Two likely causes, unconfirmed:** (1) `station_v0_bogota.yaml` is
-  still an untouched copy of `V2Ggrid.yaml` (150 charging stations,
-  `spawn_multiplier: 5`) — the Week 1 checklist item to edit it down to a
-  single representative Bogotá station was never actually done, so this
-  config is much larger-scale than whatever produced the reference numbers.
-  (2) `random_day: True` in the config means there is no fixed calendar
-  date to reproduce from — the day is only fixed if an explicit seed is
-  passed to `EV2Gym(...)`, and no such seed was recorded anywhere in this
-  repo for the original reference run.
-- **Next concrete task:** with the user, (a) decide and edit
-  `station_v0_bogota.yaml` to reflect one specific, sized Bogotá public
-  station (`number_of_charging_stations`, `spawn_multiplier`, connector
-  type), and (b) decide + record a fixed seed/date convention for
-  reproducibility, before treating any run's numbers as the Week 1
-  baseline. Do not carry the current (unmatched) numbers forward into the
-  thesis as validated.
+- **Baseline run status: config fixed, results now plausible (2026-08-05).**
+  `station_v0_bogota.yaml` was edited off the inherited `V2Ggrid.yaml`
+  copy to a single 8-station, 100 kW-transformer public station
+  (`simulate_grid: False`, `v2g_enabled: False`, `spawn_multiplier: 30`,
+  `random_day: False` fixed at 2022-01-17). Re-ran
+  `experiments/phase1_baseline/run_baseline.py` (seed=42): AFAP and Round
+  Robin both serve 14 EVs/day (~240 kWh charged, 100% satisfaction) — in
+  the expected ~10-15 EVs/day ballpark. AFAP shows a real transformer
+  overload (0.132 kWh) that Round Robin eliminates (0.0 kWh), the expected
+  qualitative pattern. Exact magnitudes don't match the original reference
+  numbers (11/13 EVs, 42.17/0.00 kWh overload) — expected, since this uses
+  a different random seed than whatever produced that reference. Full
+  before/after diagnosis in `thesis_docs/chapters/00_lab_log.md`; station
+  design write-up in `thesis_docs/chapters/01_baseline.md`.
+- **Open item, unconfirmed:** the requirement that `ev.max_ac_charge_power`
+  equal `ev.max_dc_charge_power` (to avoid a claimed `ZeroDivisionError`)
+  could not be verified against the current codebase (`ev2gym/models/ev.py`,
+  `ev2gym/utilities/utils.py`) — applied anyway since it's harmless, but
+  flagging that this specific failure mode is not confirmed to exist.
+- **Next concrete task:** user to confirm the Week 1 baseline (§1.3 of
+  `01_baseline.md`) is acceptable to carry forward; then proceed to Week 2
+  (grid model sanity check + Round Robin on a grid-enabled scenario, per
+  `PROJECT_ROADMAP.md`).
 
 ## Useful Commands (reference, don't re-derive these each time)
 

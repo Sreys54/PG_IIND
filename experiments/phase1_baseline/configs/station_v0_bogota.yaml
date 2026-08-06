@@ -14,7 +14,7 @@ year: 2022 # 2015-2023
 month: 1 # 1-12
 day: 17 # 1-31
 # Whether to get a random date every time the environment is reset
-random_day: True # True or False
+random_day: False # True or False # ASSUMPTION (Week 1 fixed reference day, see thesis_docs/chapters/00_lab_log.md): fixed to 2022-01-17 for deterministic reproducibility. NOTE: simulation_days below has no effect when random_day is False (see ev2gym_env.py) -- 2022-01-17 happens to be a Monday.
 random_hour: False # True or False
 
 # Simulation Starting Time
@@ -27,7 +27,7 @@ simulation_days: weekdays # weekdays, weekends, or both
 
 # EV Spawn Behavior
 scenario: public # public, private, or workplace
-spawn_multiplier: 5 # 1 is default, the higher the number the more EVs spawn. Play somewhere between 3-7. With 1 often only 1/5 EVs show up.
+spawn_multiplier: 30 # Week 1 single-station sizing: 8 stations x spawn_multiplier 30 targeted for a plausible small public-station EV/day count.
 
 ##############################################################################
 # Prices
@@ -37,16 +37,16 @@ discharge_price_factor: 1 # how many times more abs(expensive/cheaper) it is to 
 ##############################################################################
 # Distribution Network Settings
 ##############################################################################
-v2g_enabled: True # True or False
-number_of_charging_stations: 150 # Play somewhere 5-20
-number_of_transformers: -1
+v2g_enabled: False # True or False
+number_of_charging_stations: 8 # Week 1 single representative Bogota public station (ASSUMPTION, see thesis_docs/chapters/00_lab_log.md)
+number_of_transformers: 1 # must be a real positive integer when simulate_grid is False (see PublicPST.yaml: "if simulate_grid is True then this value is overwritten by the topology file")
 number_of_ports_per_cs: 1
 # Provide path if you want to load a specific charging topology
 # *(where chargers are located and what are their characteristics),
 # else write None for a randomized one with the above parameters
 charging_network_topology: None #./config_files/charging_topology_10.json
 
-simulate_grid: True # True or False
+simulate_grid: False # True or False # flipped from V2Ggrid.yaml's inherited True: a single local-transformer station, not a 34-bus feeder
 network_info: 
   vm_pu: 1.0 # Voltage magnitude in per unit
   s_base: 1000 # Base power in kVA
@@ -115,14 +115,14 @@ ev_specs_file: ./ev2gym/data/ev_specs_v2g_enabled2024.json # path to the file wi
 
 # Default Transformer model
 transformer:
-  max_power: 200 # in kW
+  max_power: 100 # in kW # Week 1 single-station sizing (ASSUMPTION, see thesis_docs/chapters/00_lab_log.md)
 
 # Default Charging Station model
-charging_station:  
+charging_station:
   min_charge_current: 0 # Amperes
-  max_charge_current: 32 # Amperes
+  max_charge_current: 72 # Amperes # ~50 kW @ 400V/3-phase, matches ev.max_ac_charge_power below
   min_discharge_current: 0 # Amperes (actual value <=0)
-  max_discharge_current: -32 # Amperes (actual value <=0)
+  max_discharge_current: -32 # Amperes (actual value <=0) # inert: v2g_enabled is False, so loaders.py forces max/min_discharge_current to 0 regardless of this value
   voltage: 400 # Volts
   phases: 3 # 1,2, or 3
 
@@ -130,7 +130,7 @@ charging_station:
 ev:
   #The following values are used if "heterogeneous_ev_specs = False"
   battery_capacity: 70 # in kWh
-  max_ac_charge_power: 22 # in kW
+  max_ac_charge_power: 50 # in kW # matches max_dc_charge_power (see note in thesis_docs/chapters/00_lab_log.md)
   min_ac_charge_power: 0 # in kW
   max_dc_charge_power: 50 # in kW
   max_discharge_power: -22 # in kW

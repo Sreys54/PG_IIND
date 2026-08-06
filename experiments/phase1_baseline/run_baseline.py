@@ -1,15 +1,12 @@
 """
-Week 1 baseline reproduction run: AFAP and Round Robin on station_v0_bogota.yaml.
+Week 1 baseline run: AFAP and Round Robin on station_v0_bogota.yaml.
 
-NOTE (assumption, see thesis_docs/chapters/00_lab_log.md):
-The config has random_day: True, so EV2Gym does NOT use a fixed calendar date
-by default -- the simulated day is drawn from random.randint() seeded by the
-`seed` argument passed to the EV2Gym constructor. To keep the config
-untouched (per instructions) while still giving AFAP and Round Robin the
-SAME simulated day/EV-arrival scenario for a fair comparison, both runs here
-use the same fixed seed (SEED = 42). This is NOT necessarily the same day
-used to produce previously reported reference values, since no seed was
-recorded anywhere in this repo for that prior run.
+As of the Week 1 config fix (see thesis_docs/chapters/00_lab_log.md), the
+config now sets random_day: False with an explicit year/month/day
+(2022-01-17), so the simulated calendar date is fixed by the config itself.
+SEED = 42 is kept regardless to also fix the EV-arrival sampling (which
+config's random_day does not control), so AFAP and Round Robin are compared
+on identical EV arrivals.
 """
 import json
 from ev2gym.models.ev2gym_env import EV2Gym
