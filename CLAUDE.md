@@ -115,8 +115,12 @@ folder already holds this repo's own Sphinx documentation, don't touch it):
 - **Timeline:** compressed to 8 weeks (see `PROJECT_ROADMAP.md`).
 - **Branch naming:** `semana-1` through `semana-8`, one per week, merged
   into `main` at the end of each week (no `dev`, no `feature/*`).
-- **Active phase:** Week 1 — Baseline Characterization
-- **Active branch:** `semana-1`
+- **Active phase:** Week 2 — Station-Size Sensitivity + Grid Model Sanity Check
+- **Active branch:** `semana-2` (branched from `semana-1`'s tip, NOT from
+  `main` — as of 2026-08-11, `main` still has the pre-fix `station_v0_bogota.yaml`
+  since `semana-1` has not been merged yet. Deviates from the stated
+  "branch from main" convention; flagged here since it affects reproducing
+  this branch's config history.)
 - **Last milestone tag:** `v0.0-env-ready`
 - **Environment status:** installed and smoke-tested. `pip install -e .`
   alone is NOT enough — also needed `pandapower`, `numba`, `multicopula`
@@ -126,29 +130,35 @@ folder already holds this repo's own Sphinx documentation, don't touch it):
   `pandapower`, `numba`, `multicopula` installed on this machine (Python
   3.11.9, Windows). `ev2gym` + `ev2gym.baselines.heuristics` import cleanly;
   no changes made to `ev2gym/models/` or `ev2gym/rl_agent/`.
-- **Baseline run status: config fixed, results now plausible (2026-08-05).**
-  `station_v0_bogota.yaml` was edited off the inherited `V2Ggrid.yaml`
-  copy to a single 8-station, 100 kW-transformer public station
-  (`simulate_grid: False`, `v2g_enabled: False`, `spawn_multiplier: 30`,
-  `random_day: False` fixed at 2022-01-17). Re-ran
-  `experiments/phase1_baseline/run_baseline.py` (seed=42): AFAP and Round
-  Robin both serve 14 EVs/day (~240 kWh charged, 100% satisfaction) — in
-  the expected ~10-15 EVs/day ballpark. AFAP shows a real transformer
-  overload (0.132 kWh) that Round Robin eliminates (0.0 kWh), the expected
-  qualitative pattern. Exact magnitudes don't match the original reference
-  numbers (11/13 EVs, 42.17/0.00 kWh overload) — expected, since this uses
-  a different random seed than whatever produced that reference. Full
-  before/after diagnosis in `thesis_docs/chapters/00_lab_log.md`; station
-  design write-up in `thesis_docs/chapters/01_baseline.md`.
+- **Week 1 baseline: CONFIRMED (2026-08-11).** `station_v0_bogota.yaml`
+  (8 charging stations, 100 kW transformer, `simulate_grid: False`,
+  `v2g_enabled: False`, `spawn_multiplier: 30`, `random_day: False` fixed
+  at 2022-01-17) is the validated Week 1 reference config. Reference
+  results (seed=42, from `experiments/phase1_baseline/results/baseline_afap.csv`
+  / `baseline_roundrobin.csv`): AFAP = 14 EVs served / 240.93 kWh charged /
+  0.132 kWh transformer overload; Round Robin = 14 EVs served / 240.81 kWh
+  charged / 0.0 kWh overload. Oversubscription ratio (installed 400 kW / 100
+  kW transformer) = 4:1. Do not re-run or overwrite these files. Full
+  write-up in `thesis_docs/chapters/01_baseline.md`.
+- **`number_of_charging_stations = 8` now grounded in data (2026-08-11):**
+  Enel X Colombia's public charge-point inventory for Bogota (67 chargers /
+  21 sites, consulted 2026-08-11) shows an 8-port hub (CC Retiro) exists in
+  practice, though at lower AC power than our 50 kW DC-capable config
+  assumes — see `thesis_docs/chapters/01_baseline.md` §1.1 for the citation
+  and declared limitations (hardware mismatch; Enel X is a lower bound, not
+  a census of all Bogota public charging).
 - **Open item, unconfirmed:** the requirement that `ev.max_ac_charge_power`
   equal `ev.max_dc_charge_power` (to avoid a claimed `ZeroDivisionError`)
   could not be verified against the current codebase (`ev2gym/models/ev.py`,
   `ev2gym/utilities/utils.py`) — applied anyway since it's harmless, but
   flagging that this specific failure mode is not confirmed to exist.
-- **Next concrete task:** user to confirm the Week 1 baseline (§1.3 of
-  `01_baseline.md`) is acceptable to carry forward; then proceed to Week 2
-  (grid model sanity check + Round Robin on a grid-enabled scenario, per
-  `PROJECT_ROADMAP.md`).
+- **Next concrete task (Week 2, in progress):** station-size sensitivity
+  sweep — `configs/station_sensitivity/` (n=2 and n=16 ports, at both fixed
+  100 kW transformer and ratio-scaled transformer) run via
+  `scripts/run_size_sensitivity.py`, emitting
+  `experiments/phase1_baseline/results/size_sensitivity.csv`. Then the
+  Week 2 grid model sanity check (Round Robin on a grid-enabled scenario,
+  per `PROJECT_ROADMAP.md`).
 
 ## Useful Commands (reference, don't re-derive these each time)
 
