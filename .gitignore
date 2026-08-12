@@ -164,7 +164,9 @@ wandb/
 *.lp
 *.mps
 replay/
-/results/
+/results/*
+!/results/master_results.csv
+!/results/degradation_by_ambient.csv
 model.lp
 vscode/
 .vscode/settings.json
@@ -173,11 +175,17 @@ saved_models/
 trajectories/
 logs/
 eval_logs/
-/results/
+/results/*
+!/results/master_results.csv
+!/results/degradation_by_ambient.csv
 models_RL/
 plots/
 plot_results_dict.pkl
 results_grouped.csv
-tests/
+/tests/
+
+# Auto-generated per-eval-day config copies (ev2gym_thesis/config_utils.py);
+# regenerable from the base config + eval_day, not meant to be committed.
+experiments/phase1_baseline/configs/_tmp_day_configs/
 
 MPC EVCS V2G - v2/

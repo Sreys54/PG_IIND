@@ -71,12 +71,24 @@ Copy `CLAUDE.md` (separate file) into the repo root.
 | Phase | Proposal objective | Branch | Weeks |
 |---|---|---|---|
 | 1. Baseline characterization | Objective 1 | `semana-1` | 1 |
-| 2. Grid model validation | Objective 2 | `semana-2` | 2 |
+| 2. Station + local-transformer model validation | Objective 2 | `semana-2` | 2 |
 | 3. MPC/optimal baseline | Objective 3 (part 1) | `semana-3` | 3 |
 | 4. RL baseline (vanilla + PI-TD3) | Objective 3 (part 2) | `semana-4`, `semana-5` | 4–5 |
 | 5. Infrastructure guidelines | Objective 4 | `semana-6` | 6 |
 | 6. Replicability + writing catch-up | Objective 5 | `semana-7` | 7 |
 | 7. Consolidation & submission | — | `semana-8` → `main` | 8 |
+
+> **Grid-scope note (resolved 2026-08-12, see `thesis_docs/chapters/02_model_validation.md`):**
+> `simulate_grid: False` (single station, own local transformer) is used
+> through Objectives 1-3 (Phases 1-3, weeks 1-3). `simulate_grid: True` +
+> the IEEE 34-bus feeder is reserved for Objectives 4-5 (Phases 5-6,
+> "Infrastructure guidelines" / "Replicability"), not before. Phase 2 /
+> Week 2's "model validation" below means validating the station-and-
+> local-transformer model and documenting what is realistic vs.
+> simplified — it does NOT mean running the feeder or checking voltage
+> constraints. Do not mix `simulate_grid: True` rows into the Phase 2
+> algorithm-comparison registry — it would break comparability across the
+> evaluation grid.
 
 ---
 
@@ -93,13 +105,20 @@ Copy `CLAUDE.md` (separate file) into the repo root.
 - **Milestone:** tag `v0.1-baseline`. Merge `semana-1 → main`, then
   `git checkout main && git checkout -b semana-2`.
 
-## Week 2 — Grid Model Sanity Check + Round Robin (Objectives 1–2)
+## Week 2 — Station/Local-Transformer Model Validation + Round Robin (Objectives 1–2)
 - [ ] Run `RoundRobin` heuristic on the same config — second baseline point
-      and a sanity check that grid constraints (voltage, transformer)
-      actually bind under this station's load.
+      and a sanity check that the *local transformer* constraint actually
+      binds under this station's load (`simulate_grid: False` throughout —
+      no feeder, no voltage constraints; those are Objectives 4-5, not
+      this week).
 - [ ] Write the model-validation note: what's realistic here vs. what's a
-      simplification (e.g., synthetic bus network vs. a real Bogotá feeder
-      topology — you almost certainly don't have the latter, say so).
+      simplification in the station-and-local-transformer model (e.g.
+      Dutch-sourced arrival/price data, no queueing, hard-coded degradation
+      constants — NOT "synthetic bus network vs. a real Bogotá feeder
+      topology," which belongs to the later IEEE 34-bus phase).
+- [ ] De-risking only: run ONE `simulate_grid: True` + IEEE 34-bus smoke
+      test to confirm that pipeline still works, tagged and excluded from
+      all Phase 2 figures/tables — not a Week 2 deliverable in itself.
 - **Milestone:** tag `v0.2-model-validated`.
 
 ## Week 3 — MPC/Optimal Baseline (Objective 3, part 1)

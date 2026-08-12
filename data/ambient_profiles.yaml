@@ -1,0 +1,77 @@
+# Ambient temperature data for Colombian categoria especial cities
+# (Week 2, Deliverable 6.5). Data only -- the mechanism (diurnal profile
+# functions, Arrhenius-integration wrapper) lives in
+# ev2gym_thesis/ambient_bogota.py and ev2gym_thesis/degradation_bogota.py.
+# Per the approved scope, the full multi-city comparison is NOT run this
+# week: this file lets Objective 5's replicability analysis become a
+# config change later instead of a code change.
+#
+# Every entry below was checked against IDEAM's own
+# normales_climatologicas_periodo_1981-2010.xlsx
+# (https://www.ideam.gov.co/sala-de-prensa/informes/Normales-clim%C3%A1ticas-est%C3%A1ndar),
+# downloaded directly, EXCEPT Barranquilla, for which no station appears in
+# that specific workbook -- flagged below, tier [Secondary].
+#
+# annual_mean_c / daily_max_c / daily_min_c are annual means of the
+# station's monthly normals (daily-mean / daily-max / daily-min
+# respectively), not single measured extremes.
+
+bogota:
+  annual_mean_c: 13.68
+  daily_max_c: 19.31
+  daily_min_c: 7.88
+  elevation_m: 2547
+  station: "21205791 Aeropuerto El Dorado Catam - AUT, Bogota, Cundinamarca"
+  source_tier: Primary
+  source: "IDEAM, Normales climatologicas estandar 1981-2010 (own download, verified 2026-08-12)"
+  note: "Originally assumed 13.3 C did not match this primary source; corrected to 13.68 C. See thesis_docs/chapters/00_lab_log.md, 2026-08-12."
+
+medellin:
+  annual_mean_c: 22.53
+  daily_max_c: 27.85
+  daily_min_c: 17.37
+  elevation_m: 1490
+  station: "27015330 Aeropuerto Olaya Herrera - AUT, Medellin, Antioquia"
+  source_tier: Primary
+  source: "IDEAM, Normales climatologicas estandar 1981-2010 (own download, verified 2026-08-12)"
+  note: "Elevation (1490 m) is close to but not identical to the ~1495 m commonly cited elsewhere; using the IDEAM station's own recorded elevation."
+
+cali:
+  annual_mean_c: 24.48
+  daily_max_c: 29.92
+  daily_min_c: 19.33
+  elevation_m: 996
+  station: "26055120 Universidad del Valle - AUT, Cali, Valle del Cauca"
+  source_tier: Primary
+  source: "IDEAM, Normales climatologicas estandar 1981-2010 (own download, verified 2026-08-12)"
+  note: null
+
+cartagena:
+  annual_mean_c: 27.78
+  daily_max_c: 31.26
+  daily_min_c: 25.21
+  elevation_m: 2
+  station: "14015080 Aeropuerto Rafael Nunez, Cartagena de Indias, Bolivar"
+  source_tier: Primary
+  source: "IDEAM, Normales climatologicas estandar 1981-2010 (own download, verified 2026-08-12)"
+  note: null
+
+bucaramanga:
+  annual_mean_c: 23.01
+  daily_max_c: 28.02
+  daily_min_c: 19.11
+  elevation_m: 118  # AS RECORDED IN THE IDEAM WORKBOOK FOR THIS STATION -- see note
+  station: "23195040 Universidad Industrial Santander, Bucaramanga, Santander"
+  source_tier: Primary
+  source: "IDEAM, Normales climatologicas estandar 1981-2010 (own download, verified 2026-08-12)"
+  note: "PENDING VERIFICATION: this is the only Bucaramanga station in the IDEAM workbook, and its recorded elevation (118 m) is well below the ~959-1000 m commonly cited for the city's plateau. The temperature values are plausible and consistent with commonly-cited Bucaramanga figures (~23 C), but the elevation field should be double-checked (e.g. against a Palonegro airport station, not present in this workbook) before use in any altitude-dependent calculation."
+
+barranquilla:
+  annual_mean_c: 27.0  # midpoint of the cited 26-28 C range
+  daily_max_c: 30.0
+  daily_min_c: 25.0
+  elevation_m: 18  # approximate, not IDEAM-sourced -- see note
+  station: null
+  source_tier: Secondary
+  source: "Infobae (2026-04-25), 'Cual es la temperatura promedio en Barranquilla', citing IDEAM: https://www.infobae.com/colombia/2026/04/25/cual-es-la-temperatura-promedio-en-barranquilla/"
+  note: "PENDING VERIFICATION AGAINST IDEAM: no Barranquilla station was found in IDEAM's own normales_climatologicas_periodo_1981-2010.xlsx (searched directly, not found). This entry cites a secondary source that itself attributes its numbers to IDEAM, without a specific station or primary document identified. Elevation is an approximate city-level figure, not from either source above."

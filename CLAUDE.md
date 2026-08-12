@@ -152,13 +152,20 @@ folder already holds this repo's own Sphinx documentation, don't touch it):
   could not be verified against the current codebase (`ev2gym/models/ev.py`,
   `ev2gym/utilities/utils.py`) — applied anyway since it's harmless, but
   flagging that this specific failure mode is not confirmed to exist.
-- **Next concrete task (Week 2, in progress):** station-size sensitivity
-  sweep — `configs/station_sensitivity/` (n=2 and n=16 ports, at both fixed
-  100 kW transformer and ratio-scaled transformer) run via
-  `scripts/run_size_sensitivity.py`, emitting
-  `experiments/phase1_baseline/results/size_sensitivity.csv`. Then the
-  Week 2 grid model sanity check (Round Robin on a grid-enabled scenario,
-  per `PROJECT_ROADMAP.md`).
+- **Grid-scope note (resolved 2026-08-12):** `simulate_grid: False` (single
+  station, own local transformer) is used through Objectives 1-3, weeks
+  1-3. `simulate_grid: True` + the IEEE 34-bus feeder is reserved for
+  Objectives 4-5 — NOT Week 2. Week 2's "model validation" means
+  documenting what's realistic vs. simplified in the station-and-local-
+  transformer model (`thesis_docs/chapters/02_model_validation.md`), not
+  running the feeder. One de-risking smoke test only
+  (`notes="pipeline_smoke_test_grid"`, excluded from all figures/tables) is
+  the sole exception. See `PROJECT_ROADMAP.md`'s matching grid-scope note.
+- **Next concrete task (Week 2, in progress):** finish the multi-seed
+  registry backfill (`results/master_results.csv`, via
+  `scripts/backfill_registry.py`), then re-measure the Bogota degradation
+  calibration with confidence intervals across the full registry (current
+  numbers in `02_model_validation.md` are single-run and preliminary).
 
 ## Useful Commands (reference, don't re-derive these each time)
 
