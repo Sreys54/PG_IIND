@@ -17,8 +17,19 @@ FIGURES_DIR = "figures"
 ALGORITHM_STYLE = {
     "ChargeAsFastAsPossible": {"color": "#d62728", "marker": "o", "label": "AFAP"},
     "RoundRobin": {"color": "#1f77b4", "marker": "s", "label": "Round Robin"},
-    # Append new algorithms here as they're added (MPC, RL, ...) -- never
-    # reassign an existing entry's color/marker once a figure has used it.
+    # Week 3 additions (append only, per project convention -- AFAP/Round
+    # Robin's color/marker above are untouched). Three distinct shades of
+    # green for the three TD3 training seeds (same algorithm, different
+    # training runs -- visually grouped by hue, distinguished by marker),
+    # and a neutral gray for the random-policy negative control so it never
+    # visually competes with the algorithms actually being compared.
+    "TD3_vanilla_ts100": {"color": "#2ca02c", "marker": "^", "label": "TD3 (seed 100)"},
+    "TD3_vanilla_ts101": {"color": "#5fd35f", "marker": "v", "label": "TD3 (seed 101)"},
+    "TD3_vanilla_ts102": {"color": "#1b6b1b", "marker": "D", "label": "TD3 (seed 102)"},
+    "RandomPolicy": {"color": "#7f7f7f", "marker": "x", "label": "Random (control)"},
+    # Append new algorithms here as they're added (PI-TD3, optimal
+    # reference, ...) -- never reassign an existing entry's color/marker
+    # once a figure has used it.
 }
 # doc:end algorithm_style
 

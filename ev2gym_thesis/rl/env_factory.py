@@ -13,6 +13,7 @@ subclass) -- see the same lab-log entry.
 import random
 
 import gymnasium as gym
+from stable_baselines3.common.monitor import Monitor
 
 from ev2gym.models.ev2gym_env import EV2Gym
 from ev2gym.rl_agent.reward import SqTrError_TrPenalty_UserIncentives
@@ -61,7 +62,6 @@ def make_env(config_path: str, day: tuple, scenario_seed: int,
 # doc:end make_env
 
 
-# doc:begin training_day_cycling_env
 class TrainingDayCyclingEnv(gym.Env):
     """A gym.Env that samples a new calendar day from TRAIN_DAYS every
     reset() -- never from EVAL_DAYS -- so a TD3 agent trained against this
@@ -96,6 +96,7 @@ class TrainingDayCyclingEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
+    # doc:begin training_day_cycling_env_init
     def __init__(self, config_path: str, reward_fn=DEFAULT_REWARD_FN,
                  state_fn=DEFAULT_STATE_FN, sample_mode: str = "round_robin",
                  rng_seed: int = None, day_config_dir: str = TRAIN_DAY_CONFIG_DIR):
@@ -114,16 +115,17 @@ class TrainingDayCyclingEnv(gym.Env):
         self._rr_index = 0
         self.days_seen = []  # every day sampled so far, for the anti-leakage test
 
-        # Build one probe instance purely to publish action_space/
-        # observation_space before the first reset() -- SB3 needs these at
-        # construction time. Neither space depends on which day is loaded
-        # (both are fixed by port count / v2g_enabled and observation
-        # feature layout), so any TRAIN_DAYS day is representative.
+        # Probe instance purely to publish action_space/observation_space
+        # before the first reset() (SB3 needs these at construction time) --
+        # neither space depends on which day is loaded, so any TRAIN_DAYS
+        # day is representative.
         probe_env = self._build_env_for_day(TRAIN_DAYS[0], seed=0)
         self.action_space = probe_env.action_space
         self.observation_space = probe_env.observation_space
         self._env = probe_env
+    # doc:end training_day_cycling_env_init
 
+    # doc:begin training_day_cycling_env_sampling
     def _next_day(self) -> tuple:
         if self.sample_mode == "round_robin":
             day = TRAIN_DAYS[self._rr_index % len(TRAIN_DAYS)]
@@ -139,6 +141,12 @@ class TrainingDayCyclingEnv(gym.Env):
         self.days_seen.append(day)
         return day
 
+    def reset(self, seed=None, options=None):
+        day = self._next_day()
+        self._env = self._build_env_for_day(day, seed=seed)
+        return self._env.reset(seed=seed)
+    # doc:end training_day_cycling_env_sampling
+
     def _build_env_for_day(self, day: tuple, seed: int) -> EV2Gym:
         year, month, day_of_month = day
         day_config_path = make_day_config(self.config_path, year, month, day_of_month, self.day_config_dir)
@@ -151,11 +159,6 @@ class TrainingDayCyclingEnv(gym.Env):
             state_function=self.state_fn,
         )
 
-    def reset(self, seed=None, options=None):
-        day = self._next_day()
-        self._env = self._build_env_for_day(day, seed=seed)
-        return self._env.reset(seed=seed)
-
     def step(self, action):
         return self._env.step(action)
 
@@ -164,18 +167,34 @@ class TrainingDayCyclingEnv(gym.Env):
 
     def close(self):
         pass
-# doc:end training_day_cycling_env
 
 
 def make_training_env(config_path: str, reward_fn=DEFAULT_REWARD_FN,
                        state_fn=DEFAULT_STATE_FN, sample_mode: str = "round_robin",
                        rng_seed: int = None,
-                       day_config_dir: str = TRAIN_DAY_CONFIG_DIR) -> TrainingDayCyclingEnv:
-    """Factory returning a single TrainingDayCyclingEnv instance, ready to be
-    wrapped in a DummyVecEnv (+ optionally VecNormalize) by the training
+                       day_config_dir: str = TRAIN_DAY_CONFIG_DIR) -> Monitor:
+    """Factory returning a Monitor-wrapped TrainingDayCyclingEnv, ready to
+    be wrapped in a DummyVecEnv (+ optionally VecNormalize) by the training
     script -- see ev2gym_thesis/rl/config_rl.py for the VecNormalize design
-    decision."""
-    return TrainingDayCyclingEnv(
+    decision.
+
+    The Monitor wrap (stable_baselines3.common.monitor.Monitor) is required,
+    not cosmetic: SB3's off-policy algorithms only populate
+    model.ep_info_buffer -- the mean-episode-reward source
+    ev2gym_thesis/rl/callbacks.py's LearningCurveCallback reads -- from an
+    "episode" key that Monitor adds to each step's info dict on episode
+    end. A bare (unwrapped) VecEnv never gets this key, so
+    ep_info_buffer silently stays empty and the learning-curve CSV would
+    silently log nothing -- discovered exactly this way while smoke-testing
+    scripts/train_td3.py before the Entregable 5 training run, not assumed.
+    TrainingDayCyclingEnv-specific attributes (e.g. days_seen, used by
+    scripts/calibrate_td3_timing.py) are still reachable through the wrapper
+    via env.unwrapped.days_seen -- gymnasium's Wrapper does NOT transparently
+    forward arbitrary custom attributes by plain dot-access in this
+    gymnasium version (confirmed empirically), so callers must use
+    .unwrapped for TrainingDayCyclingEnv-specific state.
+    """
+    env = TrainingDayCyclingEnv(
         config_path=config_path,
         reward_fn=reward_fn,
         state_fn=state_fn,
@@ -183,3 +202,4 @@ def make_training_env(config_path: str, reward_fn=DEFAULT_REWARD_FN,
         rng_seed=rng_seed,
         day_config_dir=day_config_dir,
     )
+    return Monitor(env)

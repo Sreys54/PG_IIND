@@ -2,8 +2,8 @@
 
 Scatter of mean user satisfaction (x) vs. mean transformer overload (y), one point per algorithm with 95% CI error bars on both axes. Non-dominated points (black edge) are connected.
 
-- Runs behind this figure: 100
+- Runs behind this figure: 300
 - Configs: station_v0_bogota
-- Algorithms: AFAP, Round Robin
-- Git commit: 0b098f5e0b7ac8efe19a4369f476e58f917ff06a
-- Generated: 2026-08-13T00:18:57.449088Z
+- Algorithms: AFAP, Round Robin, TD3 (seed 100), TD3 (seed 101), TD3 (seed 102), Random (control)
+- Git commit: 2190ce39ddafeac3a25b4c59437e94459f2a2c57
+- Generated: 2026-08-13T04:42:44.126061Z

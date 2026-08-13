@@ -78,7 +78,7 @@ if __name__ == "__main__":
     elapsed_s = time.perf_counter() - t0
 
     steps_per_s = config_rl.CALIBRATION_TIMESTEPS / elapsed_s
-    n_episodes_calibration = len(train_env.days_seen)
+    n_episodes_calibration = len(train_env.unwrapped.days_seen)  # make_training_env Monitor-wraps the env; days_seen lives on the underlying TrainingDayCyclingEnv
 
     print(f"\nCalibration run: {config_rl.CALIBRATION_TIMESTEPS} timesteps in "
           f"{elapsed_s:.1f}s ({elapsed_s/60:.2f} min) = {steps_per_s:.2f} steps/s")

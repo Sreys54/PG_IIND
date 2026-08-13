@@ -188,11 +188,29 @@ folder already holds this repo's own Sphinx documentation, don't touch it):
   for all 3 `TRAIN_SEEDS`) — see `ev2gym_thesis/rl/config_rl.py` and
   `00_lab_log.md`'s Entregable 4 entry for the full table and the declared
   scope-reduction comparison against the papers' HPC budgets.
-- **Next concrete task (Week 3):** Entregable 5 — train TD3 vanilla with
-  all 3 `TRAIN_SEEDS` at the confirmed 60,000-timestep budget, save
-  model + VecNormalize stats + learning-curve CSV + manifest per run, then
-  Entregable 6 (evaluation on the same 50-cell grid + random-policy control)
-  and Entregable 7 (statistics + figures).
+- **Week 3, Entregables 5-7: DONE (2026-08-13).** All 3 `TRAIN_SEEDS`
+  trained at the confirmed 60,000-timestep budget (2.79h total wall-clock,
+  matching the calibration estimate; weak-but-consistent learning signal
+  across all 3 seeds, not clean convergence — declared, not hidden). All 3
+  checkpoints + a random-policy negative control evaluated on the same
+  50-cell grid (`scripts/evaluate_rl.py --execute`, 200 runs appended to
+  `results/master_results.csv`). Headline: TD3 matches Round Robin's
+  near-elimination of transformer overload (vs. AFAP's 5.33 kWh and the
+  random control's **12.74 kWh — worse than AFAP**, confirming this is a
+  real learned behavior), at a real cost in `min_energy_user_satisfaction`
+  and `total_ev_served`, with substantial cross-training-seed dispersion.
+  Paired bootstrap + cross-seed dispersion in
+  `results/rl_vs_baseline_bootstrap.csv` /
+  `results/rl_train_seed_dispersion.csv`. Visual QA found and fixed 5 real
+  bugs: TD3 timeseries were silently zeroed by SB3's `DummyVecEnv`
+  auto-reset (scalar registry metrics were unaffected), plus 4
+  figure-legibility bugs from `make_figures.py` not scaling past 2
+  algorithms. Full account in `00_lab_log.md`'s 2026-08-13 entry and
+  `thesis_docs/chapters/03_rl_baseline.md`.
+- **Next concrete task (Week 3):** Entregable 10 — Week 3 hand-back
+  document (`scripts/make_week3_handback.py`) and
+  `Progress_Log_Thesis_Project.docx` extension. This is the last remaining
+  Week 3 deliverable; no merge to `main` or tag until the user confirms.
 
 ## Useful Commands (reference, don't re-derive these each time)
 

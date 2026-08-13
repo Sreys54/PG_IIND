@@ -167,6 +167,8 @@ replay/
 /results/*
 !/results/master_results.csv
 !/results/degradation_by_ambient.csv
+!/results/rl_vs_baseline_bootstrap.csv
+!/results/rl_train_seed_dispersion.csv
 model.lp
 vscode/
 .vscode/settings.json
@@ -178,6 +180,8 @@ eval_logs/
 /results/*
 !/results/master_results.csv
 !/results/degradation_by_ambient.csv
+!/results/rl_vs_baseline_bootstrap.csv
+!/results/rl_train_seed_dispersion.csv
 models_RL/
 plots/
 plot_results_dict.pkl

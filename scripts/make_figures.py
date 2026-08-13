@@ -158,7 +158,10 @@ def make_f02_metrics_bars(rows):
         x = np.arange(len(algos))
         ax.bar(x, means, color=colors, yerr=[los, his], capsize=4)
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, fontsize=8)
+        # Week 3: rotated (was horizontal) -- with 6 algorithms instead of 2,
+        # horizontal labels overlapped into an illegible run-on string,
+        # caught by this figure's own visual QA pass (Entregable 7).
+        ax.set_xticklabels(labels, fontsize=7, rotation=35, ha="right")
         ax.set_title(METRIC_LABELS[metric], fontsize=9)
         if metric == "total_energy_charged":
             ax.axhline(energy_requested, color="black", linestyle="--", linewidth=1)
@@ -258,7 +261,10 @@ def make_f04_distributions(rows):
     grid = main_grid_rows(rows, REFERENCE_CONFIG)
     algos = _algos_present(grid)
 
-    fig, ax = plt.subplots(figsize=(6, 4.5))
+    # Week 3: figure width now scales with algorithm count (was a fixed 6in
+    # -- fine for 2 algorithms, cramped and label-overlapping once RL added
+    # 4 more; caught by this figure's own visual QA pass, Entregable 7).
+    fig, ax = plt.subplots(figsize=(max(6, 1.3 * len(algos)), 4.5))
     data = [_values_for(grid, algo, HEADLINE_METRIC) for algo in algos]
     colors = [style_for(a)["color"] for a in algos]
     labels = [style_for(a)["label"] for a in algos]
@@ -267,6 +273,9 @@ def make_f04_distributions(rows):
     for patch, color in zip(bp["boxes"], colors):
         patch.set_facecolor(color)
         patch.set_alpha(0.5)
+    ax.tick_params(axis="x", labelrotation=35)
+    for label in ax.get_xticklabels():
+        label.set_ha("right")
 
     ax.set_ylabel(METRIC_LABELS[HEADLINE_METRIC])
     ax.set_title(f"{REFERENCE_CONFIG}: {METRIC_LABELS[HEADLINE_METRIC]} distribution\n"
@@ -307,7 +316,8 @@ def make_f05_vs_baseline(rows):
     afap_by_cell = {cell_key(r): r for r in grid if r["algorithm"] == "ChargeAsFastAsPossible"}
     show_algo_suffix = len(other_algos) > 1  # redundant with color when there's only one
 
-    fig, ax = plt.subplots(figsize=(10, 0.7 * len(METRICS_FOR_BARS) * len(other_algos) + 1.5))
+    fig_height = 0.7 * len(METRICS_FOR_BARS) * len(other_algos) + 1.5
+    fig, ax = plt.subplots(figsize=(10, fig_height))
     y_labels = []
     y_pos = []
     y = 0
@@ -343,9 +353,22 @@ def make_f05_vs_baseline(rows):
     ax.set_yticklabels(y_labels, fontsize=9)
     ax.invert_yaxis()
     ax.set_xlabel("Paired change vs. AFAP baseline")
+    # Week 3: title no longer enumerates every non-baseline algorithm by
+    # name -- with 5 algorithms (was 1, Round Robin, in Week 2) that list
+    # ran wider than the fixed-width figure and got clipped at the right
+    # edge (caught by this figure's own visual QA, Entregable 7). The
+    # per-row y-axis labels already carry "(algorithm)" whenever
+    # show_algo_suffix is True, so the title doesn't need to repeat it.
     ax.set_title(f"{REFERENCE_CONFIG}: paired change vs. AFAP baseline\n"
-                 f"({', '.join(style_for(a)['label'] for a in other_algos)}, bootstrap 95% CI)", fontsize=10)
-    fig.subplots_adjust(left=0.42, right=0.95, top=0.85, bottom=0.15)
+                 f"(bootstrap 95% CI, algorithm shown per row)", fontsize=10)
+    # Week 3: fixed INCH margins (not fractions) for title/xlabel space --
+    # a fixed *fraction* (e.g. 0.15) of a figure that now grows much taller
+    # with more algorithms leaves an ever-growing absolute blank margin;
+    # also caught by visual QA.
+    top_margin_in, bottom_margin_in = 0.7, 0.6
+    fig.subplots_adjust(left=0.42, right=0.95,
+                         top=1 - top_margin_in / fig_height,
+                         bottom=bottom_margin_in / fig_height)
     _save(fig, "f05_vs_baseline")
     write_caption(
         "f05_vs_baseline",
@@ -370,7 +393,19 @@ POLICY_B_CONFIGS = [("station_n02_tx025", 2), (REFERENCE_CONFIG, 8), ("station_n
 
 
 def make_f06_size_sensitivity(rows):
-    algos = _algos_present(main_grid_rows(rows))
+    # Week 3: restricted to algorithms actually run across the port-count
+    # sweep (checked via presence on a non-reference sweep config), not
+    # every algorithm in the whole registry. TD3/RandomPolicy only ran on
+    # the 8-port reference config (declared Week 3 scope limitation -- the
+    # CPU budget didn't cover training across the size sweep too, see
+    # thesis_docs/chapters/03_rl_baseline.md), so without this filter they
+    # showed up as disconnected single dots at n=8 with no actual
+    # sensitivity trend to show -- misleading in a figure whose whole point
+    # is the trend across sizes. Caught by this figure's own visual QA
+    # (Entregable 7).
+    non_reference_sweep_config = POLICY_A_CONFIGS[0][0]  # station_n02_tx100
+    swept_grid = main_grid_rows(rows, non_reference_sweep_config)
+    algos = [a for a in _algos_present(main_grid_rows(rows)) if _values_for(swept_grid, a, HEADLINE_METRIC).size > 0]
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), sharey=True)
 
     for ax, (policy_name, policy_configs) in zip(
@@ -482,18 +517,73 @@ def make_f07_metric_heatmap(rows):
 
 
 # ---------------------------------------------------------------------------
-# f08_learning_curves (inert until RL rows exist)
+# f08_learning_curves (activated Week 3: reads each training run's own
+# learning_curve.csv -- like f09 reads its own separate source file, this
+# is NOT registry data; the registry has no reward-vs-timesteps time series
+# column, only per-run final stats)
 # ---------------------------------------------------------------------------
+TD3_TRAIN_SEEDS_ALGOS = ["TD3_vanilla_ts100", "TD3_vanilla_ts101", "TD3_vanilla_ts102"]
+LEARNING_CURVE_PATH_TEMPLATE = "experiments/phase2_algorithms/models/{algo}/learning_curve.csv"
+
+
 def make_f08_learning_curves(rows):
     rl_rows = [r for r in rows if r["algorithm_family"] == "rl"]
     if not rl_rows:
         print("f08_learning_curves: no algorithm_family=='rl' rows in the registry yet "
               "-- skipping cleanly (inert until Week 3+ RL rows exist). Not an error.")
         return
-    raise NotImplementedError(
-        "RL rows now exist in the registry but f08_learning_curves plotting logic "
-        "has not been implemented yet -- this needs reward-vs-steps time series data "
-        "that isn't part of the current registry schema."
+
+    curves = {}
+    for algo in TD3_TRAIN_SEEDS_ALGOS:
+        path = LEARNING_CURVE_PATH_TEMPLATE.format(algo=algo)
+        if not os.path.exists(path):
+            print(f"f08: {path} not found, skipping {algo}.")
+            continue
+        with open(path, newline="") as f:
+            curve_rows = list(csv.DictReader(f))
+        curves[algo] = {
+            "timesteps": np.array([float(r["timesteps"]) for r in curve_rows]),
+            "mean_episode_reward": np.array([float(r["mean_episode_reward"]) for r in curve_rows]),
+        }
+    if not curves:
+        print("f08: no learning_curve.csv files found for any TD3 training seed, skipping.")
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for algo, data in curves.items():
+        sty = style_for(algo)
+        ax.plot(data["timesteps"], data["mean_episode_reward"], color=sty["color"],
+                label=sty["label"], linewidth=1.3)
+    ax.set_xlabel("Training timesteps")
+    ax.set_ylabel("Mean episode reward\n(SB3 rolling window, last <=100 episodes)")
+    ax.set_title("TD3 vanilla learning curves, one line per training seed\n"
+                 "(station_v0_bogota, TRAIN_DAYS round-robin)", fontsize=10)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    _save(fig, "f08_learning_curves")
+
+    write_caption(
+        "f08_learning_curves",
+        what_it_shows=(
+            "Mean episode reward (SB3's own rolling window over the last <=100 "
+            "completed episodes) vs. training timesteps, one line per TD3 training "
+            "seed. Source: each run's own learning_curve.csv "
+            "(ev2gym_thesis/rl/callbacks.py's LearningCurveCallback), NOT the main "
+            "registry -- the registry has no reward-vs-timesteps time series column. "
+            "Reward values use the training reward function "
+            "(SqTrError_TrPenalty_UserIncentives), not any of the thesis's evaluation "
+            "metrics -- see thesis_docs/chapters/03_rl_baseline.md S3.4 for why those "
+            "are not the same thing."
+        ),
+        n_runs=len(curves),
+        configs=[REFERENCE_CONFIG],
+        algorithms=[style_for(a)["label"] for a in curves],
+        extra=(
+            "This is the first figure where seed-to-seed spread across the 3 "
+            "TD3_vanilla_ts* lines IS the signal, not noise to average away -- see "
+            "00_lab_log.md's Week 3 Entregable 7 entry for the cross-training-seed "
+            "dispersion analysis this figure visualizes."
+        ),
     )
 
 

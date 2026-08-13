@@ -1,5 +1,169 @@
 # Lab Log
 
+## 2026-08-13 — Week 3, Entregables 5-7: training, evaluation, statistics, and two real bugs caught by visual QA
+
+**Entregable 5 (training) — done.** All 3 `TRAIN_SEEDS` trained sequentially
+(`scripts/train_td3.py`) at the confirmed `TOTAL_TIMESTEPS=60_000` budget.
+Wall-clock: ts100=57.62 min, ts101=54.91 min, ts102=55.06 min — **167.6 min
+(2.79h) total**, matching the 165.9 min calibration estimate almost exactly.
+Artifacts per seed in `experiments/phase2_algorithms/models/TD3_vanilla_ts{seed}/`:
+`final_model.zip`, `final_model_vecnormalize.pkl`, `learning_curve.csv`,
+`manifest.json` (git commit, hyperparameters, library versions, wall-clock).
+
+**Convergence: weak but real, not clean.** Linear-fit slope of mean episode
+reward vs. timesteps is positive for all 3 seeds (+21 to +30 per 1,000
+steps) — same direction every time, not coincidence — but small relative to
+within-seed noise (episode-reward std ~1,000-1,500 against means of
+~-22,000 to -25,000). Reported as-is: a real but weak learning signal under
+the declared 2.8h-total budget (vs. the source papers' 5-48h on HPC), not
+dressed up as clean convergence. See `figures/f08_learning_curves.png`.
+
+**Bug found during smoke-testing, before the real run:** `ep_info_buffer`
+(the mean-episode-reward source `LearningCurveCallback` reads) stayed empty
+because the training env wasn't wrapped in
+`stable_baselines3.common.monitor.Monitor` — SB3 only populates it from an
+`"episode"` info key that Monitor adds. Fixed at the source in
+`env_factory.make_training_env` (now returns a Monitor-wrapped env), not
+per call site. Caught before the real 2.8h run, not after.
+
+**Entregable 6 (evaluation) — done.** All 3 TD3 checkpoints plus a
+random-policy negative control evaluated on the same 50-cell grid (`SEEDS`
+x `EVAL_DAYS`) used for AFAP/Round Robin, via `scripts/evaluate_rl.py`
+(`--execute`, 200 runs, all appended, 0 skipped). `deterministic=True` for
+TD3 `predict()`. Registry rows: `TD3_vanilla_ts100/101/102` and
+`RandomPolicy`, all `algorithm_family="rl"`, `notes` recording
+`reward=...,state=...,train_seed=...` per row.
+
+**station_v0_bogota, n=50 per algorithm, mean [95% CI]:**
+
+| Algorithm | EVs served | Profits | Avg. satisfaction | min energy satisfaction | Transformer overload (kWh) | Tracking error | Battery degradation |
+|---|---|---|---|---|---|---|---|
+| AFAP | 13.44 [13.22,13.67] | -45.73 [-53.80,-37.66] | 1.000 | 100.00 | 5.33 [1.93,8.73] | 51615 [48451,54779] | 0.000 |
+| Round Robin | 13.44 [13.22,13.67] | -44.51 [-52.32,-36.71] | 1.000 | 99.95 | 0.00 | 12273 [11335,13211] | 0.000 |
+| TD3 (seed 100) | 13.00 | -28.59 [-34.01,-23.16] | 0.996 | 93.06 [90.67,95.45] | 0.00 | 16668 [16325,17011] | 0.000 |
+| TD3 (seed 101) | 10.40 [10.26,10.54] | -36.69 [-42.96,-30.42] | 0.995 | 92.31 [89.67,94.95] | 0.00 | 28152 [27540,28765] | 0.000 |
+| TD3 (seed 102) | 12.80 [12.53,13.07] | -39.69 [-46.18,-33.19] | 0.984 | 86.71 [84.58,88.84] | 0.98 [0.16,1.81] | 25691 [24356,27025] | 0.000 |
+| RandomPolicy (control) | 13.90 [13.56,14.24] | -48.19 [-57.38,-39.01] | 1.000 | 100.00 | **12.74 [3.45,22.03]** | 43878 [37148,50609] | 0.000 |
+
+**Headline pattern -- a real tradeoff, not a uniform win:**
+- **Overload:** all 3 TD3 seeds essentially match Round Robin (0.00, 0.00,
+  0.98 kWh) and dramatically beat AFAP (5.33 kWh). The random-policy
+  control shows **12.74 kWh -- worse than even unmanaged AFAP** -- proving
+  this isn't "any policy beats AFAP here"; TD3 learned a real
+  overload-avoidance behavior the control does not exhibit.
+- **Cost of that:** `min_energy_user_satisfaction` drops to 93.1/92.3/86.7
+  for TD3 (vs. ~100 for AFAP/RR/Random), and `total_ev_served` is lower and
+  seed-inconsistent (13.0/10.4/12.8 vs. AFAP/RR's 13.44).
+- **`tracking_error` is WORSE for TD3 than Round Robin** (+49% to +152%,
+  paired bootstrap, see below) despite AFAP being worse still -- consistent
+  with the declared reward-vs-metric misalignment
+  (`03_rl_baseline.md` S3.4): the reward's tracking term and the reported
+  `tracking_error` metric are related but not identical.
+- **`total_profits` looks better for TD3** (less negative than both
+  baselines, all 3 seeds) -- but profit is NOT in the reward at all (S3.2);
+  this is very likely a side effect of serving fewer EVs / less energy
+  exchanged (lower operating cost), not an intentional profit optimization.
+  Stated as a caveat, not claimed as an achievement.
+- **Battery degradation drops ~12-28% vs. both baselines** across all 3
+  seeds (paired bootstrap) -- also very likely confounded with serving
+  fewer EVs (less cycling), not necessarily "better battery management."
+
+**Entregable 7 (statistics) — done**
+(`scripts/analyze_rl_results.py` -> `results/rl_vs_baseline_bootstrap.csv`,
+`results/rl_train_seed_dispersion.csv`, both using
+`stats_utils.paired_bootstrap_ci`, no new bootstrap code written). Full
+paired-bootstrap table (45 rows: 3 seeds x 2 baselines x 9 metrics
+(each land n=50 paired cells)) in the CSV; headline percentages above.
+
+**Cross-training-seed dispersion (separate from the scenario-level 95%
+CIs above -- a genuinely different uncertainty source, see
+`eval_protocol.py`'s SEEDS-vs-TRAIN_SEEDS docstring):**
+
+| Metric | ts100 mean | ts101 mean | ts102 mean | spread (max-min) | relative spread |
+|---|---|---|---|---|---|
+| total_ev_served | 13.0 | 10.4 | 12.8 | 2.6 | 21.5% |
+| total_profits | -28.59 | -36.69 | -39.69 | 11.10 | 31.7% |
+| min_energy_user_satisfaction | 93.06 | 92.31 | 86.71 | 6.35 | 7.0% |
+| tracking_error | 16668 | 28152 | 25691 | 11484 | 48.9% |
+| total_transformer_overload | 0.0 | 0.0 | 0.98 | 0.98 | 300%* |
+
+\* *300% relative spread is a division-by-near-zero artifact (two of three
+seeds are exactly 0.0) -- flagged as such, not reported as a literal "300%
+worse" claim.*
+
+This dispersion is substantial (e.g. `total_ev_served` varies 21.5% and
+`tracking_error` varies 48.9% purely from training-seed choice, holding the
+evaluation grid fixed) -- reporting only one seed, or averaging across
+seeds without disclosing this spread, would understate real uncertainty.
+This is exactly why the Week 3 brief prohibits reporting only the best
+seed.
+
+**Registry contract change (Week 2 -> Week 3), documented as required
+before use:** `ev2gym_thesis/registry_analysis.py`'s `main_grid_rows()`
+used to filter by `notes == ""`, which silently excluded ALL 200 new RL
+rows (they legitimately use non-empty `notes` for reward/state/train_seed
+metadata per S3.5's registry-comparability requirement). Fixed by
+introducing `NON_GRID_NOTES_MARKERS = {"week1_reference_day",
+"pipeline_smoke_test_grid"}` and filtering by exact-marker exclusion
+instead of "notes is non-empty" -- verified the two Week 1 reference rows
+and the grid smoke test are still correctly excluded (`week1_reference_day`
+rows found: 2, matching Week 1/2 expectations) and that `station_v0_bogota`
+now correctly returns 300 main-grid rows (50 x 6 algorithms). This does NOT
+affect `scripts/measure_degradation_by_ambient.py`, which has its own
+independent inline `notes == ""` filter, not a call into `main_grid_rows`.
+
+**Two real bugs found by the mandatory visual QA pass (Entregable 7),
+neither of which raised an exception -- "ran without error" was not "was
+correct," exactly as the Week 3 brief warned, and exactly as Week 2 found
+two similar silent bugs:**
+
+1. **TD3 timeseries were entirely zeroed out.** `figures/f01_power_profile.png`
+   showed all 3 TD3 seeds as a flat line at 0 kW for the entire reference
+   day, even though the same cell's own registry row correctly reported 13
+   EVs served. Root cause: `scripts/evaluate_rl.py`'s original TD3 stepper
+   ran the episode through `VecNormalize(DummyVecEnv([env]))`, and SB3's
+   `DummyVecEnv` auto-resets its underlying env INSIDE the same `step()`
+   call that returns the terminal transition -- so by the time external
+   code read `env.current_power_usage` after the episode loop, the env had
+   already been silently reset to a fresh (all-zero) state. Confirmed
+   empirically: `current_power_usage.sum()` was `0.0` and `current_step`
+   was `0` immediately after the loop, while the auto-preserved `info`
+   dict's `total_ev_served` was still correctly `13`. **Scalar registry
+   metrics were unaffected** (SB3 preserves the pre-reset info dict, which
+   is where `stats_to_row` reads from) -- only the saved per-step
+   timeseries were corrupted. Fixed by stepping the raw env directly
+   (bypassing the VecEnv wrapper entirely) and manually applying the
+   loaded `VecNormalize`'s observation normalization before each
+   `model.predict()` call -- confirmed to produce IDENTICAL scalar stats to
+   the original (VecEnv) stepper, only the timeseries capture changes. All
+   150 TD3 timeseries `.npz` files were regenerated with the fixed stepper
+   (registry rows were NOT re-appended -- already correct, would have
+   collided with the dedup key anyway).
+2. **Illegible/misleading figures once RL added 4 more algorithms.**
+   `f02_metrics_bars` and `f04_distributions`: x-axis labels overlapped
+   into an unreadable run-on string (6 algorithm names at a font/width
+   sized for 2). Fixed with rotated labels (`f02`) and rotated labels + a
+   width that scales with algorithm count (`f04`). `f05_vs_baseline`: title
+   text was clipped at the figure's right edge (same failure mode as Week
+   2's title-cutoff bug, different trigger -- now caused by the title
+   enumerating 5 algorithm names instead of 1) and had large,
+   growing-with-height wasted top/bottom margins (fixed-fraction
+   `subplots_adjust` on a figure whose height now scales with algorithm
+   count). Fixed by dropping the redundant algorithm-name enumeration from
+   the title (already shown per-row on the y-axis) and switching to
+   fixed-inch (not fixed-fraction) margins. `f06_size_sensitivity`: TD3/
+   RandomPolicy appeared as disconnected single dots at the 8-port
+   reference point only (they were never run across the size sweep -- a
+   declared Week 3 scope limitation), implying a size trend that doesn't
+   exist; fixed by restricting this figure to algorithms actually present
+   on a non-reference sweep config.
+
+**`f08_learning_curves` activated** (was an inert stub since Week 2,
+correctly skipping until `algorithm_family=="rl"` rows existed). Reads each
+training run's own `learning_curve.csv` directly (like `f09` reads its own
+separate source file) -- NOT registry data, since the registry has no
+reward-vs-timesteps time series column.
+
 ## 2026-08-12 — Week 3, Entregable 4: TD3 time calibration and confirmed training budget
 
 **Calibration run** (`scripts/calibrate_td3_timing.py`, real `config_rl.py`

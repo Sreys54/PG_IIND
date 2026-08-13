@@ -30,9 +30,6 @@ from stable_baselines3.common.noise import NormalActionNoise
 
 from ev2gym_thesis.eval_protocol import TRAIN_SEEDS
 
-# doc:begin td3_hyperparams
-POLICY = "MlpPolicy"  # SB3 default policy class for a flat vector observation (not an image) -- no alternative applies here.
-
 # Network architecture: reduced from the SB3 default / TD3 paper's [400, 300]
 # (tuned for higher-dimensional continuous-control benchmarks such as
 # MuJoCo's ~17-111 dim observation/action spaces) to [64, 64], set for this
@@ -40,44 +37,44 @@ POLICY = "MlpPolicy"  # SB3 default policy class for a flat vector observation (
 # action is 8-dim for station_v0_bogota -- a 400x300 network is
 # disproportionately large for that input size and would slow every
 # gradient step for no expected benefit at this problem scale.
-NET_ARCH = [64, 64]  # set for this project's CPU budget (reduced from SB3 default/TD3 paper [400, 300])
-
-LEARNING_RATE = 1e-3       # SB3 default
-GAMMA = 0.99                # SB3 default
-TAU = 0.005                  # SB3 default ("Polyak" target-network update rate)
-TRAIN_FREQ = 1               # SB3 default (one env step per gradient-update opportunity)
-GRADIENT_STEPS = 1           # SB3 default
-POLICY_DELAY = 2             # SB3 default / TD3 paper (delayed policy updates, TD3's namesake mechanism)
-TARGET_POLICY_NOISE = 0.2    # SB3 default / TD3 paper (target policy smoothing noise std)
-TARGET_NOISE_CLIP = 0.5      # SB3 default / TD3 paper (target policy smoothing noise clip)
-BATCH_SIZE = 256             # SB3 default
-
+#
 # Replay buffer: reduced from SB3 default 1,000,000 to 50,000, set for this
-# project's CPU budget. A 1e6-transition buffer is sized for training runs
-# of that same order of magnitude of timesteps; at Week 3's scale (at most a
-# few hundred thousand timesteps total across all 3 training seeds, see
-# Entregable 4) a 1e6 buffer would spend the entire run mostly empty,
-# wasting the RAM allocation for no replay-diversity benefit.
-BUFFER_SIZE = 50_000  # set for this project's CPU budget (reduced from SB3 default 1,000,000)
-
-# Reduced from SB3 default 100 to 500 (~5 episodes at 96 steps/episode),
-# set for this project's CPU budget: with a short total training budget,
-# giving the replay buffer a handful of full episodes' worth of
-# uniform-random transitions before the first gradient update is a larger
-# fraction of the run than it would be in a paper's million-step training,
-# so it's worth a few more steps of pure exploration up front.
-LEARNING_STARTS = 500  # set for this project's CPU budget (reduced from SB3 default 100)
-
+# project's CPU budget -- at Week 3's scale (at most a few hundred thousand
+# timesteps total across all 3 training seeds, see Entregable 4) a 1e6
+# buffer would spend the entire run mostly empty, wasting the RAM
+# allocation for no replay-diversity benefit.
+#
+# Learning starts: reduced... no, INCREASED from SB3 default 100 to 500
+# (~5 episodes at 96 steps/episode), set for this project's CPU budget:
+# with a short total training budget, giving the replay buffer a handful of
+# full episodes' worth of uniform-random transitions before the first
+# gradient update is a larger fraction of the run than it would be in a
+# paper's million-step training, so it's worth a few more steps of pure
+# exploration up front.
+#
 # Exploration noise: TD3 paper. SB3's TD3 does not add exploration noise by
 # default (action_noise=None) -- confirmed by reading td3.py's __init__
-# signature; the paper's own recipe adds N(0, 0.1) Gaussian noise to actions
-# during data collection, which SB3 exposes via the action_noise argument
-# rather than a bare hyperparameter. This project's action space is [0, 1]^n
-# (v2g_enabled=False, see station_v0_bogota.yaml), so sigma=0.1 is relative
-# to that full [0, 1] range, not to a symmetric [-1, 1] range as in the
-# original paper's MuJoCo tasks -- same relative exploration magnitude,
-# different absolute scale because the action semantics differ.
-ACTION_NOISE_SIGMA = 0.1  # TD3 paper
+# signature; the paper's own recipe adds N(0, 0.1) Gaussian noise to
+# actions during data collection, which SB3 exposes via the action_noise
+# argument. This project's action space is [0, 1]^n (v2g_enabled=False,
+# see station_v0_bogota.yaml), so sigma=0.1 is relative to that full [0, 1]
+# range, not to a symmetric [-1, 1] range as in the original paper's MuJoCo
+# tasks -- same relative exploration magnitude, different absolute scale.
+# doc:begin td3_hyperparams
+POLICY = "MlpPolicy"          # SB3 default policy class for a flat vector observation
+NET_ARCH = [64, 64]           # set for this project's CPU budget (reduced from SB3 default/TD3 paper [400, 300])
+LEARNING_RATE = 1e-3          # SB3 default
+GAMMA = 0.99                  # SB3 default
+TAU = 0.005                   # SB3 default ("Polyak" target-network update rate)
+TRAIN_FREQ = 1                # SB3 default (one env step per gradient-update opportunity)
+GRADIENT_STEPS = 1            # SB3 default
+POLICY_DELAY = 2              # SB3 default / TD3 paper (delayed policy updates, TD3's namesake mechanism)
+TARGET_POLICY_NOISE = 0.2     # SB3 default / TD3 paper (target policy smoothing noise std)
+TARGET_NOISE_CLIP = 0.5       # SB3 default / TD3 paper (target policy smoothing noise clip)
+BATCH_SIZE = 256              # SB3 default
+BUFFER_SIZE = 50_000          # set for this project's CPU budget (reduced from SB3 default 1,000,000)
+LEARNING_STARTS = 500         # set for this project's CPU budget (increased from SB3 default 100)
+ACTION_NOISE_SIGMA = 0.1      # TD3 paper (exploration noise, relative to this project's [0,1] action range)
 
 
 def make_action_noise(n_actions: int) -> NormalActionNoise:
