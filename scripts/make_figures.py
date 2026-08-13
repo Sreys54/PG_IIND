@@ -18,7 +18,9 @@ import numpy as np
 from ev2gym.models.ev2gym_env import EV2Gym
 from ev2gym.baselines.heuristics import ChargeAsFastAsPossible
 
-from ev2gym_thesis.figures import FIGURES_DIR, ALGORITHM_STYLE, style_for, write_caption
+from ev2gym_thesis.figures import (
+    FIGURES_DIR, ALGORITHM_STYLE, style_for, write_caption, assert_total_reward_comparable,
+)
 from ev2gym_thesis.stats_utils import mean_ci, paired_bootstrap_ci
 from ev2gym_thesis.registry_analysis import load_registry, main_grid_rows
 from ev2gym_thesis.config_utils import make_day_config
@@ -143,6 +145,7 @@ def make_f02_metrics_bars(rows):
     energy_requested = _reference_day_energy_requested()
 
     for ax, metric in zip(axes, METRICS_FOR_BARS):
+        assert_total_reward_comparable(grid, metric)
         means, los, his, colors, labels = [], [], [], [], []
         for algo in algos:
             values = _values_for(grid, algo, metric)
@@ -312,6 +315,8 @@ def make_f05_vs_baseline(rows):
         other_by_cell = {cell_key(r): r for r in grid if r["algorithm"] == algo}
         common_cells = sorted(set(afap_by_cell) & set(other_by_cell))
         for metric in METRICS_FOR_BARS:
+            assert_total_reward_comparable(
+                [afap_by_cell[c] for c in common_cells] + [other_by_cell[c] for c in common_cells], metric)
             afap_vals = np.array([afap_by_cell[c][metric] for c in common_cells])
             other_vals = np.array([other_by_cell[c][metric] for c in common_cells])
             # skip pct statistic where AFAP value could be 0 (division by zero)
@@ -424,6 +429,9 @@ LOWER_IS_BETTER = {"total_transformer_overload"}
 def make_f07_metric_heatmap(rows):
     grid = main_grid_rows(rows, REFERENCE_CONFIG)
     algos = _algos_present(grid)
+
+    for metric in METRICS_FOR_BARS:
+        assert_total_reward_comparable(grid, metric)
 
     raw = np.zeros((len(algos), len(METRICS_FOR_BARS)))
     for i, algo in enumerate(algos):

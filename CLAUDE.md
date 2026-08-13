@@ -115,12 +115,16 @@ folder already holds this repo's own Sphinx documentation, don't touch it):
 - **Timeline:** compressed to 8 weeks (see `PROJECT_ROADMAP.md`).
 - **Branch naming:** `semana-1` through `semana-8`, one per week, merged
   into `main` at the end of each week (no `dev`, no `feature/*`).
-- **Active phase:** Week 2 — Station-Size Sensitivity + Grid Model Sanity Check
-- **Active branch:** `semana-2` (branched from `semana-1`'s tip, NOT from
-  `main` — as of 2026-08-11, `main` still has the pre-fix `station_v0_bogota.yaml`
-  since `semana-1` has not been merged yet. Deviates from the stated
-  "branch from main" convention; flagged here since it affects reproducing
-  this branch's config history.)
+- **Active phase:** Week 3 — RL baseline vanilla (TD3) on the reference station.
+- **Active branch:** `semana-3`, branched from `main` at commit `0b098f5`
+  (2026-08-12). `semana-2` and `main` point to this same commit — Week 2 is
+  merged, not a divergent branch to reconcile.
+- **Week 2: CLOSED (2026-08-12).** All 7 deliverables complete and committed
+  (`0b098f5`, "complete Deliverables 1-7 and the deferred-Gurobi policy");
+  merged to `main`. This includes the registry backfill and the multi-seed
+  Bogota degradation re-measurement that were previously the open item —
+  both done, not pending. Full account in `thesis_docs/chapters/00_lab_log.md`
+  (2026-08-12 entry) and `thesis_docs/chapters/02_model_validation.md`.
 - **Last milestone tag:** `v0.0-env-ready`
 - **Environment status:** installed and smoke-tested. `pip install -e .`
   alone is NOT enough — also needed `pandapower`, `numba`, `multicopula`
@@ -161,11 +165,34 @@ folder already holds this repo's own Sphinx documentation, don't touch it):
   running the feeder. One de-risking smoke test only
   (`notes="pipeline_smoke_test_grid"`, excluded from all figures/tables) is
   the sole exception. See `PROJECT_ROADMAP.md`'s matching grid-scope note.
-- **Next concrete task (Week 2, in progress):** finish the multi-seed
-  registry backfill (`results/master_results.csv`, via
-  `scripts/backfill_registry.py`), then re-measure the Bogota degradation
-  calibration with confidence intervals across the full registry (current
-  numbers in `02_model_validation.md` are single-run and preliminary).
+- **Week 3 preflight: DONE (2026-08-12).** Confirmed `semana-2`/`main` merge
+  state; `results/master_results.csv` has 503 rows, `algorithm_family` is
+  `heuristic`-only so far (no RL rows yet, `f08` correctly inert);
+  `stable-baselines3` (2.9.0) installed and added to `requirements.txt`
+  alongside `torch>=2.8`; confirmed `EV2Gym` is fully Gymnasium-API-compliant
+  (`reset()->(obs,{})`, `step()->(obs,r,terminated,truncated,info)`, no SB3
+  shim needed) and that `reward_function`/`state_function` are plain
+  constructor kwargs defaulting to `SquaredTrackingErrorReward`/`PublicPST`.
+- **Week 3, Entregables 1-4, 8, 9 (partial): DONE (2026-08-12).**
+  `TRAIN_SEEDS` added to `eval_protocol.py`; `ev2gym_thesis/rl/` package
+  built (`env_factory.py`, `config_rl.py`, `callbacks.py`, `eval_utils.py`);
+  reward (`SqTrError_TrPenalty_UserIncentives`) and state (`PublicPST`)
+  choice justified in `thesis_docs/chapters/03_rl_baseline.md`, including
+  the reward-vs-evaluation-metric misalignment and the `total_reward`
+  cross-family comparability guardrail in `ev2gym_thesis/figures.py`; the
+  Week 4 perfect-information-reference design note (Entregable 8) written;
+  8 pre-training tests added and passing
+  (`ev2gym_thesis/tests/test_rl_infrastructure.py`). Time calibration run
+  (Entregable 4) measured 18.09 steps/s; **user confirmed a training budget
+  of `TOTAL_TIMESTEPS = 60_000` per training seed** (~55.3 min/seed, ~2.8h
+  for all 3 `TRAIN_SEEDS`) — see `ev2gym_thesis/rl/config_rl.py` and
+  `00_lab_log.md`'s Entregable 4 entry for the full table and the declared
+  scope-reduction comparison against the papers' HPC budgets.
+- **Next concrete task (Week 3):** Entregable 5 — train TD3 vanilla with
+  all 3 `TRAIN_SEEDS` at the confirmed 60,000-timestep budget, save
+  model + VecNormalize stats + learning-curve CSV + manifest per run, then
+  Entregable 6 (evaluation on the same 50-cell grid + random-policy control)
+  and Entregable 7 (statistics + figures).
 
 ## Useful Commands (reference, don't re-derive these each time)
 

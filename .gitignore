@@ -187,5 +187,12 @@ results_grouped.csv
 # Auto-generated per-eval-day config copies (ev2gym_thesis/config_utils.py);
 # regenerable from the base config + eval_day, not meant to be committed.
 experiments/phase1_baseline/configs/_tmp_day_configs/
+experiments/phase2_algorithms/configs/_tmp_eval_day_configs/
+experiments/phase2_algorithms/configs/_tmp_train_day_configs/
+
+# Week 3+ RL artifacts (models, VecNormalize stats, learning curves,
+# manifests) -- regenerable from a config + training seed + git commit, per
+# each run's manifest.json (see thesis_docs/chapters/03_rl_baseline.md).
+experiments/phase2_algorithms/models/
 
 MPC EVCS V2G - v2/

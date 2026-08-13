@@ -5,5 +5,5 @@ Box plot of Transformer overload (kWh) per algorithm over every run in the 5-see
 - Runs behind this figure: 100
 - Configs: station_v0_bogota
 - Algorithms: AFAP, Round Robin
-- Git commit: 05317b75b2c199f567445246f7dae09fb7632907
-- Generated: 2026-08-12T23:36:26.066027Z
+- Git commit: 0b098f5e0b7ac8efe19a4369f476e58f917ff06a
+- Generated: 2026-08-13T00:18:57.717544Z

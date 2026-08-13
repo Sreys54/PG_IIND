@@ -8,3 +8,5 @@ pyyaml
 pandapower
 multicopula
 python-docx
+torch>=2.8
+stable-baselines3>=2.9
