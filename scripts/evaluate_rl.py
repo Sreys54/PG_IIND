@@ -49,12 +49,19 @@ N_PORTS = 8
 TRANSFORMER_KW = 100
 MODELS_DIR = "experiments/phase2_algorithms/models"
 
+# doc:begin registry_key_collision_resolution
+# DEDUP_KEY_COLUMNS = (config_name, algorithm, seed, eval_day) uses the
+# SCENARIO seed, not the training seed -- so a single "TD3_vanilla"
+# algorithm name would collide across all 3 training seeds on every
+# (seed, eval_day) cell. Each training seed gets its own algorithm name
+# instead.
 TD3_ALGORITHMS = [
     ("TD3_vanilla_ts100", 100, f"{MODELS_DIR}/TD3_vanilla_ts100/final_model.zip"),
     ("TD3_vanilla_ts101", 101, f"{MODELS_DIR}/TD3_vanilla_ts101/final_model.zip"),
     ("TD3_vanilla_ts102", 102, f"{MODELS_DIR}/TD3_vanilla_ts102/final_model.zip"),
 ]
 RANDOM_POLICY_ALGORITHM = "RandomPolicy"
+# doc:end registry_key_collision_resolution
 
 
 def _notes_for(train_seed=None):
@@ -110,6 +117,7 @@ class _TD3Stepper:
     capture changes.
     """
 
+    # doc:begin td3_stepper_fix
     def __init__(self, model, venv, env):
         self.model = model
         self.venv = venv  # loaded VecNormalize instance, used only for its normalize_obs() stats -- never stepped
@@ -127,6 +135,7 @@ class _TD3Stepper:
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         return obs, reward, (terminated or truncated), info
+    # doc:end td3_stepper_fix
 
 
 class _RandomPolicyStepper:

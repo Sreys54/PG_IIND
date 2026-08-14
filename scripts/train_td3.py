@@ -127,6 +127,7 @@ def train_one_seed(seed: int, resume_checkpoint: str = None):
     model.save(final_model_path)
     venv.save(final_vecnorm_path)
 
+    # doc:begin manifest_reproducibility_artifact
     manifest = {
         "run_name": name,
         "algorithm": "TD3",
@@ -143,6 +144,12 @@ def train_one_seed(seed: int, resume_checkpoint: str = None):
         "wall_clock_s": round(wall_clock_s, 2),
         "wall_clock_min": round(wall_clock_s / 60, 2),
         "resumed_from": resume_checkpoint,
+        # doc:end manifest_reproducibility_artifact
+        # (hyperparameters/vecnormalize/library_versions dicts continue
+        # below in the real file, omitted from the hand-back excerpt --
+        # full manifest also nests every TD3 hyperparameter from
+        # config_rl.py, VecNormalize settings, and library versions
+        # (torch/SB3/gymnasium/numpy).)
         "hyperparameters": {
             "policy": config_rl.POLICY,
             "net_arch": config_rl.NET_ARCH,

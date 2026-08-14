@@ -85,6 +85,7 @@ if __name__ == "__main__":
     print("\nWrote results/rl_vs_baseline_bootstrap.csv")
 
     print("\n=== Cross-training-seed dispersion (separate from scenario dispersion above) ===")
+    # doc:begin cross_seed_dispersion
     dispersion_report = []
     for metric in METRICS:
         per_seed_means = []
@@ -94,15 +95,16 @@ if __name__ == "__main__":
         per_seed_means = np.array(per_seed_means)
         spread = per_seed_means.max() - per_seed_means.min()
         rel_spread_pct = (spread / abs(per_seed_means.mean()) * 100) if per_seed_means.mean() != 0 else float("nan")
-        print(f"{metric:28} per-seed means={np.round(per_seed_means, 3).tolist()}  "
-              f"spread={spread:.3f}  std={per_seed_means.std():.3f}  "
-              f"rel_spread={rel_spread_pct:.1f}%")
         dispersion_report.append({
             "metric": metric,
             "mean_ts100": per_seed_means[0], "mean_ts101": per_seed_means[1], "mean_ts102": per_seed_means[2],
             "spread_max_minus_min": spread, "std_across_seeds": per_seed_means.std(),
             "relative_spread_pct": rel_spread_pct,
         })
+    # doc:end cross_seed_dispersion
+    for row in dispersion_report:
+        print(f"{row['metric']:28} spread={row['spread_max_minus_min']:.3f}  "
+              f"std={row['std_across_seeds']:.3f}  rel_spread={row['relative_spread_pct']:.1f}%")
 
     with open("results/rl_train_seed_dispersion.csv", "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(dispersion_report[0].keys()))
