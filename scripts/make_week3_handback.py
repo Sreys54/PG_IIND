@@ -37,6 +37,33 @@ def build_document() -> str:
 **Git commit:** `{commit}`
 **Generated:** {generated} (regenerate with `PYTHONPATH=. python scripts/make_week3_handback.py` after any code change -- this document is built, not hand-maintained)
 
+**This build supersedes the 2026-08-13 build.** It carries a 2026-08-18
+correction (below and in Part 2) that changes this week's headline
+results. The original build is not separately preserved as a file, but
+every number it held now has an explicit before/after in
+`thesis_docs/chapters/00_lab_log.md`'s 2026-08-18 entry and
+`results/master_results_prefix_week3_evaluation_bug.csv` (the 200
+pre-correction rows, kept, not deleted).
+
+**Correction, 2026-08-18 (found during Week 4 preflight, fixed on
+`semana-3` per the project's branch discipline):** all 200
+TD3/RandomPolicy evaluation episodes (Entregable 6) ran against an
+uncontrolled, re-randomized scenario instead of the registered `(SEEDS x
+EVAL_DAYS)` cell, because `scripts/evaluate_rl.py`'s evaluation steppers
+called `env.reset()` with no seed. Fixed at the source
+(`env_factory.reset_for_evaluation`, Part 2 below), all 200 episodes
+re-run, and every downstream artifact (bootstrap CSVs, figures, this
+document, `thesis_docs/chapters/03_rl_baseline.md`) regenerated from the
+corrected data. **This reverses one headline conclusion:** the
+random-policy control no longer shows worse transformer overload than
+AFAP -- under the corrected data it shows significantly *better* overload
+than AFAP and is statistically indistinguishable from TD3, so it no
+longer supports "TD3 learned a real overload-avoidance behavior beyond
+naive throttling." Full diagnosis, evidence, and old-vs-corrected numbers
+in `00_lab_log.md`'s 2026-08-18 entry and `03_rl_baseline.md` S3.11.
+**Trained model weights are unaffected -- no retraining was performed or
+needed.**
+
 **Scope deviation, stated up front:** `PROJECT_ROADMAP.md` originally assigned
 Week 3 to the Gurobi/MPC baseline. This was deliberately reversed before any
 code was written: **Week 3 = RL baseline vanilla (TD3)**, Week 4 = a
@@ -402,6 +429,58 @@ steps the raw `env` directly, so `env.current_power_usage`,
 `env.transformers`, and `env.charging_stations` all remain live and
 readable for timeseries capture at every step, including the last one.
 
+**Second, more serious bug in the same file, found 2026-08-18 (Week 4
+preflight, fixed on `semana-3`): the SCENARIO itself, not just post-episode
+timeseries capture, was wrong for all 200 evaluation episodes.**
+`_TD3Stepper.reset()` and `_RandomPolicyStepper.reset()` both called
+`env.reset()` (the latter passed `seed=None` explicitly, on the documented
+but incorrect belief that "the scenario seed already applied via `make_env`'s
+`EV2Gym(seed=...)`"). `EV2Gym.reset(seed=None)` draws a **fresh**
+`np.random.randint(0, 1_000_000)` and regenerates `self.EVs_profiles` from
+scratch -- it does not fall back to the construction-time seed. Reproduced
+directly:
+
+```
+construction (seed=0, 2022-01-17): 14 EVs, first arrival/departure (11, 37), (11, 32), (11, 36)
+after stepper.reset() [no seed]:   16 EVs, first arrival/departure (14, 33), (15, 38), (15, 41)
+after env.reset(seed=0) explicit:  matches construction exactly
+```
+
+So every one of the 200 TD3/RandomPolicy evaluation episodes ran against
+an uncontrolled, re-randomized scenario instead of its registered `(SEEDS x
+EVAL_DAYS)` cell -- corrupting the scalar stats themselves this time, not
+just the timeseries (contrast with the bug above). `scripts/backfill_registry.py`
+(AFAP/Round Robin) was checked with the identical population-diff method,
+not assumed correct: confirmed unaffected, since it already re-calls
+`env.reset(seed=seed)` explicitly.
+
+**Rejected fix: patching `.reset()` in each of the two stepper classes.**
+Rejected because that is two chances to make the same mistake again, and
+Week 4 was about to add a third (an oracle stepper). **Chosen fix: a single
+shared helper, `env_factory.reset_for_evaluation`, that every stepper must
+call instead of `env.reset()` directly** -- it requires `scenario_seed`
+explicitly and asserts (not comments) that the post-reset EV population
+matches construction.
+
+""" + code_block("reset_for_evaluation") + """
+
+**Walkthrough:** `_ev_population_signature` reduces an env's current
+`EVs_profiles` to a comparable list of `(arrival, departure, battery
+capacity, desired capacity)` tuples. `reset_for_evaluation` snapshots that
+signature before resetting, resets with the real seed, snapshots again, and
+asserts equality -- so if a future call site ever bypasses the explicit
+seed again, the assertion fires on the very first evaluation episode
+instead of silently corrupting 200 registry rows a second time. Both
+`_TD3Stepper.reset()` and `_RandomPolicyStepper.reset()` were changed to
+call this helper (each now stores `scenario_seed` as an attribute to do
+so); neither calls `env.reset()` directly any more.
+
+**Also removed as part of this correction:** `ev2gym_thesis/rl/eval_utils.py`'s
+`run_episode` function, whose docstring claimed it was "used for every
+Entregable 6 evaluation run." Grepped: zero call sites anywhere in the
+repo -- dead code, superseded by `_TD3Stepper`/`_run_and_capture`, deleted
+rather than left as a false claim.
+
 ### `scripts/analyze_rl_results.py` (Entregable 7)
 
 **Location:** `scripts/` -- entry point, writes
@@ -583,7 +662,8 @@ whether the figure has 5 rows or 25.
 **Location:** `ev2gym_thesis/tests/`, alongside Week 2's
 `test_stats_utils.py`/`test_degradation_bogota.py`.
 
-**Purpose:** 8 tests covering the RL infrastructure added this week.
+**Purpose:** originally 8 tests covering the RL infrastructure added this
+week; **10 as of the 2026-08-18 correction** (2 added, see below).
 
 **Design decision -- deliberately independent of whether a real trained
 model exists yet:** rejected writing these tests against Entregable 5's
@@ -596,7 +676,7 @@ behavior don't depend on the model actually having learned anything. This
 is why these tests could be (and were) run and passing before training
 ever started.
 
-**Walkthrough:** the 4 test classes cover, respectively: (1)
+**Walkthrough:** the 4 original test classes cover, respectively: (1)
 `TRAIN_SEEDS`/`SEEDS` and `TRAIN_DAYS`/`EVAL_DAYS` disjointness (pins the
 values the module-level assertions were checked against, so a future edit
 that silently narrows either pool without breaking disjointness still gets
@@ -604,9 +684,34 @@ caught); (2) `TrainingDayCyclingEnv` never sampling an `EVAL_DAYS` date,
 in both `round_robin` and `random` modes, over enough resets to exercise a
 full lap-plus-wraparound of `TRAIN_DAYS`; (3) `load_trained_agent` raising
 `FileNotFoundError` when the `VecNormalize` stats file is absent; (4)
-evaluation reproducibility -- the same `(config, scenario_seed, eval_day,
-model)` evaluated twice via the same deterministic-`predict` loop produces
-byte-identical stats.
+evaluation reproducibility.
+
+**Correction, 2026-08-18: item (4) was a green test that certified the
+exact property that turned out to be violated in production, and this is
+worth explaining in full rather than quietly fixing.** Its original claim
+-- *"the same `(config, scenario_seed, eval_day, model)` evaluated twice
+via the same deterministic-predict loop produces byte-identical stats"* --
+was TRUE of the test's own code, and FALSE of `scripts/evaluate_rl.py`'s
+actual `_TD3Stepper`, which is exactly the contradiction that exposed the
+bug above. Diagnosis: the test built its own hand-rolled `run_once(env)`
+loop calling `env.reset(seed=seed)` directly -- a correct call, but a
+**parallel reimplementation** of the evaluation loop, never the
+`_TD3Stepper`/`_run_and_capture` objects `scripts/evaluate_rl.py` actually
+runs in production. It certified "deterministic scenario generation, when
+you pass the seed correctly" -- never in question -- not "the production
+stepper passes the seed correctly" -- the actual bug. **General rule
+extracted and applied project-wide:** every test in this project must
+exercise the real call path used in production, not a lookalike of it.
+The other 7 (now 9) tests were audited against this rule and found clean
+(each already calls the real production class/function directly -- see
+`00_lab_log.md`'s 2026-08-18 entry for the full per-test audit). Fixed by
+rewriting the test to construct and call `scripts.evaluate_rl._TD3Stepper`
+and `_run_and_capture` directly. Two new tests added:
+`TestResetForEvaluation.test_reset_for_evaluation_reproduces_construction_scenario`
+(pins the fix at the smallest grain) and
+`test_bare_reset_would_have_diverged` (pins the failure mode itself, so a
+future change to EV2Gym's upstream `reset()` semantics would be flagged,
+not silently made moot).
 
 ## Library Choices (additions this week)
 
@@ -641,22 +746,31 @@ week's vanilla baseline (S3.1 of `thesis_docs/chapters/03_rl_baseline.md`).
 
 ## Headline Results Summary
 
-Full tables, the paired-bootstrap comparison, and the cross-training-seed
-dispersion analysis are in `thesis_docs/chapters/03_rl_baseline.md`
-(sections 3.8-3.10) and `00_lab_log.md`'s 2026-08-13 entry -- not repeated
-in full here to avoid drift between two copies of the same numbers.
-Headline: TD3 matches Round Robin's near-elimination of transformer
-overload (vs. AFAP's 5.33 kWh), confirmed against a random-policy control
-that shows WORSE overload (12.74 kWh) than even unmanaged AFAP -- proving
-this is a real learned behavior. This comes at a real cost: lower and
-seed-inconsistent `total_ev_served`, materially lower
-`min_energy_user_satisfaction` (down to 86.7% for the worst seed), and
-worse tracking precision than the much simpler Round Robin heuristic.
-Training wall-clock: 2.79h total (3 seeds), matching the calibration
-estimate almost exactly. Learning curves show a weak-but-consistent
-positive trend across all 3 seeds, not clean convergence -- reported as
-the legitimate result of the declared reduced training budget, not
-adjusted or hidden.
+**Corrected 2026-08-18 -- this section previously reported a conclusion
+the corrected data does not support; see the correction note at the top of
+this document and `03_rl_baseline.md` S3.11.** Full tables, the
+paired-bootstrap comparison, and the cross-training-seed dispersion
+analysis are in `thesis_docs/chapters/03_rl_baseline.md` (sections
+3.8-3.11) and `00_lab_log.md`'s 2026-08-18 entry -- not repeated in full
+here to avoid drift between two copies of the same numbers.
+
+Corrected headline: TD3 reduces transformer overload relative to unmanaged
+AFAP (significant for 2 of 3 seeds) but is significantly **worse** than
+Round Robin on overload for all 3 seeds (was reported as matching it).
+The random-policy control -- corrected -- shows significantly **lower**
+overload than AFAP (0.22 kWh vs. AFAP's 5.33 kWh) and is statistically
+indistinguishable from TD3 (seed 100); it no longer supports "TD3 learned
+a real overload-avoidance behavior beyond naive throttling," which was
+this chapter's original headline claim. `total_ev_served` is now
+identical across every algorithm (the "lower/seed-inconsistent" finding
+was itself a correction-era artifact). `min_energy_user_satisfaction`
+remains a real cost and is now larger than originally reported (down to
+78.3% for the worst seed, vs. the pre-correction 86.7%). Training itself
+is unaffected by this correction: wall-clock 2.79h total (3 seeds),
+matching the calibration estimate almost exactly; learning curves show a
+weak-but-consistent positive trend across all 3 seeds, not clean
+convergence -- reported as the legitimate result of the declared reduced
+training budget, not adjusted or hidden.
 """)
 
     return "\n".join(parts)

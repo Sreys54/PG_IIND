@@ -9,6 +9,17 @@
 > `00_lab_log.md`). Only Entregable 10 (Word hand-back document) remains.
 > Full session history in `thesis_docs/chapters/00_lab_log.md`'s 2026-08-12
 > and 2026-08-13 Week 3 entries.
+>
+> **Correction, 2026-08-18 (see S3.11 and `00_lab_log.md`'s 2026-08-18
+> entry): the Entregable 6/7 evaluation numbers below were wrong.** All 200
+> TD3/RandomPolicy evaluation episodes ran against an uncontrolled,
+> re-randomized scenario instead of the registered `(SEEDS x EVAL_DAYS)`
+> cell, due to a missing seed argument in `scripts/evaluate_rl.py`'s
+> steppers. Fixed, re-run, and the tables/figures throughout this chapter
+> now reflect the corrected data. **The correction reverses one headline
+> conclusion** (the random-policy control no longer supports "TD3 learned a
+> real overload-avoidance behavior" — see S3.11). Trained model weights are
+> unaffected; no retraining was needed.
 
 ## 3.1 Algorithm choice: TD3, not SAC
 
@@ -261,58 +272,87 @@ steps), not clean convergence — see `figures/f08_learning_curves.png` and
 `00_lab_log.md`'s 2026-08-13 entry for the full numeric breakdown.
 
 **Evaluation** (Entregable 6), `station_v0_bogota`, n=50 per algorithm
-(5 `SEEDS` × 10 `EVAL_DAYS`), mean [95% CI]:
+(5 `SEEDS` × 10 `EVAL_DAYS`), mean [95% CI] — **corrected 2026-08-18, see
+S3.11; do not cite the pre-correction numbers this table used to hold**:
 
 | Algorithm | EVs served | Profits | Avg. satisfaction | min energy satisfaction | Transformer overload (kWh) |
 |---|---|---|---|---|---|
 | AFAP | 13.44 | -45.73 | 1.000 | 100.00 | 5.33 [1.93,8.73] |
 | Round Robin | 13.44 | -44.51 | 1.000 | 99.95 | 0.00 |
-| TD3 (seed 100) | 13.00 | -28.59 | 0.996 | 93.06 | 0.00 |
-| TD3 (seed 101) | 10.40 | -36.69 | 0.995 | 92.31 | 0.00 |
-| TD3 (seed 102) | 12.80 | -39.69 | 0.984 | 86.71 | 0.98 [0.16,1.81] |
-| RandomPolicy (control) | 13.90 | -48.19 | 1.000 | 100.00 | **12.74 [3.45,22.03]** |
+| TD3 (seed 100) | 13.44 | -39.23 | 0.976 | 78.25 | 0.45 [0.00,0.93] |
+| TD3 (seed 101) | 13.44 | -38.69 | 0.979 | 83.80 | 2.65 [0.65,4.68] |
+| TD3 (seed 102) | 13.44 | -42.64 | 0.991 | 85.49 | 0.96 [0.13,1.81] |
+| RandomPolicy (control) | 13.44 | -46.14 | 1.000 | 100.00 | 0.22 [0.00,0.52] |
 
 Full 9-metric table and the paired-bootstrap comparisons against AFAP and
-Round Robin are in `00_lab_log.md`'s 2026-08-13 entry and
+Round Robin are in `00_lab_log.md`'s 2026-08-18 correction entry and
 `results/rl_vs_baseline_bootstrap.csv`.
 
-**The random-policy control is what makes this evidence, not coincidence:**
-it shows *worse* transformer overload (12.74 kWh) than even unmanaged AFAP
-(5.33 kWh) — so TD3's near-zero overload is a demonstrated learned
-behavior, not an artifact of "any coordination beats AFAP at this
-oversubscription ratio."
+**The random-policy control does NOT support the "TD3 learned a real
+overload-avoidance behavior" claim under the corrected data — see S3.11
+for the full reversal.** In short: the corrected control's overload (0.22
+kWh) is *significantly lower* than AFAP's (5.33 kWh, paired bootstrap 95%
+CI [-8.76,-1.91]) and statistically indistinguishable from TD3 (seed 100)'s
+(CI [-0.23,0.80] spans zero) — the opposite of what the pre-correction data
+showed and the opposite of what this section used to conclude from it.
 
 **Cross-training-seed dispersion** (Entregable 7, separate from the
-scenario-level CIs above): substantial for several metrics —
-`total_ev_served` 21.5% relative spread, `total_profits` 31.7%,
-`tracking_error` 48.9% — purely from training-seed choice, holding the
-evaluation grid fixed. Full table in `00_lab_log.md`.
+scenario-level CIs above, recomputed on corrected data): `total_ev_served`
+now has **zero** spread (all three seeds converge to AFAP/RR's exact 13.44 —
+the "seed-inconsistent EVs served" finding was itself an artifact of the
+pre-correction bug); `total_transformer_overload` spread is now the
+standout at 162.4% relative (largely a division-by-near-zero artifact, as
+in Week 3's original table, since the underlying values are themselves
+small); `tracking_error` spread is 13.3%, smaller than the pre-correction
+48.9%. Full table in `00_lab_log.md`.
 
 ## 3.9 Conclusions
 
-Under this Week's declared, reduced training budget, TD3 vanilla learns a
-**real, measurable overload-avoidance behavior** — matching Round Robin's
-near-elimination of transformer overload, confirmed against a random-policy
-negative control, not just against the unmanaged AFAP baseline. This is
-achieved at a **real, consistent cost**: lower and more variable
-`total_ev_served`, and materially lower `min_energy_user_satisfaction`
-(down to 86.7% for the worst seed, vs. ~100% for every non-RL policy
-tested). TD3 also tracks the power setpoint *worse* than the much simpler
-Round Robin heuristic, despite optimizing a tracking-based reward —
-consistent with the declared reward-vs-metric misalignment (S3.4). None of
-the three training seeds can be called uniformly better or worse than the
-others; the dispersion across seeds is itself a reportable result.
+**Corrected 2026-08-18 — see S3.11; this section previously drew a
+conclusion the corrected data does not support.** Under this week's
+declared, reduced training budget, TD3 vanilla **reduces transformer
+overload relative to unmanaged AFAP** (statistically significant for 2 of
+3 seeds; the third's CI spans zero) but **does not match Round Robin's
+near-elimination of it** — TD3 is significantly *worse* than Round Robin
+on overload for all 3 seeds (paired bootstrap 95% CIs all exclude zero:
++0.45, +2.65, +0.96 kWh). Critically, TD3's overload reduction is **not
+distinguishable from the random-policy control's** for seed 100 (CI spans
+zero) — the control that was meant to demonstrate "TD3 learned something a
+naive policy doesn't" instead shows that *not always dispatching at
+maximum power*, which uniform random sampling does for free, already
+removes most of this station's overload at its 4:1 oversubscription ratio.
+This is a materially weaker claim than Week 3 originally reported, and it
+is reported as such rather than reframed after the fact.
 
-At this station's 4:1 oversubscription ratio, unmanaged (AFAP) and random
-charging both produce measurable overload; TD3 and Round Robin both nearly
-eliminate it — but TD3 does so with worse worst-case user experience than
-either baseline, and worse tracking precision than the heuristic it's
-supposed to improve on with a learned policy. Whether that tradeoff is
-"worth it" is not something this thesis can answer with the vocabulary
-available yet (the registry's reserved-but-currently-unused
-`algorithm_family` value for a perfect-information comparison point does
-not have any rows yet) — it can only report that the tradeoff is real and
-quantified.
+The `total_ev_served` tradeoff reported in the original version of this
+section (lower and seed-inconsistent for TD3) **does not survive
+correction either** — all three TD3 seeds now serve exactly the same
+number of EVs as AFAP and Round Robin (paired bootstrap point estimate
+0.000, CI [0.000, 0.000] against both baselines, for all 3 seeds). The
+cost that *does* survive correction, and is now larger than originally
+reported, is `min_energy_user_satisfaction`: materially and consistently
+lower than every non-RL policy (78.3%/83.8%/85.5% vs. ~100% for
+AFAP/Round Robin/RandomPolicy, all three paired-bootstrap CIs excluding
+zero against both baselines). TD3 also tracks the power setpoint *worse*
+than Round Robin, now by a larger margin than originally reported (+137%
+to +164%, vs. the pre-correction +49% to +152%) — consistent with, and now
+more strongly evidencing, the declared reward-vs-metric misalignment
+(S3.4). None of the three training seeds can be called uniformly better or
+worse than the others; the dispersion across seeds is itself a reportable
+result.
+
+At this station's 4:1 oversubscription ratio, the corrected data supports
+a narrower claim than originally drawn: TD3 reduces overload versus
+unmanaged charging, at a real and now larger cost in worst-case user
+experience and tracking precision, but the evidence that this reduction
+reflects *learned coordination* beyond what naive throttling already gives
+is weak — the random-policy control, correctly evaluated, does not clearly
+distinguish TD3 from a policy that learned nothing at all. Whether the
+tradeoff that does hold up is "worth it" is not something this thesis can
+answer with the vocabulary available yet (the registry's
+reserved-but-currently-unused `algorithm_family` value for a
+perfect-information comparison point does not have any rows yet) — it can
+only report that the (narrower) tradeoff is real and quantified.
 
 ## 3.10 Limitations
 
@@ -326,8 +366,14 @@ quantified.
   `SqTrError_TrPenalty_UserIncentives` was used for TD3. Enforced by a
   guardrail in `ev2gym_thesis/figures.py`.
 - **No profitability signal in the reward** (S3.2) — TD3's apparently
-  better `total_profits` is not an intentional achievement and is very
-  likely confounded with serving fewer EVs.
+  better `total_profits` is not an intentional achievement. **Corrected
+  2026-08-18 (S3.11):** the pre-correction explanation ("confounded with
+  serving fewer EVs") no longer holds — `total_ev_served` is now identical
+  across every algorithm (S3.9). The likelier confound, per `f02`'s energy-
+  charged panel, is that TD3 delivers less energy per served EV (lower
+  `total_energy_charged` at the same EV count), which lowers both charging
+  cost and delivered satisfaction together — not an intentional profit
+  optimization either way.
 - **Trained and evaluated on `station_v0_bogota` only** — the CPU budget
   did not cover training across the station-size sweep (`f06`'s station
   sensitivity figure correctly excludes TD3/RandomPolicy for this reason,
@@ -342,3 +388,72 @@ quantified.
   identified, until Week 4 adds that reference point (enforced mechanically
   by `scripts/check_claims.py`). The permitted phrasing is
   "best-performing among the strategies tested."
+
+## 3.11 Correction, 2026-08-18: TD3/RandomPolicy evaluation ran uncontrolled scenarios
+
+**Found while doing Week 4 preflight work**, not while working on Week 3:
+building the perfect-information oracle's replay-vs-`make_env` parity check
+required proving, empirically, that an evaluation episode's EV population
+matches the `(config, day, scenario_seed)` cell it's registered under. The
+same check applied to this chapter's existing TD3/RandomPolicy evaluation
+path failed. Full technical diagnosis, the reproduction method, the
+call-site audit, and the fix are in `00_lab_log.md`'s 2026-08-18 entry —
+not repeated in full here to avoid the two documents drifting apart; this
+section states the narrative consequence for this chapter specifically.
+
+**Root cause, in one sentence:** `scripts/evaluate_rl.py`'s `_TD3Stepper`
+and `_RandomPolicyStepper` started each evaluation episode with
+`env.reset()` (no seed), which silently draws a fresh random EV scenario
+instead of reusing the `scenario_seed` the env was constructed with — so
+all 200 TD3/RandomPolicy evaluation episodes (Entregable 6) were measured
+against scenarios nobody chose, not the registered 50-cell grid. AFAP and
+Round Robin (Weeks 1–2, `scripts/backfill_registry.py`) were unaffected —
+confirmed empirically with the identical method, not assumed.
+
+**What changed in this chapter as a result** (S3.8/S3.9/S3.10 above are now
+the corrected versions; the numbers and conclusions they held before this
+date are superseded, not deleted — see `00_lab_log.md` for the full
+old-vs-corrected table):
+
+1. **`total_ev_served` "lower and seed-inconsistent for TD3" — did not
+   survive correction.** All three TD3 seeds now serve exactly 13.44 EVs on
+   average, identical to AFAP and Round Robin (paired bootstrap point
+   estimate 0.000 against both, for all 3 seeds). This was an artifact of
+   the bug, not a real property of the trained policies.
+2. **`min_energy_user_satisfaction` cost — real, and larger than reported.**
+   78.3%/83.8%/85.5% for the three seeds (was 93.1%/92.3%/86.7%), still
+   materially below every non-RL policy's ~100%.
+3. **Transformer overload vs. Round Robin — reverses from "matches" to
+   "significantly worse."** All 3 TD3 seeds now show statistically
+   significant overload relative to Round Robin (95% CIs excluding zero:
+   [0.03,0.98], [0.90,4.80], [0.21,1.84] kWh), not the near-zero parity
+   originally reported.
+4. **The random-policy control's argument — the most consequential
+   reversal.** Originally: control shows worse overload (12.74 kWh) than
+   AFAP (5.33 kWh), proving TD3's near-zero overload is learned, not
+   incidental. Corrected: control shows **significantly lower** overload
+   than AFAP (0.22 kWh, 95% CI [-8.76,-1.91] vs. AFAP) and is
+   **statistically indistinguishable** from TD3 (seed 100) (CI
+   [-0.23,0.80]). A uniform-random policy's expected ~0.5x-max-power
+   dispatch already avoids most of this station's overload at its 4:1
+   oversubscription ratio, with no learning involved — the control no
+   longer separates "TD3 learned something" from "any policy that doesn't
+   dispatch at maximum power like AFAP does."
+
+**What did not change:** the training run itself (weights, learning
+curves, wall-clock, the weak-but-consistent convergence signal) — this bug
+is entirely in the evaluation path, not training. The reward-vs-metric
+misalignment finding (S3.4) is unchanged in direction and now better
+evidenced (the tracking-error gap vs. Round Robin widened under
+correction, from +49%–+152% to +137%–+164%).
+
+**Verification performed before trusting the corrected numbers:** all 200
+episodes re-run through the fixed pipeline (200/200 appended, 0 skipped);
+old rows preserved in
+`results/master_results_prefix_week3_evaluation_bug.csv` rather than
+overwritten; `results/rl_vs_baseline_bootstrap.csv` and
+`results/rl_train_seed_dispersion.csv` regenerated with the same,
+unmodified `stats_utils.paired_bootstrap_ci`; all 9 figures regenerated
+and individually visually QA'd (no new bugs found this pass); the full
+`test_rl_infrastructure.py` suite re-run (10/10 passing, including 2 new
+regression tests for this exact bug — see `00_lab_log.md`).

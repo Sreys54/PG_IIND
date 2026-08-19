@@ -5,7 +5,7 @@ Mean episode reward (SB3's own rolling window over the last <=100 completed epis
 - Runs behind this figure: 3
 - Configs: station_v0_bogota
 - Algorithms: TD3 (seed 100), TD3 (seed 101), TD3 (seed 102)
-- Git commit: 2190ce39ddafeac3a25b4c59437e94459f2a2c57
-- Generated: 2026-08-13T04:42:49.330494Z
+- Git commit: 4a82315b68e2a106928ecba523b2cc15ca14e5c9
+- Generated: 2026-08-19T03:40:25.204775Z
 
 This is the first figure where seed-to-seed spread across the 3 TD3_vanilla_ts* lines IS the signal, not noise to average away -- see 00_lab_log.md's Week 3 Entregable 7 entry for the cross-training-seed dispersion analysis this figure visualizes.

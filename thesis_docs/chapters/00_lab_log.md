@@ -1,5 +1,271 @@
 # Lab Log
 
+## 2026-08-18 — Week 3 correction: TD3/RandomPolicy evaluation ran uncontrolled scenarios, not the registered ones (branch `semana-3`)
+
+**Context: this was found while doing Week 4 preflight work, not while
+working on Week 3.** Building the perfect-information oracle's replay-vs-
+`make_env` parity check (Week 4 Amendment 2) required proving, empirically,
+that an evaluation episode's EV population matches the `(config, day,
+scenario_seed)` cell it's registered under. The same check applied to
+`scripts/evaluate_rl.py`'s existing TD3/RandomPolicy evaluation path failed.
+Week 4 was paused at that point (branch `semana-4` was created and then set
+aside) and this correction was done on `semana-3`, where the bug originated,
+per the user's explicit instruction not to fix a Week 3 bug on a Week 4
+branch.
+
+**What was believed.** `scripts/evaluate_rl.py`'s `_TD3Stepper` and
+`_RandomPolicyStepper` classes start each evaluation episode by calling
+`env.reset()` on an env already constructed via
+`ev2gym_thesis.rl.env_factory.make_env(config, day, scenario_seed)`. The
+belief (`_RandomPolicyStepper`'s own comment, verbatim, before this fix:
+`# scenario seed already applied via make_env's EV2Gym(seed=...)`) was that
+the scenario seed passed at construction time persists across a subsequent
+`env.reset()` call with no seed argument.
+
+**What was found, and how it was reproduced.** `EV2Gym.reset(seed=None)` —
+which is what a bare `env.reset()` and an explicit `env.reset(seed=None)`
+both do — draws a **fresh** `np.random.randint(0, 1_000_000)` and
+regenerates `self.EVs_profiles` from scratch; it does not fall back to the
+seed the env was constructed with. Reproduced directly, not inferred from
+reading the code:
+
+```
+construction (seed=0, 2022-01-17): 14 EVs, first arrival/departure (11, 37), (11, 32), (11, 36)
+after stepper.reset() [no seed]:   16 EVs, first arrival/departure (14, 33), (15, 38), (15, 41)   <- different scenario
+after env.reset(seed=0) explicit:  matches construction exactly
+```
+
+`scripts/backfill_registry.py` (AFAP/Round Robin) was checked with the exact
+same population-diff method, not assumed correct because "the code looks
+right" — that was precisely the mistake the original `_RandomPolicyStepper`
+comment made. Confirmed: constructing with `seed=seed` and then calling
+`env.reset(seed=seed)` explicitly (backfill_registry.py's actual pattern)
+reproduces the construction-time population exactly, and does so
+identically across two independent constructions with the same seed. AFAP
+and Round Robin's Weeks 1–2 numbers are unaffected by this bug.
+
+**Blast radius.** All 200 of Week 3's TD3/RandomPolicy evaluation rows (3
+checkpoints x 50 cells + 1 control x 50 cells) were measured against an
+uncontrolled, re-randomized scenario instead of the `(SEEDS x EVAL_DAYS)`
+cell their registry row claims. This corrupted the scalar stats themselves
+(`total_ev_served`, `average_user_satisfaction`, `total_transformer_overload`,
+etc.) — not just post-episode timeseries capture, which is what the
+already-documented DummyVecEnv auto-reset bug (2026-08-13 entry below)
+affected. Consequently: `results/master_results.csv`'s 200 RL rows,
+`results/rl_vs_baseline_bootstrap.csv`, `results/rl_train_seed_dispersion.csv`,
+every figure built from them (`f01`, `f02`, `f03`, `f04`, `f05`, `f06`,
+`f07`), the written conclusions in `03_rl_baseline.md` (S3.8/S3.9), and
+`Week3_Parameter_Method_and_Implementation_Justification.docx`. **Trained
+model weights are unaffected — no retraining was needed** (see the training-time
+finding below for why: training-scenario randomization is a different
+question from evaluation-scenario randomization, and even there only
+episode 1 was ever seed-controlled).
+
+**§2 diagnosis (why a passing test didn't catch this).** Week 3's
+Entregable 9 test suite included `TestEvaluationReproducibility`, whose
+docstring claimed exactly the property that was actually broken. That test
+passed. Diagnosis: **the test never exercised `_TD3Stepper` or
+`_RandomPolicyStepper` at all.** It built its own `run_once(env)` helper
+that called `env.reset(seed=seed)` directly — a correct call, but a
+parallel reimplementation of the evaluation loop, not the one
+`scripts/evaluate_rl.py` actually runs in production. It certified that
+"deterministic scenario generation + deterministic predict, when you pass
+the seed correctly" works, which was never in question — it did not
+certify that the production stepper classes pass the seed correctly, which
+was the actual point of the test and the actual bug. Rewritten to
+construct and call `scripts.evaluate_rl._TD3Stepper` /
+`_run_and_capture` directly (see `ev2gym_thesis/tests/test_rl_infrastructure.py`).
+
+**General rule extracted and applied:** every test in this project must
+exercise the real call path used in production, not a lookalike of it.
+Audited the other 7 (now 9) tests in `test_rl_infrastructure.py` against
+this rule:
+- `TestSeedAndDayDisjointness` (3 tests) and the pools-non-empty test:
+  check module-level constants (`SEEDS`/`TRAIN_SEEDS`/`EVAL_DAYS`/`TRAIN_DAYS`)
+  directly — no production code path to reimplement, not at risk of this
+  failure mode.
+- `TestTrainingEnvNeverLeaksEvalDays` (3 tests): construct and call the
+  real `TrainingDayCyclingEnv` class directly, the same class
+  `make_training_env` uses — real call path, not a lookalike. No issue.
+- `TestVecNormalizeStatsRequired`: calls `load_trained_agent` directly, the
+  real production function. No issue.
+- `TestEvaluationReproducibility`: the one bug, fixed above.
+
+Two new tests added instead of just fixing the one: `TestResetForEvaluation`
+pins the fix at the smallest possible grain (`reset_for_evaluation`
+reproduces construction, a bare `env.reset()` provably diverges from it —
+the second test exists so that if EV2Gym's upstream `reset()` semantics
+ever change, this test fails loudly and flags that the workaround should be
+re-examined, not silently rot).
+
+**§3 audit: every `.reset(` call site under `ev2gym_thesis/` and `scripts/`,
+classified.** Only `evaluate_rl.py`'s two steppers were wrong. Specifically
+checked, per the user's instruction not to assume:
+- `scripts/backfill_registry.py`, `scripts/make_figures.py`,
+  `scripts/demo_degradation_bogota.py`, `scripts/smoke_test_grid.py`,
+  `scripts/run_size_sensitivity.py`, `scripts/measure_degradation_by_ambient.py`,
+  `scripts/verify_seed_sensitivity.py`: all call `env.reset(seed=seed)`
+  explicitly. AFAP/Round Robin confirmed correct empirically above; the
+  others use the identical pattern.
+- `ev2gym_thesis/rl/env_factory.py`'s `TrainingDayCyclingEnv.reset()`
+  forwards whatever seed SB3 passes, which is the real construction-time
+  `train_seed` on episode 1 only (traced through SB3's source:
+  `base_class.py`'s `_setup_learn` calls `self.env.reset()` once, with no
+  args, after `TD3(seed=train_seed)`'s `set_random_seed` has called
+  `self.env.seed(train_seed)` — `DummyVecEnv.seed()` queues the seed for
+  exactly the next `reset()` call and then clears it, per
+  `dummy_vec_env.py`'s `reset()`/`_reset_seeds()`). Every training episode
+  after the first therefore samples an unseeded, freshly-random EV scenario
+  within whichever `TRAIN_DAYS` date the round-robin cycle lands on. This is
+  **acceptable for training** (arguably beneficial — more scenario diversity
+  per date than a fixed draw would give) and **does not invalidate the
+  trained weights**, but it means `TRAIN_SEEDS` should be read exactly as
+  `eval_protocol.py`'s own docstring already describes it — reproducible
+  agent initialization/exploration-noise/replay-sampling — and NOT as a
+  reproducible stream of training scenarios, which no document claimed
+  outright but which the parallel structure with `SEEDS` could invite a
+  reader to assume. Day coverage itself (round-robin over `TRAIN_DAYS`) is
+  confirmed unaffected: `_next_day()` selects by an integer index
+  (`self._rr_index % len(TRAIN_DAYS)`), never by the RNG, so the "every
+  `TRAIN_DAYS` date seen an equal (+/-1) number of times" claim in
+  `TrainingDayCyclingEnv`'s docstring remains true independent of this bug
+  — confirmed by reading `_next_day()`, not assumed, and already covered by
+  `TestTrainingEnvNeverLeaksEvalDays`'s existing (correct, real-call-path)
+  test.
+- `_RandomPolicyStepper`'s action-space seeding claim
+  (`env.action_space.seed(scenario_seed)`) was never actually false: EV2Gym
+  sets `self.action_space` once in `__init__` and `reset()` never
+  reassigns it (confirmed by reading the full `reset()` method), so the
+  seeded action-space RNG does survive `reset()` calls. The bug was
+  entirely in which EV *scenario* the seeded actions got applied to, not in
+  the action sampling itself.
+- Also found and removed: `ev2gym_thesis/rl/eval_utils.py`'s `run_episode`
+  function, whose docstring claimed it was "used for every Entregable 6
+  evaluation run." It was dead code — grepped, zero call sites anywhere in
+  the repo, superseded by `_TD3Stepper`/`_run_and_capture` in
+  `evaluate_rl.py`. Deleted rather than left as a stale, false claim.
+
+**The fix — at the source, not per call site** (the user's explicit
+correction to the initially-proposed per-stepper patch, on the grounds that
+two call sites are two chances to get it wrong again, and Week 4 was about
+to add a third). `ev2gym_thesis/rl/env_factory.py` gained
+`reset_for_evaluation(env, scenario_seed)`: the only sanctioned way to start
+an evaluation episode on a `make_env()`-built env. It passes
+`scenario_seed` explicitly to `env.reset()` and then **asserts** (not
+comments) that the post-reset EV population matches the construction-time
+population, element by element. `_TD3Stepper` and `_RandomPolicyStepper`
+were both changed to call it instead of `env.reset()` directly, and both now
+store `scenario_seed` as an attribute so they can. The Week 4 oracle's own
+stepper (not yet written) is required to go through this same helper.
+
+**Registry correction: re-run, old rows preserved, not overwritten.** The
+200 pre-fix rows were extracted from `results/master_results.csv` into
+`results/master_results_prefix_week3_evaluation_bug.csv` (all 200, `algorithm`
+in `{TD3_vanilla_ts100, TD3_vanilla_ts101, TD3_vanilla_ts102, RandomPolicy}`)
+and removed from the live registry (503 rows remaining, matching Week 2's
+known count) before re-running `scripts/evaluate_rl.py --execute` — a
+separate archived file rather than a `notes` marker, so the old-vs-new
+comparison below could be built directly without reconstructing it from git
+history. All 200 corrected rows appended cleanly (200/200, 0 skipped) under
+the exact same registry keys.
+
+**Old vs. corrected, mean across the 50-cell grid (`station_v0_bogota`):**
+
+| Algorithm | Metric | Pre-fix (invalid) | Corrected | Δ |
+|---|---|---:|---:|---:|
+| TD3 (seed 100) | EVs served | 13.00 | 13.44 | +0.44 |
+| TD3 (seed 100) | min energy satisfaction | 93.06 | 78.25 | **-14.81** |
+| TD3 (seed 100) | Transformer overload (kWh) | 0.00 | 0.45 | +0.45 |
+| TD3 (seed 100) | Tracking error | 16668 | 27101 | +10433 |
+| TD3 (seed 101) | EVs served | 10.40 | 13.44 | **+3.04** |
+| TD3 (seed 101) | min energy satisfaction | 92.31 | 83.80 | -8.51 |
+| TD3 (seed 101) | Transformer overload (kWh) | 0.00 | 2.65 | +2.65 |
+| TD3 (seed 101) | Tracking error | 28152 | 29538 | +1386 |
+| TD3 (seed 102) | EVs served | 12.80 | 13.44 | +0.64 |
+| TD3 (seed 102) | min energy satisfaction | 86.71 | 85.49 | -1.22 |
+| TD3 (seed 102) | Transformer overload (kWh) | 0.98 | 0.96 | -0.02 |
+| RandomPolicy | Transformer overload (kWh) | **12.74** | **0.22** | **-12.52** |
+| RandomPolicy | Tracking error | 43878 | 36972 | -6906 |
+
+**Does the correction change the conclusions? Yes, on the exact claim the
+control was built to support — this is the headline finding of this
+correction, not a footnote.** Paired bootstrap (5,000 resamples,
+`stats_utils.paired_bootstrap_ci`, matched by `(seed, eval_day)` cell) on
+the corrected data:
+
+| Comparison | Metric | Point est. | 95% CI |
+|---|---|---:|---|
+| RandomPolicy vs. AFAP | Transformer overload (abs diff, kWh) | **-5.106** | [-8.763, -1.907] |
+| RandomPolicy vs. Round Robin | Transformer overload (abs diff, kWh) | +0.224 | [0.075, 0.411] |
+| TD3 (seed 100) vs. RandomPolicy | Transformer overload (abs diff, kWh) | +0.228 | [-0.233, 0.795] |
+| TD3 (seed 100) vs. Round Robin | Transformer overload (abs diff, kWh) | +0.452 | [0.032, 0.980] |
+| TD3 (seed 101) vs. Round Robin | Transformer overload (abs diff, kWh) | +2.654 | [0.898, 4.800] |
+| TD3 (seed 102) vs. Round Robin | Transformer overload (abs diff, kWh) | +0.962 | [0.213, 1.837] |
+| every TD3 seed vs. AFAP/RR | EVs served (pct diff) | 0.000 | [0.000, 0.000] |
+
+Week 3's original conclusion was: *"the random-policy control shows worse
+overload (12.74 kWh) than even unmanaged AFAP (5.33 kWh) — proving TD3's
+near-zero overload is a demonstrated learned behavior, not an artifact of
+'any coordination beats AFAP here.'"* **This is false under the corrected
+data.** The corrected random-policy control has **significantly lower**
+overload than AFAP (95% CI entirely below zero) and is **statistically
+indistinguishable** from TD3 (seed 100) (CI spans zero). The physical
+explanation is straightforward and was checked, not just accepted: AFAP
+dispatches every connected port at (near-)maximum current every step, which
+is what drives this station's 4:1 oversubscription into overload; a uniform
+random action in `[0,1]` per port has an expected value of ~0.5x max power,
+so simply *not always maxing out* — which a policy needs no learning at all
+to do — already removes most of the overload at this specific
+oversubscription ratio. The control still does its job on a different,
+narrower claim (Round Robin vs. RandomPolicy IS a small but statistically
+real difference, +0.224 kWh [0.075, 0.411]), but it no longer supports
+"TD3/Round Robin learned/derived a real overload-avoidance behavior beyond
+what naive throttling gives for free." Also newly significant: TD3 vs.
+Round Robin on overload flips from "TD3 matches Round Robin" (both ~0 in
+the buggy data) to **TD3 is significantly worse than Round Robin** for all
+3 seeds (all three 95% CIs exclude zero). `total_ev_served` is now
+**identical** across every algorithm tested (all diffs [0.000, 0.000]) —
+the "TD3 serves fewer/inconsistent EVs" tradeoff reported in Week 3 does
+not survive the correction either; it was an artifact of the same bug.
+
+**What is and isn't invalidated, stated explicitly:**
+- **Trained models: still valid, no retraining.** Confirmed above — the
+  training-time finding changes what "TRAIN_SEEDS" should be understood to
+  mean, not whether the weights are legitimate.
+- **Evaluation rows: all 200 were invalid, now corrected and re-registered.**
+- **AFAP / Round Robin: confirmed unaffected**, empirically, not assumed —
+  see the reproduction method above.
+- **The paired-bootstrap results were invalid in a specific way, not just
+  "wrong numbers":** the 50 cells were never actually paired (each
+  TD3/RandomPolicy episode ran an independent, re-randomized scenario, not
+  the same scenario AFAP/Round Robin saw on that nominal cell), so
+  `paired_bootstrap_ci` was applied under an assumption — shared scenario
+  per cell — that did not hold. The point estimates happened to land in a
+  broadly similar range for several metrics (same underlying scenario
+  *distribution*, still 50 draws), but the confidence intervals were
+  computed as if within-cell variance had been removed by pairing, when it
+  hadn't been. The overload/control finding above is the case where this
+  mattered enough to flip a conclusion, not just narrow a CI.
+
+**Downstream re-derivation, all done this session:**
+`results/rl_vs_baseline_bootstrap.csv` and `results/rl_train_seed_dispersion.csv`
+regenerated (`scripts/analyze_rl_results.py`, no new bootstrap code, same
+`stats_utils.paired_bootstrap_ci` as Week 3). All 9 figures regenerated
+(`scripts/make_figures.py`) and visually QA'd individually — **no new bugs
+found this pass** (unlike Week 2's 2 and Week 3's 5); `f01` and `f02`
+visibly reflect the corrected overload pattern (Random control now sits
+just above Round Robin, well below AFAP, instead of above everyone); `f05`'s
+forest plot shows the corrected, CI-backed per-algorithm comparisons above;
+`f07`'s heatmap shows Random (control) now green (good) rather than red
+(worst) on the overload column; `f06`/`f08`/`f09` are structurally
+unaffected (f06 correctly still excludes TD3/RandomPolicy from the size
+sweep; f08 reads training-time `learning_curve.csv` files, untouched by an
+evaluation-only bug; f09 reads a wholly separate registry file). Full test
+suite re-run: 10/10 passing (8 original + 2 new).
+`03_rl_baseline.md` and `Week3_Parameter_Method_and_Implementation_Justification.docx`
+corrected in the same session — see that chapter's own correction section
+for the narrative-level writeup; not duplicated here.
+
 ## 2026-08-13 — Week 3, Entregables 5-7: training, evaluation, statistics, and two real bugs caught by visual QA
 
 **Entregable 5 (training) — done.** All 3 `TRAIN_SEEDS` trained sequentially

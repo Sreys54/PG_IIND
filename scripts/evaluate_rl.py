@@ -39,7 +39,7 @@ import time
 import numpy as np
 
 from ev2gym_thesis.eval_protocol import SEEDS, EVAL_DAYS, TRAIN_SEEDS
-from ev2gym_thesis.rl.env_factory import make_env, DEFAULT_REWARD_FN, DEFAULT_STATE_FN
+from ev2gym_thesis.rl.env_factory import make_env, reset_for_evaluation, DEFAULT_REWARD_FN, DEFAULT_STATE_FN
 from ev2gym_thesis.rl.eval_utils import load_trained_agent, vecnormalize_path_for
 from ev2gym_thesis.registry import append_runs, save_timeseries, stats_to_row, get_git_commit, load_existing_keys
 
@@ -115,16 +115,27 @@ class _TD3Stepper:
     saved per-step timeseries were corrupted; this stepper's stats are
     identical to the original VecEnv-stepper's, only the timeseries
     capture changes.
+
+    Week 3 correction: this class used to call self.env.reset() here with no
+    seed, which is a SEPARATE, more serious bug than the one above -- it
+    silently re-randomized the EV scenario itself (not just corrupting
+    post-episode timeseries capture), so all 200 TD3/RandomPolicy
+    evaluation rows were measured against a scenario nobody chose. Fixed by
+    routing through env_factory.reset_for_evaluation, which requires the
+    scenario_seed explicitly and asserts the resulting EV population
+    matches construction. See thesis_docs/chapters/00_lab_log.md's Week 3
+    correction entry.
     """
 
     # doc:begin td3_stepper_fix
-    def __init__(self, model, venv, env):
+    def __init__(self, model, venv, env, scenario_seed: int):
         self.model = model
         self.venv = venv  # loaded VecNormalize instance, used only for its normalize_obs() stats -- never stepped
         self.env = env
+        self.scenario_seed = scenario_seed
 
     def reset(self):
-        obs, _ = self.env.reset()
+        obs, _ = reset_for_evaluation(self.env, self.scenario_seed)
         return obs
 
     def act(self, obs):
@@ -142,14 +153,25 @@ class _RandomPolicyStepper:
     """A control policy: samples uniformly from the env's own action_space,
     seeded with the scenario seed for reproducibility. No model, no
     VecNormalize -- runs the raw EV2Gym env directly, same protocol as
-    scripts/backfill_registry.py's heuristics."""
+    scripts/backfill_registry.py's heuristics.
+
+    Week 3 correction: reset() used to call self.env.reset(seed=None), on
+    the mistaken belief (stated in the old comment here) that the
+    construction-time seed carried over automatically -- it doesn't; see
+    env_factory.reset_for_evaluation's docstring and
+    thesis_docs/chapters/00_lab_log.md's Week 3 correction entry. The
+    action_space seeding itself was never the problem (action_space is set
+    once in EV2Gym.__init__ and is untouched by reset()) -- the EV scenario
+    was.
+    """
 
     def __init__(self, env, scenario_seed: int):
         self.env = env
+        self.scenario_seed = scenario_seed
         self.env.action_space.seed(scenario_seed)
 
     def reset(self):
-        obs, _ = self.env.reset(seed=None)  # scenario seed already applied via make_env's EV2Gym(seed=...)
+        obs, _ = reset_for_evaluation(self.env, self.scenario_seed)
         return obs
 
     def act(self, obs):
@@ -167,7 +189,7 @@ def eval_td3(algo_name, train_seed, model_path, seed, eval_day, git_commit):
     model, venv = load_trained_agent(model_path, env)
 
     t0 = time.perf_counter()
-    stepper = _TD3Stepper(model, venv, env)
+    stepper = _TD3Stepper(model, venv, env, scenario_seed=seed)
     stats, transformer_power_ts, n_connected_ts = _run_and_capture(stepper, env)
     runtime_s = time.perf_counter() - t0
 

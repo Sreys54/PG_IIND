@@ -62,6 +62,55 @@ def make_env(config_path: str, day: tuple, scenario_seed: int,
 # doc:end make_env
 
 
+# doc:begin reset_for_evaluation
+def _ev_population_signature(env) -> list:
+    """A comparable summary of the EV arrival scenario an env instance
+    currently holds. Used only to verify reset_for_evaluation's determinism
+    guarantee, not a general-purpose utility."""
+    return [
+        (ev.time_of_arrival, ev.time_of_departure, ev.battery_capacity, ev.desired_capacity)
+        for ev in env.EVs_profiles
+    ]
+
+
+def reset_for_evaluation(env, scenario_seed: int):
+    """The only sanctioned way to start an evaluation episode on an env built
+    by make_env(). Every evaluation stepper (TD3, RandomPolicy, and the
+    Week 4 oracle's) must call this instead of env.reset() directly.
+
+    Week 3 correction (see thesis_docs/chapters/00_lab_log.md): plain
+    gymnasium Env.reset(seed=None) -- which is what env.reset() and
+    env.reset(seed=None) both do -- makes EV2Gym draw a FRESH
+    np.random.randint(0, 1_000_000) and regenerate self.EVs_profiles from
+    scratch; it does NOT fall back to reusing the seed the env was
+    constructed with. scripts/evaluate_rl.py's _TD3Stepper and
+    _RandomPolicyStepper both called reset this way, so all 200 of Week 3's
+    TD3/RandomPolicy evaluation episodes silently ran against a
+    re-randomized scenario instead of the (config, day, scenario_seed) cell
+    their registry row claims -- confirmed empirically (14 EVs at
+    construction vs. 16 EVs with completely different arrival/departure
+    times, after one bare env.reset()).
+
+    The population check below is a real, always-on assertion, not a
+    comment -- the entire point of this bug is that "the code looks right"
+    was already tried once and was wrong. scripts/backfill_registry.py's
+    AFAP/Round Robin runs were unaffected (they already pass seed=seed
+    explicitly), confirmed with the same population-diff method.
+    """
+    construction_population = _ev_population_signature(env)
+    obs, info = env.reset(seed=scenario_seed)
+    post_reset_population = _ev_population_signature(env)
+    assert post_reset_population == construction_population, (
+        f"reset_for_evaluation: EV population after reset(seed={scenario_seed}) "
+        f"does not match the population env was constructed with -- the "
+        f"evaluated scenario would silently diverge from the (config, day, "
+        f"scenario_seed) cell this run is registered under. This is exactly "
+        f"the Week 3 bug documented in 00_lab_log.md; do not bypass this check."
+    )
+    return obs, info
+# doc:end reset_for_evaluation
+
+
 class TrainingDayCyclingEnv(gym.Env):
     """A gym.Env that samples a new calendar day from TRAIN_DAYS every
     reset() -- never from EVAL_DAYS -- so a TD3 agent trained against this

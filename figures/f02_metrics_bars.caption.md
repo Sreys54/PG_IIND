@@ -5,5 +5,5 @@ Grouped bars with 95% CI error bars across algorithms for total_ev_served, total
 - Runs behind this figure: 300
 - Configs: station_v0_bogota
 - Algorithms: AFAP, Round Robin, TD3 (seed 100), TD3 (seed 101), TD3 (seed 102), Random (control)
-- Git commit: 2190ce39ddafeac3a25b4c59437e94459f2a2c57
-- Generated: 2026-08-13T04:42:43.600947Z
+- Git commit: 4a82315b68e2a106928ecba523b2cc15ca14e5c9
+- Generated: 2026-08-19T03:40:20.897446Z

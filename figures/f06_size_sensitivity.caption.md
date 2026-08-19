@@ -5,5 +5,5 @@ Transformer overload (kWh) vs. number of ports (2/8/16), one line per algorithm,
 - Runs behind this figure: 700
 - Configs: station_n02_tx025, station_n02_tx100, station_n16_tx100, station_n16_tx200, station_v0_bogota
 - Algorithms: AFAP, Round Robin
-- Git commit: 2190ce39ddafeac3a25b4c59437e94459f2a2c57
-- Generated: 2026-08-13T04:42:48.194189Z
+- Git commit: 4a82315b68e2a106928ecba523b2cc15ca14e5c9
+- Generated: 2026-08-19T03:40:24.384721Z

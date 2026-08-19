@@ -14,7 +14,8 @@ import tempfile
 import unittest
 
 from ev2gym_thesis.eval_protocol import SEEDS, TRAIN_SEEDS, EVAL_DAYS, TRAIN_DAYS
-from ev2gym_thesis.rl.env_factory import TrainingDayCyclingEnv, make_env
+from ev2gym_thesis.rl.env_factory import (TrainingDayCyclingEnv, make_env,
+                                           reset_for_evaluation, _ev_population_signature)
 from ev2gym_thesis.rl.eval_utils import load_trained_agent
 
 REFERENCE_CONFIG = "experiments/phase1_baseline/configs/station_v0_bogota.yaml"
@@ -116,35 +117,44 @@ class TestVecNormalizeStatsRequired(unittest.TestCase):
 
 
 class TestEvaluationReproducibility(unittest.TestCase):
-    """Entregable 9, item 4: the same (config, scenario_seed, eval_day,
-    model) evaluated twice must produce identical metrics. Uses a freshly
-    constructed (untrained) TD3 model -- reproducibility of the evaluation
-    PIPELINE (deterministic predict + deterministic scenario generation
-    given a fixed seed) does not depend on the model having been trained,
-    only on the model's weights being fixed between the two runs, which
-    they are since it's the same in-memory model object."""
+    """Entregable 9, item 4 -- REWRITTEN under the Week 3 correction (see
+    thesis_docs/chapters/00_lab_log.md). The original version of this test
+    built its own run_once() loop that called env.reset(seed=seed) directly
+    -- a correct call, but a REIMPLEMENTATION of the evaluation loop, not
+    the one scripts/evaluate_rl.py actually runs. It passed while
+    scripts/evaluate_rl.py's real _TD3Stepper called env.reset() with no
+    seed at all, silently re-randomizing the scenario on every episode --
+    corrupting all 200 Week 3 TD3/RandomPolicy registry rows. This test
+    never touched that code path, so it could not have caught the bug it
+    was written to guard against.
+
+    Fixed by exercising scripts/evaluate_rl.py's real _TD3Stepper and
+    _run_and_capture directly, the same objects the production evaluation
+    run uses -- not a parallel reimplementation. General rule this pins:
+    every test in this project must exercise the real call path used in
+    production, not a lookalike of it."""
 
     def test_same_cell_same_model_gives_identical_stats(self):
         from stable_baselines3 import TD3
+        from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+        from scripts.evaluate_rl import _TD3Stepper, _run_and_capture
 
         day = EVAL_DAYS[0]
         seed = SEEDS[0]
 
-        env_a = make_env(REFERENCE_CONFIG, day, seed)
-        model = TD3("MlpPolicy", env_a, policy_kwargs=dict(net_arch=[8, 8]), seed=100, verbose=0)
+        probe_env = make_env(REFERENCE_CONFIG, day, seed)
+        model = TD3("MlpPolicy", probe_env, policy_kwargs=dict(net_arch=[8, 8]), seed=100, verbose=0)
 
-        def run_once(env):
-            obs, _ = env.reset(seed=seed)
-            done = False
-            info = {}
-            while not done:
-                action, _ = model.predict(obs, deterministic=True)
-                obs, reward, done, truncated, info = env.step(action)
-            return info
+        def run_once():
+            env = make_env(REFERENCE_CONFIG, day, seed)
+            venv = VecNormalize(DummyVecEnv([lambda: env]), norm_obs=True, norm_reward=False)
+            venv.training = False
+            stepper = _TD3Stepper(model, venv, env, scenario_seed=seed)
+            stats, _transformer_ts, _n_connected_ts = _run_and_capture(stepper, env)
+            return stats
 
-        stats_a = run_once(env_a)
-        env_b = make_env(REFERENCE_CONFIG, day, seed)
-        stats_b = run_once(env_b)
+        stats_a = run_once()
+        stats_b = run_once()
 
         numeric_keys = [
             k for k, v in stats_a.items()
@@ -153,6 +163,40 @@ class TestEvaluationReproducibility(unittest.TestCase):
         self.assertGreater(len(numeric_keys), 0)
         for key in numeric_keys:
             self.assertEqual(stats_a[key], stats_b[key], f"Mismatch in {key!r}: {stats_a[key]} != {stats_b[key]}")
+
+
+class TestResetForEvaluation(unittest.TestCase):
+    """Regression coverage for the Week 3 evaluation-scenario bug itself
+    (see thesis_docs/chapters/00_lab_log.md's correction entry), at the
+    smallest possible grain -- directly on env_factory.reset_for_evaluation,
+    without needing a model."""
+
+    def test_reset_for_evaluation_reproduces_construction_scenario(self):
+        day = EVAL_DAYS[0]
+        seed = SEEDS[0]
+        env = make_env(REFERENCE_CONFIG, day, seed)
+        construction_population = _ev_population_signature(env)
+
+        reset_for_evaluation(env, seed)
+
+        self.assertEqual(_ev_population_signature(env), construction_population)
+
+    def test_bare_reset_would_have_diverged(self):
+        """Pins the actual failure mode reset_for_evaluation exists to
+        prevent: plain env.reset() with no seed -- the Week 3 bug's exact
+        call pattern in the old _TD3Stepper/_RandomPolicyStepper -- silently
+        regenerates a different EV population. If this test ever starts
+        failing, EV2Gym's reset() semantics changed upstream and
+        reset_for_evaluation's workaround should be re-examined, not
+        deleted blindly."""
+        day = EVAL_DAYS[0]
+        seed = SEEDS[0]
+        env = make_env(REFERENCE_CONFIG, day, seed)
+        construction_population = _ev_population_signature(env)
+
+        env.reset()  # no seed -- reproduces the Week 3 bug's call pattern
+
+        self.assertNotEqual(_ev_population_signature(env), construction_population)
 
 
 if __name__ == "__main__":

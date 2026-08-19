@@ -166,6 +166,7 @@ wandb/
 replay/
 /results/*
 !/results/master_results.csv
+!/results/master_results_prefix_week3_evaluation_bug.csv
 !/results/degradation_by_ambient.csv
 !/results/rl_vs_baseline_bootstrap.csv
 !/results/rl_train_seed_dispersion.csv
@@ -179,6 +180,7 @@ logs/
 eval_logs/
 /results/*
 !/results/master_results.csv
+!/results/master_results_prefix_week3_evaluation_bug.csv
 !/results/degradation_by_ambient.csv
 !/results/rl_vs_baseline_bootstrap.csv
 !/results/rl_train_seed_dispersion.csv

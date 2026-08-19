@@ -59,28 +59,3 @@ def load_trained_agent(model_path: str, env, vecnormalize_path: str = None):
     model = TD3.load(model_path, env=venv)
     return model, venv
 # doc:end load_trained_agent
-
-
-# doc:begin run_episode
-def run_episode(model, venv, deterministic: bool = True) -> dict:
-    """Runs exactly one episode on a (possibly VecNormalize-wrapped) vector
-    env and returns the underlying EV2Gym instance's final stats dict.
-
-    deterministic=True is used for every Entregable 6 evaluation run
-    (documented design decision, thesis_docs/chapters/03_rl_baseline.md):
-    evaluation must isolate policy quality from action-sampling noise, which
-    training-time stochastic exploration would otherwise reintroduce into a
-    number this thesis reports as "the agent's performance."
-    """
-    obs = venv.reset()
-    done = False
-    while not done:
-        action, _ = model.predict(obs, deterministic=deterministic)
-        obs, reward, done, info = venv.step(action)
-        done = bool(done[0])
-    # info[0]["terminal_observation"] is the pre-reset obs; the actual
-    # EV2Gym stats dict is on the underlying (unwrapped) env after the
-    # episode's final step, since EV2Gym's own _check_termination returns
-    # self.stats as the info dict on the terminal step.
-    return info[0]
-# doc:end run_episode
