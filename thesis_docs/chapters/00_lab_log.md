@@ -1,5 +1,171 @@
 # Lab Log
 
+## 2026-08-20 — Week 4 acceptance review: git rule correction, verdict revision, gitignore bug
+
+**Standing git rule corrected (`CLAUDE.md` rule 4, `PROJECT_ROADMAP.md`'s
+Git Discipline Checklist): Claude Code never runs `git commit`/`merge`/
+`tag`/`push` — the user does, from a proposed commit plan.** An earlier
+brief's "commit early/often" instruction was wrong about this project's
+workflow; both files corrected in place (old text struck through, not
+deleted, per the project's own correction convention).
+
+**Real bug found while auditing for anything mis-gitignored: all 5 of
+Entregable 8's analysis CSVs were silently swallowed by a stale
+`/results/*` allowlist.** `results/optimality_gap.csv`,
+`oracle_tiebreak_noise_floor.csv`, `reward_ablation_bootstrap.csv`,
+`reward_ablation_vs_baselines.csv`, and `trackingonly_train_seed_dispersion.csv`
+all showed `!!` (ignored) under `git status --ignored` and matched
+`.gitignore`'s blanket `/results/*` rule -- the per-file allowlist below it
+was never extended for this week's new outputs, so these files would have
+been silently absent from any commit despite being the actual evidence
+behind this chapter's S4.9 numbers. Fixed: added all 5 to the allowlist;
+also found and removed an exact duplicate of the entire `/results/*` +
+allowlist block (harmless -- gitignore patterns are idempotent -- but
+confusing to maintain in two places), consolidating to one copy. Confirmed
+fixed via `git check-ignore -v` on each file (no longer matches) and
+`git status --short results/` (all 5 now show `??`, ready to stage).
+
+**Also renamed a CSV column for real stackability, not just described the
+mismatch:** `reward_ablation_vs_baselines.csv`'s leading column was
+`trackingonly_algorithm`; Week 3's `rl_vs_baseline_bootstrap.csv` uses
+`td3_algorithm` for the same role. Renamed to match exactly
+(`scripts/analyze_week4_results.py`), re-ran the script to confirm
+identical values under the new column name -- the two CSVs now
+concatenate directly (`pandas.concat`/CSV-append) into one comparison
+table without a rename step.
+
+**S4.9/S4.10's first draft was reviewed and found to overstate one result
+and understate another -- both corrected in place, not quietly touched
+up:**
+1. **Ablation verdict softened from "retroactively validated" to a stated
+   trade-off.** `TD3_vanilla` wins on tracking/overload/degradation;
+   `TD3_TrackingOnly` wins on profit and both satisfaction metrics -- two
+   of this thesis's three declared objective axes. Added a labeled
+   **hypothesis** (not an established mechanism) for the counterintuitive
+   direction: the composite reward's extra terms may act as
+   shaping/regularization aiding credit assignment under the reduced
+   60k-timestep budget, testable via a longer single-seed run -- out of
+   scope this week, named as future work rather than run.
+2. **The RL-vs-Round-Robin gap-to-oracle finding promoted to the week's
+   stated headline**, with an explicit budget-boundedness caveat (*under a
+   60,000-timestep CPU budget*, not a general RL-vs-heuristic claim) and
+   its consequence for Objective 4 (on current evidence, the recommended
+   strategy is Round Robin, not RL) surfaced now rather than left for
+   Week 6.
+3. **The oracle tie-break noise floor redone as a per-metric table**
+   (previously one global "79x the floor" statement) -- `tracking_error`'s
+   gap is genuinely far outside its floor (79x), but `average_/
+   min_energy_user_satisfaction` have an EXACTLY zero floor, meaning
+   "real" there doesn't mean "large": Round Robin's own gap on both is
+   real but small (0.29 pp / 0.047 pp), distinct from the RL arms' larger,
+   unambiguous gaps (0.8-21.75 pp). `energy_tracking_error` and
+   `total_profits` have a measurable floor but were never included in
+   S4.2's restricted gap-metric set -- flagged as an open scope question,
+   not silently omitted from the table.
+
+**Energy-not-served target: a mapping proposed, not adopted.** The
+approved proposal defines the target as "error de energia no servida
+<15% vs. baseline no gestionado" -- narrower than "undefined." Read
+`ev2gym/models/ev.py:204-214` and `ev2gym/utilities/utils.py:58-62` from
+source (not guessed): proposed `(1 - average_user_satisfaction) x 100`
+(unserved energy relative to each EV's own requested `desired_capacity`,
+EV2Gym's existing `get_user_satisfaction()`), with `energy_user_satisfaction`
+(normalized against `max_energy_AFAP` instead of desired capacity) kept as
+a rejected-but-computed cross-check, and a fleet-aggregate
+`total_energy_charged`-based alternative rejected for needing new
+uncomputed infrastructure and discarding per-EV worst-case information.
+Computed for every arm: worst case 2.57% (`TD3_vanilla_ts100`, cross-check
+definition), over 5x under the 15% threshold under either candidate --
+every algorithm/arm tested through Week 4 clears the target comfortably.
+Recorded as a labeled assumption in `04_oracle_and_pitd3.md` S4.9 for Week
+5 to adopt or revise, per the brief's explicit instruction not to close
+Week 4 on it.
+
+**Also fixed while re-reading the chapter for staleness:** S4.2 still said
+the balanced oracle variant was "not yet implemented" -- stale since S4.6/
+S4.7 fully implemented and evaluated it days earlier; corrected in place.
+
+Full corrected text in `thesis_docs/chapters/04_oracle_and_pitd3.md`
+(S4.0's status block, S4.2, S4.9, S4.10) -- nothing below this entry in
+the chapter's own body was removed, only corrected and marked as such,
+per the project's standing correction convention (never silently rewrite
+a prior claim).
+
+## 2026-08-20 — Week 4, Entregables 7-14: closeout
+
+**Entregable 7 (evaluation):** `scripts/evaluate_rl.py --execute` completed
+in the background (training itself finished 2026-08-19, wall-clock
+confirmed: ts100=3343.24s, ts101=3276.59s, ts102=3485.78s -- total
+168.43 min vs. the 170.9 min calibration estimate, -1.4%). Appended exactly
+150 `TD3_TrackingOnly` rows, correctly skipped 200 already-present rows, 0
+errors. Final main-grid registry: **550 rows = 11 algorithms x 50 cells
+exactly** (`TestRegistryCount`, new this deliverable, passes). Re-verified
+`assert_total_reward_comparable` against the completed registry, not just
+the pre-TrackingOnly data: AFAP+RoundRobin+TD3_TrackingOnly (all three
+sharing `SquaredTrackingErrorReward`) passes; mixing in `TD3_vanilla` or
+either oracle variant both raise, as expected -- the first case in this
+project where `total_reward` is legitimately comparable across a heuristic
+and a trained RL agent.
+
+**Entregable 8 (analysis):** `scripts/analyze_week4_results.py` run
+against the completed registry, no errors. Headline: `TD3_TrackingOnly`
+achieves *better* profit/satisfaction than `TD3_vanilla` (+5.0%/+0.4%/+7.6%
+on profit/avg-satisfaction/min-satisfaction, n=150 pooled) but *worse*
+tracking error, energy tracking error, transformer overload, and battery
+degradation (+13.0%/+5.3%/+1.75kWh/+2.6%) -- the composite reward Week 3
+chose is retroactively validated by this ablation, not merely asserted.
+Every TD3 variant (both reward arms, all 6 seeds) sits farther from the
+tracking-error oracle than Round Robin (136% gap) does -- RoundRobin
+421.9%-893.97% closer than every RL checkpoint, including the arm trained
+solely on tracking error. Noise floor (oracle tie-break spread) is
+negligible against every reported gap (max 89.35 vs. the smallest online
+gap of 7,080.11 absolute). Full numbers now in
+`thesis_docs/chapters/04_oracle_and_pitd3.md` S4.8-S4.10.
+
+**Entregable 9 (figures):** all 11 figures regenerated, including new
+`f10_optimality_gap` and `f11_physics_term_falsification`. **Visual QA
+found and fixed 2 real bugs**, both introduced by Week 4's longer algorithm
+names/extra arms, neither previously present:
+1. `f02_metrics_bars`/`f04_distributions` titles printed "n=61 per
+   algorithm" instead of the true 50 -- `len(grid)//len(algos)` divided
+   ALL grid rows (including the 100 oracle rows, excluded from the plot but
+   still counted in `grid`) by only the plotted algorithm count. Fixed by
+   counting only rows for algorithms actually plotted.
+2. `f05_vs_baseline`/`f07_metric_heatmap`: y-axis row labels clipped at the
+   left edge ("...ckingOnly (seed 100)", missing "TD3-Tra") -- both used a
+   FIXED fraction (`left=0.42`/`0.15`) sized for Week 3's longest label
+   ("TD3 (seed 100)"); Week 4's "TD3-TrackingOnly (seed 10X)" labels no
+   longer fit. Fixed the same way Week 3 fixed the analogous top/bottom
+   margin bug: measure the actual rendered label width via
+   `get_window_extent` and convert to a fraction of the real figure width,
+   instead of assuming a constant.
+`f06_size_sensitivity` confirmed (by looking at the actual PNG, not just
+inferring from filter logic) to still correctly restrict to AFAP/Round
+Robin only -- TD3/oracle rows don't exist on the non-reference sweep
+config, so `_algos_present` naturally excludes them.
+
+**Entregable 10 (tests):** `ev2gym_thesis/tests/test_week4.py`, 16 tests,
+**16/16 passing** against the completed registry (`TestOracleDeterminism`
+actually re-solved a Gurobi model -- confirmed a live academic license, not
+skipped).
+
+**Entregable 11 (chapter):** S4.8-S4.10 filled with real numbers (above).
+Title updated to name all three real deliverables (oracle, falsification,
+`TD3_TrackingOnly` ablation); filename kept unchanged (dozens of existing
+cross-references point at the current path -- see the chapter's own
+2026-08-20 title note for the full reasoning).
+
+**Entregables 12-13 (hand-back docs):** `scripts/make_week4_handback.py`
+written (modeled on Week 3's), `scripts/extend_progress_log.py` extended
+with a `build_week4_section` function appending "2.3. Week 4" to the
+externally-located `Progress_Log_Thesis_Project.docx`. Both run; see this
+entry's own closing paragraph for the generated file paths.
+
+**Entregable 14 (housekeeping):** per explicit user instruction earlier
+this session, no commits/tags/merges were made by Claude for any of Week
+4's work -- everything above remains in the uncommitted working tree for
+the user to review and commit/push themselves.
+
 ## 2026-08-19 — Week 4, Entregable 6: `TD3_TrackingOnly` throughput measured, Gate 3 re-confirmed, training launched
 
 **`scripts/train_td3.py`/`scripts/calibrate_td3_timing.py` gained

@@ -23,6 +23,7 @@ END_RE = re.compile(r"#\s*doc:end\s+(\S+)")
 SOURCE_GLOBS = [
     "ev2gym_thesis/*.py",
     "ev2gym_thesis/rl/*.py",  # Week 3: RL subpackage, added here so its doc:begin/doc:end tags are discoverable
+    "ev2gym_thesis/oracle/*.py",  # Week 4: oracle subpackage, same reason
     "ev2gym_thesis/tests/*.py",
     "scripts/*.py",
 ]

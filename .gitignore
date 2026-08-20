@@ -164,12 +164,6 @@ wandb/
 *.lp
 *.mps
 replay/
-/results/*
-!/results/master_results.csv
-!/results/master_results_prefix_week3_evaluation_bug.csv
-!/results/degradation_by_ambient.csv
-!/results/rl_vs_baseline_bootstrap.csv
-!/results/rl_train_seed_dispersion.csv
 model.lp
 vscode/
 .vscode/settings.json
@@ -178,12 +172,23 @@ saved_models/
 trajectories/
 logs/
 eval_logs/
+# Consolidated 2026-08-20: this block was duplicated verbatim earlier in
+# this file (harmless -- gitignore patterns are idempotent -- but confusing
+# to maintain in two places). Single copy kept here, extended with Week 4's
+# 5 new analysis CSVs (scripts/analyze_week4_results.py), which were
+# silently gitignored by this same allowlist until caught during Week 4
+# closeout review.
 /results/*
 !/results/master_results.csv
 !/results/master_results_prefix_week3_evaluation_bug.csv
 !/results/degradation_by_ambient.csv
 !/results/rl_vs_baseline_bootstrap.csv
 !/results/rl_train_seed_dispersion.csv
+!/results/optimality_gap.csv
+!/results/oracle_tiebreak_noise_floor.csv
+!/results/reward_ablation_bootstrap.csv
+!/results/reward_ablation_vs_baselines.csv
+!/results/trackingonly_train_seed_dispersion.csv
 models_RL/
 plots/
 plot_results_dict.pkl

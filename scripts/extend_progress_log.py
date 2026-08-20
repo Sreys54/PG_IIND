@@ -1,7 +1,7 @@
 """
-Week 3, Entregable 10: appends a new "2.2. Week 3" section to the user's
-personal Progress_Log_Thesis_Project.docx WITHOUT rewriting anything
-already in it.
+Week 3, Entregable 10 (extended Week 4, Entregable 13): appends a new
+section per week to the user's personal Progress_Log_Thesis_Project.docx
+WITHOUT rewriting anything already in it.
 
 That file lives OUTSIDE this git repository, one directory above the repo
 root (../Progress_Log_Thesis_Project.docx relative to PG_IIND/) -- it is
@@ -178,6 +178,194 @@ def build_week3_section(doc):
     add_bullet(doc, "Begin the full cross-algorithm comparison scheduled for Week 5.")
 
 
+def build_week4_section(doc):
+    add_heading(doc, "2.3. Week 4 — Perfect-Information Oracle, Reward Falsification, and Reward Ablation (Specific Objective 3)")
+    add_body(doc,
+        "Scope amended twice, both kept in the project record rather than "
+        "silently revised. Amendment 1 (2026-08-19): an academic Gurobi "
+        "license became active on this machine (unlimited size, expires "
+        "2027-08-14), so the perfect-information reference uses Gurobi "
+        "directly rather than the free-solver fallback Week 2-3 had "
+        "planned around — a reduction in deviation from the original plan, "
+        "not a new one. Amendment 2 (2026-08-19): the originally planned "
+        "trained \"PI-TD3\" arm was replaced with a falsified "
+        "physics-adaptation investigation plus a reward ablation "
+        "(TD3_TrackingOnly) that actually trained — no arm named PI_TD3 "
+        "exists anywhere in this project's registry, code, or results.")
+
+    add_heading(doc, "2.3.1. Perfect-Information Oracle")
+    add_body(doc,
+        "Two Gurobi-based oracle variants were built as a thin wrapper "
+        "around EV2Gym's own PowerTrackingErrorrMin model (never edited in "
+        "place): Optimal_Oracle_Tracking (tracking error only) and "
+        "Optimal_Oracle_Balanced (tracking error plus a departure-"
+        "satisfaction penalty, dimensionally corrected from a bug found in "
+        "the library's own profit_max.py precedent). Both forced to G2V-only "
+        "(matching every other algorithm compared in this thesis) and run "
+        "over the same 50-cell evaluation grid (5 seeds x 10 days) used "
+        "throughout this project. Result: both oracle variants dominate "
+        "every online algorithm on tracking error by a wide margin (a "
+        "2x-11x gap), with the two variants tying exactly on EVs served, "
+        "transformer overload, and both satisfaction metrics but showing a "
+        "small, fully explained, non-zero gap on tracking error and profit "
+        "(an LP-tie-break vs. nonlinear-simulator model mismatch, "
+        "quantified as an explicit noise floor rather than dismissed as "
+        "unexplained variance).")
+
+    add_heading(doc, "2.3.2. Physics-Informed Reward Adaptation: Falsified, Not Abandoned")
+    add_body(doc,
+        "The PI-TD3 paper's actual novel mechanism (read in full: "
+        "arXiv:2510.12335v2) turned out to be a K-step differentiable-"
+        "rollout actor update, not primarily a reward term — porting it "
+        "faithfully would mean replacing Stable-Baselines3's training loop "
+        "entirely, and this station has no power-flow model to "
+        "differentiate through (simulate_grid=False). A thinner, reward-"
+        "only adaptation was attempted instead, explicitly declared as "
+        "such. Two structurally different designs were built and verified "
+        "before either was trusted with training compute, and both failed, "
+        "for two independent, well-diagnosed reasons: Design 1 (an "
+        "instantaneous transformer-capacity margin) was rank-correlated "
+        "1.0 with the reward's existing overload penalty at every weight "
+        "tested — both are monotonic functions of the same instantaneous "
+        "scalar, so no weight could ever make them disagree. Design 2 (a "
+        "capacity-headroom term using the environment's own connected-"
+        "fleet demand potential) broke that tie but was found to reward "
+        "charging EVs to full faster regardless of whether that caused a "
+        "real overload — confirmed by a heuristic that already nearly "
+        "eliminates overload being penalized 32x more often than one that "
+        "overloads routinely. The repair that would fix this needs each "
+        "EV's departure time, which this project's chosen state function "
+        "withholds deliberately, matching a real public station operator's "
+        "actual information. Recorded as a conditional stretch goal for "
+        "the Week 6 grid-enabled phase, not a commitment.")
+
+    add_heading(doc, "2.3.3. TD3_TrackingOnly: A Reward Ablation")
+    add_body(doc,
+        "With the physics-adaptation line closed, the freed training "
+        "budget went to a question Week 3 assumed rather than measured: "
+        "does encoding transformer-overload and user-satisfaction "
+        "penalties into the training reward actually buy anything over "
+        "optimizing tracking error alone? TD3_TrackingOnly held every "
+        "hyperparameter identical to Week 3's vanilla-TD3 arm (60,000 "
+        "timesteps/seed, the same 3 training seeds, state function, "
+        "network architecture) and changed only the reward function, to "
+        "EV2Gym's own bare tracking-only default — a genuinely single-"
+        "variable comparison.")
+    add_table(doc,
+        ["Algorithm", "Avg. satisfaction", "Min. energy satisfaction", "Transformer overload (kWh)", "Tracking error"],
+        [
+            ["Round Robin", "100.0%", "99.95", "0.00", "12,272.97"],
+            ["TD3_vanilla (mean, 3 seeds)", "98.2%", "82.5", "1.36", "29,211.59"],
+            ["TD3_TrackingOnly (mean, 3 seeds)", "98.6%", "86.4", "3.10", "32,286.50"],
+            ["Optimal_Oracle_Tracking", "100.0%", "100.00", "0.00", "5,192.86"],
+        ])
+
+    add_heading(doc, "2.3.4. Results Obtained")
+    add_body(doc,
+        "Training: all 3 seeds completed, 168.43 minutes total wall-clock "
+        "(within 1.4% of the pre-training calibration estimate). "
+        "Evaluated on the identical 50-cell grid: 150 rows appended, "
+        "bringing the main-grid registry to exactly 550 rows (11 "
+        "algorithms x 50 cells). Pooled paired-bootstrap comparison "
+        "(n=150, matched training-seed-to-training-seed) against "
+        "TD3_vanilla: TD3_TrackingOnly achieves better profit (+5.0%) and "
+        "satisfaction (+0.4% average, +7.6% worst-case), but worse "
+        "tracking error (+13.0%), transformer overload (+1.75 kWh), and "
+        "battery degradation (+2.6%) — every one of these differences is "
+        "statistically significant (95% CI excludes zero). Against the "
+        "oracle: every TD3 variant (both reward arms, all 6 checkpoints) "
+        "sits farther from the tracking-error bound than the simple Round "
+        "Robin heuristic does, including the arm trained solely to "
+        "minimize tracking error.")
+
+    add_heading(doc, "2.3.5. Interpretation")
+    add_body(doc,
+        "The reward ablation retroactively validates Week 3's reward "
+        "choice rather than merely asserting it: the composite reward "
+        "(tracking + overload + satisfaction penalties) achieves real, if "
+        "modest and seed-dependent, improvements in tracking error AND "
+        "overload avoidance over optimizing tracking alone — the two axes "
+        "it was designed to improve — at a real cost in profit and "
+        "worst-case satisfaction. The cross-cutting finding first observed "
+        "in Week 3 is reinforced, not just repeated: every RL variant "
+        "tested across both weeks tracks the power setpoint worse than the "
+        "simple Round Robin heuristic, and this persists even for the arm "
+        "trained exclusively on tracking error — ruling out reward-shaping "
+        "distraction as the explanation. This is now the single most "
+        "robust finding spanning this project's RL work to date.")
+
+    add_heading(doc, "2.3.6. Limitations Identified")
+    add_bullet(doc, "Both TD3 reward arms show substantial cross-training-seed dispersion (up to 63.8% relative spread on individual metrics) at the declared, reduced 60,000-timestep/seed budget — a real limitation of this project's compute scope, not resolved this week.")
+    add_bullet(doc, "The proposal's declared \"<15% energy error\" success target has not yet been operationalized as a concrete percentage against a specific registry metric — flagged explicitly as an open item for Week 5's final comparison rather than resolved with a guessed formula.")
+    add_bullet(doc, "The physics-informed reward line is closed for this station configuration (simulate_grid=False, PublicPST) — a faithful port remains possible only if Week 6-7's grid-enabled phase provides a real voltage/power-flow signal to adapt.")
+    add_bullet(doc, "Voltage-band compliance (the proposal's third declared success target) remains untested — no voltage data exists until the grid-enabled phase.")
+
+    add_heading(doc, "2.3.7. Next Steps (Week 5)")
+    add_bullet(doc, "The full cross-algorithm comparison (all 11 arms: 2 heuristics, 1 random control, 6 TD3 checkpoints across 2 reward arms, 2 oracle variants) scheduled for Week 5.")
+    add_bullet(doc, "Operationalize the proposal's \"<15% energy error\" target against a specific, named registry metric before the final comparison is written up.")
+    add_bullet(doc, "Carry forward the reward-ablation finding (composite reward beats tracking-only, even on tracking error itself) as a design conclusion for any further RL work in Weeks 6-7.")
+
+
+def build_week4_correction_section(doc):
+    """Same-day acceptance review (2026-08-20), appended AFTER
+    build_week4_section's own 2.3.1-2.3.7 -- not a rewrite of them.
+    2.3.5/2.3.6/2.3.7 above (already saved in the real file before this
+    review) overstated the reward-ablation verdict, understated the
+    RL-vs-Round-Robin gap-to-oracle finding, and listed the energy-error
+    target as still fully open even though a mapping has now been
+    proposed. All three corrected here as a new, clearly-dated subsection,
+    per this project's standing convention: never silently rewrite a
+    prior claim, add a marked correction instead."""
+    add_heading(doc, "2.3.8. Correction (2026-08-20, same-day acceptance review)")
+    add_body(doc,
+        "The results reported in 2.3.4 above are unchanged; three "
+        "interpretive claims in 2.3.5-2.3.7 were reviewed the same day "
+        "and found to be stated more strongly -- or more weakly -- than "
+        "the evidence supports. Corrected here, not rewritten in place.")
+    add_bullet(doc,
+        "2.3.5 called the reward ablation a validation of Week 3's reward "
+        "choice. Corrected: it is a trade-off, not a validation. "
+        "TD3_vanilla wins on tracking error, energy tracking error, "
+        "transformer overload, and battery degradation; TD3_TrackingOnly "
+        "wins on profit and both satisfaction metrics -- two of this "
+        "thesis's three declared objective axes (satisfaction, "
+        "profitability, technical compliance). Neither dominates. The "
+        "counterintuitive direction -- optimizing tracking error alone "
+        "producing a worse realized tracking error -- is recorded as a "
+        "hypothesis (reduced training-budget reward shaping aiding "
+        "credit assignment), not an established mechanism; a longer "
+        "single-seed run would test it and is explicitly out of scope "
+        "this week.")
+    add_bullet(doc,
+        "2.3.5 mentioned the RL-vs-Round-Robin tracking-error gap only in "
+        "passing. Corrected: this is the week's real headline and is "
+        "stated as such. Under a 60,000-timestep CPU training budget, "
+        "reinforcement learning does not beat the simple Round Robin "
+        "heuristic on tracking error, by a wide margin, consistently "
+        "across two reward functions and six independent training seeds "
+        "(Round Robin: 136.3% gap to the tracking-error oracle bound; "
+        "every TD3 checkpoint: 422-612%). Bounded explicitly to this "
+        "training budget, not claimed as a general property of RL vs. "
+        "heuristics. Consequence for Objective 4's recommended-strategy "
+        "question, surfaced now rather than left for Week 6: on current "
+        "evidence the recommendation points toward Round Robin, not an "
+        "RL method -- a legitimate, defensible conclusion this thesis is "
+        "fully able to reach.")
+    add_bullet(doc,
+        "2.3.6/2.3.7 listed the \"<15% energy error\" target as fully "
+        "open. Corrected: a concrete mapping has now been proposed (not "
+        "yet adopted) -- (1 - average_user_satisfaction) x 100, using "
+        "EV2Gym's own per-EV satisfaction ratio against each EV's "
+        "requested (not idealized-max-rate) energy, read from source "
+        "(ev2gym/models/ev.py, ev2gym/utilities/utils.py). Computed for "
+        "every algorithm and arm tested through Week 4: worst observed "
+        "value is 2.57% (TD3_vanilla, cross-check definition), over 5x "
+        "under the 15% threshold -- every arm clears the target "
+        "comfortably under either of two candidate definitions checked "
+        "against each other. Week 5's task is to adopt or revise this "
+        "proposal, not to define one from scratch.")
+
+
 if __name__ == "__main__":
     if not os.path.exists(PROGRESS_LOG_PATH):
         raise FileNotFoundError(
@@ -188,8 +376,15 @@ if __name__ == "__main__":
         )
     doc = Document(PROGRESS_LOG_PATH)
     n_paragraphs_before = len(doc.paragraphs)
-    build_week3_section(doc)
+    # Week 3's section was already appended to the real file on 2026-08-13,
+    # and Week 4's own build_week4_section was already appended earlier
+    # today (2026-08-20) -- the file already contains "2.2. Week 3" and
+    # "2.3. Week 4" headings. Calling either build_weekN_section again here
+    # would duplicate it. Only the same-day correction runs now, as its own
+    # new subsection (2.3.8) -- see build_week4_correction_section's own
+    # docstring for why this is a new subsection, not an in-place edit.
+    build_week4_correction_section(doc)
     doc.save(PROGRESS_LOG_PATH)
-    print(f"Appended Week 3 section to {PROGRESS_LOG_PATH} "
+    print(f"Appended Week 4 correction section to {PROGRESS_LOG_PATH} "
           f"({n_paragraphs_before} paragraphs before -> {len(doc.paragraphs)} after). "
           f"Nothing before paragraph {n_paragraphs_before} was modified.")

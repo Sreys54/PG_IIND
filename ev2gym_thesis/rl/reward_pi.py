@@ -1,8 +1,22 @@
 """
+**This module is retained as negative-result evidence. It is used by no
+training run in this project.** Both reward designs it contains
+(`transformer_capacity_margin_term` and `headroom_penalty_term`) were
+built, verified, and falsified before any training compute was spent on
+either -- see thesis_docs/chapters/04_oracle_and_pitd3.md S4.3 and
+thesis_docs/chapters/00_lab_log.md's 2026-08-19 entries for the full
+mechanism and evidence behind each falsification. Its tests
+(ev2gym_thesis/tests/test_week4.py's TestPIRewardFunction) stay green
+because the functions themselves are correctly implemented and
+well-tested -- what failed was the underlying design idea in each case,
+not the code. No arm named `PI_TD3`/`PI-TD3` exists anywhere in this
+project's registry, training scripts, or figures; Part B's actual trained
+arm is `TD3_TrackingOnly` (scripts/train_td3.py --reward tracking_only),
+a reward ablation unrelated to this module.
+
 Week 4, Entregable 5: a reward-only adaptation of PI-TD3's physics-informed
-PRINCIPLE, not a reproduction of its formulation or algorithm. Named
-`TD3_HeadroomPenalty` (not `PI-TD3`) once the naming decision below is
-settled -- drop-in for env_factory.DEFAULT_REWARD_FN, no
+PRINCIPLE, not a reproduction of its formulation or algorithm. Drop-in for
+env_factory.DEFAULT_REWARD_FN, no
 env_factory.py/config_rl.py/callbacks.py/eval_utils.py change needed to
 wire it in (the Week 3 separation held).
 
@@ -107,7 +121,6 @@ choice, not an oversight.
 """
 from ev2gym.rl_agent.reward import SqTrError_TrPenalty_UserIncentives
 
-# doc:begin pi_physics_margin
 # doc:begin headroom_constants
 # "Set for this project": the horizon over which the transformer's
 # capacity profile is scanned for its minimum, so the term reacts to
@@ -129,12 +142,13 @@ PI_TD3_HORIZON_H = 4
 PI_TD3_PHYSICS_WEIGHT = 50.0
 # doc:end headroom_constants
 
+# doc:begin pi_physics_margin_fraction
 # Kept for the record, not used: the original instantaneous-margin design
 # (design iteration 1), rejected after the Spearman=1.0 finding -- see
 # this module's docstring and thesis_docs/chapters/00_lab_log.md for the
 # full rejected-alternative writeup.
 PI_TD3_CAPACITY_MARGIN_FRACTION = 0.05
-# doc:end pi_physics_margin
+# doc:end pi_physics_margin_fraction
 
 
 def transformer_capacity_margin_term(env) -> float:

@@ -1,0 +1,33 @@
+# Restricted to metrics the oracle variant actually optimizes or that are
+# well-defined for it -- see this script's GAP_METRICS mapping. No gap is
+# reported on total_transformer_overload: a hard constraint in both oracle
+# variants, trivially zero, so a 'gap' there would measure an imposed
+# constraint, not an optimized quantity.
+algorithm,metric,oracle_variant,mean_abs_gap,pct_of_oracle_value,n_cells
+ChargeAsFastAsPossible,tracking_error,Optimal_Oracle_Tracking,46422.34471195722,893.9650909176953,50
+RandomPolicy,tracking_error,Optimal_Oracle_Tracking,31779.046425774693,611.9759418351352,50
+RoundRobin,tracking_error,Optimal_Oracle_Tracking,7080.112190235818,136.34324541606705,50
+TD3_TrackingOnly_ts100,tracking_error,Optimal_Oracle_Tracking,29438.865632763293,566.9105762580831,50
+TD3_TrackingOnly_ts101,tracking_error,Optimal_Oracle_Tracking,25028.406275509213,481.977410456984,50
+TD3_TrackingOnly_ts102,tracking_error,Optimal_Oracle_Tracking,26813.64108143444,516.356061632208,50
+TD3_vanilla_ts100,tracking_error,Optimal_Oracle_Tracking,21907.767891807667,421.88260495508877,50
+TD3_vanilla_ts101,tracking_error,Optimal_Oracle_Tracking,24345.640151262643,468.82923614297977,50
+TD3_vanilla_ts102,tracking_error,Optimal_Oracle_Tracking,25802.79940002646,496.89006565052455,50
+ChargeAsFastAsPossible,average_user_satisfaction,Optimal_Oracle_Balanced,0.0,0.0,50
+RandomPolicy,average_user_satisfaction,Optimal_Oracle_Balanced,0.0,0.0,50
+RoundRobin,average_user_satisfaction,Optimal_Oracle_Balanced,2.9285714285713915e-05,0.0029285714285713915,50
+TD3_TrackingOnly_ts100,average_user_satisfaction,Optimal_Oracle_Balanced,0.008046904761904766,0.8046904761904765,50
+TD3_TrackingOnly_ts101,average_user_satisfaction,Optimal_Oracle_Balanced,0.019951577103255996,1.9951577103255995,50
+TD3_TrackingOnly_ts102,average_user_satisfaction,Optimal_Oracle_Balanced,0.01511535714285714,1.511535714285714,50
+TD3_vanilla_ts100,average_user_satisfaction,Optimal_Oracle_Balanced,0.023971904761904764,2.3971904761904765,50
+TD3_vanilla_ts101,average_user_satisfaction,Optimal_Oracle_Balanced,0.02110324705236311,2.110324705236311,50
+TD3_vanilla_ts102,average_user_satisfaction,Optimal_Oracle_Balanced,0.0092323788230453,0.92323788230453,50
+ChargeAsFastAsPossible,min_energy_user_satisfaction,Optimal_Oracle_Balanced,0.0,0.0,50
+RandomPolicy,min_energy_user_satisfaction,Optimal_Oracle_Balanced,0.0,0.0,50
+RoundRobin,min_energy_user_satisfaction,Optimal_Oracle_Balanced,0.04685714285714283,0.04685714285714283,50
+TD3_TrackingOnly_ts100,min_energy_user_satisfaction,Optimal_Oracle_Balanced,6.949714285714285,6.949714285714285,50
+TD3_TrackingOnly_ts101,min_energy_user_satisfaction,Optimal_Oracle_Balanced,16.60814752376746,16.60814752376746,50
+TD3_TrackingOnly_ts102,min_energy_user_satisfaction,Optimal_Oracle_Balanced,17.182285714285715,17.182285714285715,50
+TD3_vanilla_ts100,min_energy_user_satisfaction,Optimal_Oracle_Balanced,21.74885714285714,21.74885714285714,50
+TD3_vanilla_ts101,min_energy_user_satisfaction,Optimal_Oracle_Balanced,16.19550721138575,16.19550721138575,50
+TD3_vanilla_ts102,min_energy_user_satisfaction,Optimal_Oracle_Balanced,14.507329926396277,14.50732992639628,50

@@ -1,0 +1,19 @@
+# The two oracle variants tie exactly on Gurobi's internal objective but
+# select different actions among tied optima -- this table is the
+# resulting spread in REALIZED (simulator-computed) metrics, i.e. the
+# resolution limit below which a difference between any two algorithms
+# in this thesis should not be reported as meaningful. Gurobi determinism
+# (same cell, same solve, twice) confirmed separately in
+# ev2gym_thesis/tests/test_week4.py's TestOracleDeterminism -- this is
+# genuine tie-break variation between two different objectives, not
+# solver nondeterminism.
+metric,mean_abs_diff,median_abs_diff,max_abs_diff,std_abs_diff,n_cells
+total_ev_served,0.0,0.0,0.0,0.0,50
+total_profits,0.1832955469680393,0.1585187179381098,0.5325418846167054,0.10988577543326347,50
+average_user_satisfaction,0.0,0.0,0.0,0.0,50
+energy_user_satisfaction,0.0,0.0,0.0,0.0,50
+min_energy_user_satisfaction,0.0,0.0,0.0,0.0,50
+total_transformer_overload,0.0,0.0,0.0,0.0,50
+tracking_error,60.93322836977233,64.1211524734722,89.35014312821204,15.354939334398022,50
+energy_tracking_error,0.7765762342119814,0.7931894075848902,1.0474288188601975,0.1304129573349679,50
+battery_degradation,1.0531758995347925e-05,9.725223805277404e-06,2.2871783065510592e-05,4.152574857815405e-06,50

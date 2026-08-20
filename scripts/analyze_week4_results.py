@@ -162,7 +162,13 @@ def analyze_vs_baselines(grid):
                 r = paired_vs(grid, b_algo, t_algo, metric)
                 print(f"  {t_algo:22} vs {b_algo:24} {metric:24} {r['point_estimate']:>10.3f} "
                       f"[{r['ci_low']:>10.3f}, {r['ci_high']:>10.3f}] ({r['unit']}, n={r['n_cells']})")
-                rows.append({"trackingonly_algorithm": t_algo, "baseline_algorithm": b_algo,
+                # Column named `td3_algorithm`, matching Week 3's
+                # rl_vs_baseline_bootstrap.csv exactly (not
+                # `trackingonly_algorithm`) so the two CSVs stack directly
+                # with pandas.concat/csv-append -- no rename needed to
+                # compare a TD3_vanilla row against a TD3_TrackingOnly row
+                # side by side.
+                rows.append({"td3_algorithm": t_algo, "baseline_algorithm": b_algo,
                              "metric": metric, "point_estimate": r["point_estimate"],
                              "ci_low": r["ci_low"], "ci_high": r["ci_high"],
                              "unit": r["unit"], "n_cells": r["n_cells"]})
@@ -273,7 +279,7 @@ def cross_check_against_noise_floor(bootstrap_rows, noise_floor):
         floor = noise_floor[metric]["mean_abs_diff"]
         within_floor = abs(row["point_estimate"]) < floor
         flag = "WITHIN NOISE FLOOR -- not a meaningful difference" if within_floor else "above noise floor"
-        print(f"  {row.get('trackingonly_algorithm', row.get('vanilla_seed', '?'))} {metric}: "
+        print(f"  {row.get('td3_algorithm', row.get('vanilla_seed', '?'))} {metric}: "
               f"point_estimate={row['point_estimate']:.4f}, floor={floor:.4f} -> {flag}")
 
 

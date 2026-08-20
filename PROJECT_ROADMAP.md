@@ -215,7 +215,7 @@ Copy `CLAUDE.md` (separate file) into the repo root.
   Week 5, once the full comparison is assembled) — no tag this week.
 
 ## Week 4 (revised) — Optimal Reference (free solver) [SUPERSEDED 2026-08-18 — Gurobi academic license now active, see the amendment above] + PI-TD3 (Objective 3, part 2)
-- [ ] [SUPERSEDED 2026-08-18, text kept for the record] Implement the offline, perfect-information upper bound designed in
+- [x] [SUPERSEDED 2026-08-18, text kept for the record] Implement the offline, perfect-information upper bound designed in
       Week 3's note, using a free solver (HiGHS via SciPy/PuLP, CVXPY, or
       OR-Tools — no `gurobipy` import anywhere), sized for 8 ports x 96
       steps. **Actually implemented with Gurobi** (`ev2gym/baselines/gurobi_models/tracking_error.py`,
@@ -238,6 +238,16 @@ Copy `CLAUDE.md` (separate file) into the repo root.
       lifts `scripts/check_claims.py`'s "optimal" vocabulary restriction.
       Done: 100 rows (`Optimal_Oracle_Tracking` + `Optimal_Oracle_Balanced`,
       50 cells each).
+- [x] Train and evaluate the `TD3_TrackingOnly` reward-ablation arm (150
+      rows) added in place of the falsified PI-TD3 line — main-grid
+      registry now exactly 550 rows (11 algorithms x 50 cells).
+- **Deliverable:** `thesis_docs/chapters/04_oracle_and_pitd3.md` (S4.8-S4.10
+      filled with real numbers 2026-08-20),
+      `thesis_docs/Week4_Parameter_Method_and_Implementation_Justification.docx`.
+- **Milestone:** intermediate toward `v0.3-algorithms-compared` (tagged in
+      Week 5) — no separate Week 4 tag, per the same convention Week 3 used.
+      Not yet merged to `main`; the user tags/merges manually per `CLAUDE.md`
+      rule 4.
 
 ## Week 5 (revised) — Full Algorithm Comparison (Objective 3, part 3)
 - [ ] Run all algorithms accumulated so far (AFAP, Round Robin, TD3
@@ -304,10 +314,27 @@ a compressed timeline, as long as it's stated explicitly rather than
 implied to match the original papers' scale.
 
 ## Git Discipline Checklist (apply every week)
-- Commit early/often (`feat:`, `fix:`, `exp:`, `docs:` prefixes).
+
+**Corrected 2026-08-20 (standing rule, see `CLAUDE.md` rule 4): this
+checklist's original "commit early/often" line was wrong about who runs
+git commands in this project — kept below for the historical record, not
+followed as written.** Claude Code never runs `git commit`/`git merge`/
+`git tag`/`git push`; the user does all of those manually, working from a
+`git status --short` + proposed commit plan (logical grouping, message per
+commit, `feat:`/`fix:`/`exp:`/`docs:` prefixes) that Claude provides at the
+end of a work session instead of running the commands itself.
+
+- ~~Commit early/often (`feat:`, `fix:`, `exp:`, `docs:` prefixes).~~
+  Propose a commit plan with these prefixes instead; the user commits.
 - `.gitignore` large binaries (`*.pkl`, replay files) — commit summary
-  CSVs + plots only.
-- Merge every `semana-N` branch into `main` at week's end (even solo) —
-  gives you a clean changelog for the reproducibility appendix. Create
-  `semana-(N+1)` from the freshly updated `main`.
-- Tag every milestone above.
+  CSVs + plots only. **Check the allowlist stays current**: a blanket
+  `/results/*` ignore with a stale per-file allowlist has already silently
+  swallowed real analysis output once (Week 4 closeout, `.gitignore`
+  fixed 2026-08-20) — verify new output files with
+  `git check-ignore -v <path>` before assuming "not tracked yet" means
+  "not generated yet."
+- ~~Merge every `semana-N` branch into `main` at week's end (even solo)~~ —
+  the user merges/tags manually once they confirm a week's checklist is
+  done; Claude does not merge or create the next `semana-(N+1)` branch
+  itself.
+- ~~Tag every milestone above.~~ The user tags milestones.

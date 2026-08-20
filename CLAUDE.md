@@ -117,12 +117,24 @@ only the "already in repo" assumption was wrong):
    total_reward, saved_grid_energy, voltage_violation,
    voltage_violation_counter, voltage_violation_counter_per_step,
    action_mask`.
-4. **Git discipline:** work on the `semana-N` branch matching the current
-   week (e.g. `semana-1`, `semana-2`, ... `semana-8` — no `dev` branch, no
-   `feature/*` naming, working solo). Commit incrementally on that branch.
-   Merge to `main` only when I confirm the week's checklist is done, then
-   create the next `semana-N` branch from the updated `main`. Do not merge
-   to `main` without my explicit confirmation — I tag milestones manually.
+4. **Git discipline, corrected 2026-08-20 (standing rule, supersedes
+   anything below or in any earlier week's brief that says otherwise):
+   Claude Code never runs `git commit`, `git merge`, `git tag`, or
+   `git push`.** The user does all of those manually. Work on the
+   `semana-N` branch matching the current week (e.g. `semana-1`,
+   `semana-2`, ... `semana-8` — no `dev` branch, no `feature/*` naming,
+   working solo) and leave the working tree in a state the user can review
+   and commit themselves. When a chunk of work is done, provide `git status
+   --short` plus a **proposed commit plan** (how to split the work into
+   logical commits, with the message for each, English,
+   `feat:`/`fix:`/`exp:`/`docs:` prefixes) — the user runs the actual
+   commands. Also flag anything that should be `.gitignore`d and isn't
+   (model checkpoints, replay files, Gurobi `.log`/`.lp`/`.mps` dumps), and
+   anything that IS gitignored but shouldn't be (a stale or overly broad
+   pattern silently swallowing real deliverables — check with
+   `git check-ignore -v` before assuming a missing file is simply "not
+   generated yet"). The user tags milestones and merges to `main`
+   themselves once they confirm a week's checklist is done.
 5. **When a task is ambiguous** (e.g. "which real station do we model"),
    propose a concrete, clearly-labeled assumption and proceed — don't block
    on it — but always write the assumption down in the relevant
@@ -246,9 +258,21 @@ state:
   Fixed on `semana-3` (commit `88c767e`, "Fix Week 3 evaluation-scenario
   bug..."), re-evaluated, `Week3_...docx` regenerated with a correction
   section. `main`/`semana-3`/`semana-4` all point to that commit.
-- **Active phase: Week 4 — perfect-information oracle (done) + a falsified
-  PI-TD3 adaptation attempt (done, reported as a finding) + a
-  `TD3_TrackingOnly` reward-ablation arm (in progress).** Active branch:
+- **Correction, 2026-08-20: Week 4 is CLOSED, not "in progress."** All 14
+  Entregables from the closeout brief are done: oracle (both variants),
+  falsified PI-TD3 adaptation (reported as a finding), `TD3_TrackingOnly`
+  reward ablation trained (3 seeds, 168.43 min total) and evaluated (150
+  rows), analysis (`scripts/analyze_week4_results.py`, 5 CSVs), figures
+  (all 11 incl. new f10/f11, 2 real bugs found by visual QA and fixed —
+  see `00_lab_log.md`'s 2026-08-20 entry), tests (16/16 passing, incl.
+  `TestRegistryCount` confirming the main-grid registry is exactly 550
+  rows = 11 algorithms x 50 cells), chapter S4.8-S4.10 filled with real
+  numbers, both hand-back documents generated
+  (`Week4_Parameter_Method_and_Implementation_Justification.docx` and the
+  external `Progress_Log_Thesis_Project.docx`'s new "2.3. Week 4" section).
+  **Per explicit user instruction, no commits/merges/tags were made by
+  Claude for this work** — everything above is uncommitted on `semana-4`,
+  left for the user to review and commit/push themselves. Active branch:
   `semana-4`, branched from the corrected `semana-3`/`main` tip.
 - The oracle (`Optimal_Oracle_Tracking` + `Optimal_Oracle_Balanced`,
   50 cells each, `ev2gym_thesis/oracle/`) is complete and verified.
@@ -257,10 +281,16 @@ state:
   (see `thesis_docs/chapters/04_oracle_and_pitd3.md` S4.3 for the full
   mechanism). Part B's actual second training arm is `TD3_TrackingOnly` (a
   reward ablation vs. Week 3's `SqTrError_TrPenalty_UserIncentives`
-  choice). A faithful PI-TD3 port is a conditional stretch goal for Week 6
-  (`PROJECT_ROADMAP.md`'s Week 6 entry), not a commitment.
+  choice) — retroactively validates that choice: the composite reward
+  beats tracking-only on tracking error itself, not just overload/
+  satisfaction. A faithful PI-TD3 port is a conditional stretch goal for
+  Week 6 (`PROJECT_ROADMAP.md`'s Week 6 entry), not a commitment.
+- **Open item carried into Week 5, not resolved this week:** the
+  proposal's "<15% energy error" success target has no operationalized
+  definition against a specific registry metric yet — flag before the
+  final comparison is written up.
 - Full session account in `thesis_docs/chapters/00_lab_log.md`'s
-  2026-08-18/19 entries.
+  2026-08-18/19/20 entries.
 
 ## Useful Commands (reference, don't re-derive these each time)
 

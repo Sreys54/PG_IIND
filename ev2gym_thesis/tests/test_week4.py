@@ -214,6 +214,47 @@ class TestOracleBoundTripwire(unittest.TestCase):
 
 
 @unittest.skipUnless(os.path.exists("results/master_results.csv"), "registry not present")
+class TestRegistryCount(unittest.TestCase):
+    """Entregable 7's registry count check, pinned as a test: the arm set
+    for station_v0_bogota is AFAP, Round Robin, 3x TD3_vanilla,
+    RandomPolicy, Optimal_Oracle_Tracking, Optimal_Oracle_Balanced, 3x
+    TD3_TrackingOnly -- 11 arms x 50 cells = 550 rows. Computed from the
+    actual registry, not trusted from arithmetic alone -- same pattern as
+    Week 3's 300-row check."""
+
+    EXPECTED_ARMS = {
+        "ChargeAsFastAsPossible", "RoundRobin",
+        "TD3_vanilla_ts100", "TD3_vanilla_ts101", "TD3_vanilla_ts102",
+        "RandomPolicy",
+        "Optimal_Oracle_Tracking", "Optimal_Oracle_Balanced",
+        "TD3_TrackingOnly_ts100", "TD3_TrackingOnly_ts101", "TD3_TrackingOnly_ts102",
+    }
+
+    def test_station_v0_bogota_has_550_main_grid_rows(self):
+        from ev2gym_thesis.registry_analysis import load_registry, main_grid_rows
+
+        rows = load_registry()
+        grid = main_grid_rows(rows, "station_v0_bogota")
+
+        present_arms = {r["algorithm"] for r in grid}
+        self.assertEqual(
+            present_arms, self.EXPECTED_ARMS,
+            f"Arm set mismatch. Missing: {self.EXPECTED_ARMS - present_arms}, "
+            f"unexpected: {present_arms - self.EXPECTED_ARMS}"
+        )
+
+        expected_count = len(self.EXPECTED_ARMS) * 50  # 11 arms x 50 cells
+        self.assertEqual(
+            len(grid), expected_count,
+            f"Expected {expected_count} rows ({len(self.EXPECTED_ARMS)} arms x 50 cells), got {len(grid)}."
+        )
+
+        for algo in self.EXPECTED_ARMS:
+            n = sum(1 for r in grid if r["algorithm"] == algo)
+            self.assertEqual(n, 50, f"{algo} has {n} rows, expected 50.")
+
+
+@unittest.skipUnless(os.path.exists("results/master_results.csv"), "registry not present")
 class TestTotalRewardComparabilityGuardrail(unittest.TestCase):
     """Entregable 10 item 5: assert_total_reward_comparable's behavior on
     the three cases the Week 4 brief names -- pinned on the real registry

@@ -180,8 +180,16 @@ def make_f02_metrics_bars(rows):
             ax.text(0.02, 0.98, "total energy\nrequested (bound)", transform=ax.transAxes,
                     fontsize=6, va="top")
 
+    # Week 4 bug, caught by this figure's own visual QA pass (Entregable 9):
+    # len(grid)//len(algos) divided ALL grid rows (including the 100 oracle
+    # rows, excluded from `algos` but still counted in `grid`) by only the
+    # plotted algorithm count, printing "n=61" instead of the true 50 -- a
+    # silent regression the moment a figure started excluding some algorithms
+    # from the plot while `grid` kept every row. Fixed by counting only rows
+    # for algorithms actually plotted.
+    n_per_algo = sum(1 for r in grid if r["algorithm"] in algos) // max(len(algos), 1)
     fig.suptitle(f"{REFERENCE_CONFIG}: metrics across the 5-seed x 10-day evaluation grid, "
-                 f"mean +/- 95% CI (n={len(grid)//max(len(algos),1)} per algorithm)", fontsize=10)
+                 f"mean +/- 95% CI (n={n_per_algo} per algorithm)", fontsize=10)
     fig.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, "f02_metrics_bars")
     write_caption(
@@ -289,9 +297,12 @@ def make_f04_distributions(rows):
     for label in ax.get_xticklabels():
         label.set_ha("right")
 
+    # Same n-count fix as f02 (Week 4, Entregable 9 visual QA) -- count only
+    # rows for algorithms actually plotted, not every row in `grid`.
+    n_per_algo = sum(1 for r in grid if r["algorithm"] in algos) // max(len(algos), 1)
     ax.set_ylabel(METRIC_LABELS[HEADLINE_METRIC])
     ax.set_title(f"{REFERENCE_CONFIG}: {METRIC_LABELS[HEADLINE_METRIC]} distribution\n"
-                 f"across all {len(grid)//max(len(algos),1)} runs per algorithm (5 seeds x 10 days)", fontsize=10)
+                 f"across all {n_per_algo} runs per algorithm (5 seeds x 10 days)", fontsize=10)
     fig.tight_layout()
     _save(fig, "f04_distributions")
     write_caption(
@@ -381,7 +392,21 @@ def make_f05_vs_baseline(rows):
     # with more algorithms leaves an ever-growing absolute blank margin;
     # also caught by visual QA.
     top_margin_in, bottom_margin_in = 0.7, 0.6
-    fig.subplots_adjust(left=0.42, right=0.95,
+    # Week 4 bug, caught by this figure's own visual QA pass (Entregable 9):
+    # `left` was ALSO a fixed fraction (0.42) of a fixed 10in-wide figure --
+    # sized for Week 3's longest label ("... (TD3 (seed 100))"). Week 4's
+    # "TD3-TrackingOnly (seed 10X)" labels are longer and no longer fit in
+    # that same fixed margin, clipping the first few characters off the left
+    # edge of the saved PNG. Fixed the same way the top/bottom margins were
+    # fixed in Week 3: measure the actual rendered label width and convert
+    # to a fraction of THIS figure's width, instead of assuming a constant.
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    max_label_width_in = max(
+        lbl.get_window_extent(renderer=renderer).width for lbl in ax.get_yticklabels()
+    ) / fig.dpi
+    left_margin_in = max_label_width_in + 0.15
+    fig.subplots_adjust(left=left_margin_in / fig.get_figwidth(), right=0.95,
                          top=1 - top_margin_in / fig_height,
                          bottom=bottom_margin_in / fig_height)
     _save(fig, "f05_vs_baseline")
@@ -512,7 +537,18 @@ def make_f07_metric_heatmap(rows):
                  "(green = better within column, accounting for metric direction)", fontsize=10)
     cbar = fig.colorbar(im, ax=ax, fraction=0.06, pad=0.03)
     cbar.set_label("green = better\n(column-normalized, not absolute)", fontsize=8)
-    fig.subplots_adjust(left=0.15, right=0.88, bottom=0.32, top=0.82)
+    # Week 4 bug, caught by this figure's own visual QA pass (Entregable 9):
+    # `left=0.15` was a fixed fraction sized for Week 3's longest row label
+    # ("TD3 (seed 100)"). Week 4's "TD3-TrackingOnly (seed 10X)" labels are
+    # longer and got clipped at the left edge ("...ckingOnly (seed 100)").
+    # Same fix as f05_vs_baseline: measure the actual rendered label width.
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    max_label_width_in = max(
+        lbl.get_window_extent(renderer=renderer).width for lbl in ax.get_yticklabels()
+    ) / fig.dpi
+    left_margin_in = max_label_width_in + 0.15
+    fig.subplots_adjust(left=left_margin_in / fig.get_figwidth(), right=0.88, bottom=0.32, top=0.82)
     _save(fig, "f07_metric_heatmap")
     write_caption(
         "f07_metric_heatmap",
@@ -723,6 +759,218 @@ def make_f09_degradation_by_ambient():
     )
 
 
+# ---------------------------------------------------------------------------
+# f10_optimality_gap (Week 4): reads results/optimality_gap.csv and
+# results/oracle_tiebreak_noise_floor.csv, both produced by
+# scripts/analyze_week4_results.py -- NOT the main registry directly, same
+# "figure reads its own analysis output" pattern as f09.
+# ---------------------------------------------------------------------------
+OPTIMALITY_GAP_PATH = "results/optimality_gap.csv"
+NOISE_FLOOR_PATH = "results/oracle_tiebreak_noise_floor.csv"
+GAP_METRIC_LABELS = {
+    "tracking_error": "Tracking error (gap vs. Optimal_Oracle_Tracking)",
+    "average_user_satisfaction": "Avg. satisfaction (gap vs. Optimal_Oracle_Balanced)",
+    "min_energy_user_satisfaction": "Min. energy satisfaction (gap vs. Optimal_Oracle_Balanced)",
+}
+
+
+def make_f10_optimality_gap():
+    if not os.path.exists(OPTIMALITY_GAP_PATH) or not os.path.exists(NOISE_FLOOR_PATH):
+        print(f"f10: {OPTIMALITY_GAP_PATH} or {NOISE_FLOOR_PATH} not found -- run "
+              f"scripts/analyze_week4_results.py first. Skipping.")
+        return
+
+    # Both CSVs are written by analyze_week4_results.py with leading `#`
+    # explanatory comment lines before the real header row -- csv.DictReader
+    # would otherwise parse a comment line as the header (every field then
+    # keyed under one bogus column name). Filter those out before parsing,
+    # not after: filtering dict keys post-hoc can't fix a header that was
+    # never correctly identified in the first place.
+    with open(OPTIMALITY_GAP_PATH, newline="") as f:
+        gap_rows = list(csv.DictReader(line for line in f if not line.startswith("#")))
+    with open(NOISE_FLOOR_PATH, newline="") as f:
+        floor_rows = {r["metric"]: r for r in csv.DictReader(line for line in f if not line.startswith("#"))}
+
+    metrics = sorted({r["metric"] for r in gap_rows}, key=lambda m: list(GAP_METRIC_LABELS).index(m))
+    fig, axes = plt.subplots(1, len(metrics), figsize=(6 * len(metrics), 4.5))
+    if len(metrics) == 1:
+        axes = [axes]
+
+    for ax, metric in zip(axes, metrics):
+        rows_for_metric = [r for r in gap_rows if r["metric"] == metric]
+        algos = sorted({r["algorithm"] for r in rows_for_metric}, key=lambda a: ALGO_ORDER.index(a) if a in ALGO_ORDER else 999)
+        gaps = [float(next(r for r in rows_for_metric if r["algorithm"] == a)["mean_abs_gap"]) for a in algos]
+        colors = [style_for(a)["color"] for a in algos]
+        labels = [style_for(a)["label"] for a in algos]
+        x = np.arange(len(algos))
+        ax.bar(x, gaps, color=colors)
+        floor = float(floor_rows[metric]["mean_abs_diff"]) if metric in floor_rows else 0.0
+        ax.axhspan(0, floor, color="gray", alpha=0.25, label="tie-break noise floor")
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, fontsize=7, rotation=35, ha="right")
+        ax.set_title(GAP_METRIC_LABELS.get(metric, metric), fontsize=9)
+        ax.set_ylabel("Mean absolute gap to oracle")
+        ax.legend(fontsize=7)
+
+    fig.suptitle(f"{REFERENCE_CONFIG}: online-algorithm gap to the oracle\n"
+                 "(shaded band = tie-break noise floor -- a gap inside it is not a meaningful difference)", fontsize=10)
+    fig.tight_layout(rect=[0, 0, 1, 0.90])
+    _save(fig, "f10_optimality_gap")
+    write_caption(
+        "f10_optimality_gap",
+        what_it_shows=(
+            "Mean absolute gap between each online algorithm and the corresponding "
+            "oracle variant, restricted to metrics that oracle actually optimizes "
+            "(tracking_error vs. Optimal_Oracle_Tracking; satisfaction metrics vs. "
+            "Optimal_Oracle_Balanced) -- no panel for total_transformer_overload, a "
+            "hard constraint in both oracle variants and trivially zero. The shaded "
+            "gray band is the tie-break noise floor (results/oracle_tiebreak_noise_floor.csv): "
+            "the spread between the two oracle variants' own degenerate optima on the "
+            "same metric -- any online-algorithm gap smaller than this band is within "
+            "measurement resolution, not a meaningful difference."
+        ),
+        n_runs=len(gap_rows),
+        configs=[REFERENCE_CONFIG],
+        algorithms=[],
+        extra="Source: results/optimality_gap.csv + results/oracle_tiebreak_noise_floor.csv (scripts/analyze_week4_results.py), not the main registry directly.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# f11_physics_term_falsification (Week 4): the negative-result evidence as
+# a figure, not just a table (thesis_docs/chapters/04_oracle_and_pitd3.md
+# S4.3). Regenerates its own data live from reward_pi.py's real functions
+# (not hand-transcribed numbers) -- same "generated, never hand-written"
+# discipline as write_caption.
+# ---------------------------------------------------------------------------
+def make_f11_physics_term_falsification():
+    try:
+        from scipy.stats import spearmanr
+    except ImportError:
+        print("f11: scipy not available, skipping.")
+        return
+
+    from ev2gym.rl_agent.reward import SqTrError_TrPenalty_UserIncentives
+    from ev2gym.baselines.heuristics import ChargeAsFastAsPossible, RoundRobin
+    from ev2gym_thesis.rl.env_factory import make_env
+    from ev2gym_thesis.rl.reward_pi import transformer_capacity_margin_term, headroom_penalty_term
+
+    reference_config_path = "experiments/phase1_baseline/configs/station_v0_bogota.yaml"
+    day, seed = REFERENCE_DAY, REFERENCE_SEED
+
+    # --- Design 1: instantaneous margin, weight sweep (Pearson falls, Spearman pinned at 1.0) ---
+    def run_episode_capture(agent_ctor, physics_term_fn):
+        env = make_env(reference_config_path, day, seed)
+        agent = agent_ctor(env)
+        vanilla_s, physics_s = [], []
+
+        def wrapper(env_, total_costs, user_satisfaction_list, *args):
+            v = SqTrError_TrPenalty_UserIncentives(env_, total_costs, user_satisfaction_list, *args)
+            p = physics_term_fn(env_)
+            vanilla_s.append(v)
+            physics_s.append(p)
+            return v
+
+        env.reward_function = wrapper
+        for t in range(env.simulation_length):
+            actions = agent.get_action(env)
+            _, _, done, _, _ = env.step(actions)
+            if done:
+                break
+        return np.array(vanilla_s), np.array(physics_s)
+
+    vanilla, physics_raw_1 = run_episode_capture(lambda e: ChargeAsFastAsPossible(), transformer_capacity_margin_term)
+    weights = [20, 100, 300, 1000, 2000]
+    pearsons, spearmans = [], []
+    for w in weights:
+        pi = vanilla + w * physics_raw_1
+        pearsons.append(np.corrcoef(vanilla, pi)[0, 1])
+        rho, _ = spearmanr(vanilla, pi)
+        spearmans.append(rho)
+
+    # --- Design 2: headroom term, AFAP vs. Round Robin asymmetry + SoC correlation ---
+    def run_episode_soc(agent_ctor):
+        env = make_env(reference_config_path, day, seed)
+        agent = agent_ctor(env)
+        headroom_s, soc_s = [], []
+
+        def wrapper(env_, total_costs, user_satisfaction_list, *args):
+            h = headroom_penalty_term(env_)
+            socs = [ev.get_soc() for cs in env_.charging_stations for ev in cs.evs_connected if ev is not None]
+            headroom_s.append(h)
+            soc_s.append(float(np.mean(socs)) if socs else np.nan)
+            return SqTrError_TrPenalty_UserIncentives(env_, total_costs, user_satisfaction_list, *args)
+
+        env.reward_function = wrapper
+        for t in range(env.simulation_length):
+            actions = agent.get_action(env)
+            _, _, done, _, _ = env.step(actions)
+            if done:
+                break
+        return np.array(headroom_s), np.array(soc_s)
+
+    headroom_afap, soc_afap = run_episode_soc(lambda e: ChargeAsFastAsPossible())
+    headroom_rr, soc_rr = run_episode_soc(lambda e: RoundRobin(e))
+    valid_afap = ~np.isnan(soc_afap)
+    valid_rr = ~np.isnan(soc_rr)
+    corr_afap = np.corrcoef(headroom_afap[valid_afap], soc_afap[valid_afap])[0, 1]
+    corr_rr = np.corrcoef(headroom_rr[valid_rr], soc_rr[valid_rr])[0, 1]
+
+    # --- Plot: 3 panels ---
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.5))
+
+    ax = axes[0]
+    ax.plot(weights, pearsons, "o-", color="#d62728", label="Pearson")
+    ax.plot(weights, spearmans, "s-", color="#1f77b4", label="Spearman")
+    ax.set_xscale("log")
+    ax.set_ylim(0.9, 1.02)
+    ax.set_xlabel("Physics-term weight (log scale)")
+    ax.set_ylabel("Correlation with vanilla reward")
+    ax.set_title("Design 1: instantaneous margin\n(Spearman pinned at 1.0 -- no weight escapes it)", fontsize=9)
+    ax.legend(fontsize=8)
+
+    ax = axes[1]
+    counts = [int((headroom_afap < 0).sum()), int((headroom_rr < 0).sum())]
+    ax.bar(["AFAP", "Round Robin"], counts, color=[style_for("ChargeAsFastAsPossible")["color"], style_for("RoundRobin")["color"]])
+    ax.set_ylabel("Steps with headroom penalty active (/96)")
+    ax.set_title("Design 2: Round Robin penalized far\nmore often than AFAP", fontsize=9)
+
+    ax = axes[2]
+    ax.scatter(soc_afap[valid_afap], headroom_afap[valid_afap], color=style_for("ChargeAsFastAsPossible")["color"],
+               label=f"AFAP (r={corr_afap:.2f})", alpha=0.6, s=15)
+    ax.scatter(soc_rr[valid_rr], headroom_rr[valid_rr], color=style_for("RoundRobin")["color"],
+               label=f"Round Robin (r={corr_rr:.2f})", alpha=0.6, s=15)
+    ax.set_xlabel("Mean connected-fleet SoC")
+    ax.set_ylabel("Headroom penalty term")
+    ax.set_title("Design 2: charging up REDUCES the\npenalty (positive correlation)", fontsize=9)
+    ax.legend(fontsize=8)
+
+    fig.suptitle("Falsification evidence: two physics-informed reward designs, two failure mechanisms\n"
+                 "(station_v0_bogota, reference cell 2022-01-17 seed 0)", fontsize=10)
+    fig.tight_layout(rect=[0, 0, 1, 0.90])
+    _save(fig, "f11_physics_term_falsification")
+    write_caption(
+        "f11_physics_term_falsification",
+        what_it_shows=(
+            "Left: Design 1's weight sweep -- Pearson correlation with the vanilla "
+            "reward falls as weight increases, but Spearman rank correlation stays "
+            "pinned at 1.0 at every weight (both terms are monotonic functions of the "
+            "same instantaneous scalar). Middle: Design 2's control-responsiveness "
+            "asymmetry -- Round Robin (which nearly eliminates overload) triggers the "
+            "headroom penalty far more often than AFAP (which overloads routinely). "
+            "Right: Design 2's SoC-gradient problem -- the headroom penalty term "
+            "correlates POSITIVELY with mean fleet SoC for both policies, meaning "
+            "charging faster/more completely reduces the penalty, rewarding AFAP-like "
+            "aggression. All data regenerated live from ev2gym_thesis/rl/reward_pi.py's "
+            "actual functions on one real episode, not hand-transcribed."
+        ),
+        n_runs=1,
+        configs=[REFERENCE_CONFIG],
+        algorithms=["ChargeAsFastAsPossible", "RoundRobin"],
+        extra="Full numeric account in thesis_docs/chapters/00_lab_log.md's 2026-08-19 falsification entry.",
+    )
+
+
 def _save(fig, name):
     os.makedirs(FIGURES_DIR, exist_ok=True)
     fig.savefig(f"{FIGURES_DIR}/{name}.png", dpi=300)
@@ -744,5 +992,7 @@ if __name__ == "__main__":
     make_f07_metric_heatmap(rows)
     make_f08_learning_curves(rows)
     make_f09_degradation_by_ambient()
+    make_f10_optimality_gap()
+    make_f11_physics_term_falsification()
 
     print("\nAll figures regenerated.")

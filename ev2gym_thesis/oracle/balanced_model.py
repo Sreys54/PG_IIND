@@ -225,6 +225,7 @@ class PowerTrackingErrorMinBalanced:
                             for i in range(self.n_cs) for t in range(self.sim_length)),
                            name='ev_power_mode_2')
 
+        # doc:begin balanced_oracle_satisfaction_term
         # NEW vs. tracking_error.py: departure-satisfaction penalty
         # constraint, dimensionally-corrected form -- see module docstring.
         for t in range(self.sim_length):
@@ -240,6 +241,7 @@ class PowerTrackingErrorMinBalanced:
         # penalty; this model has no profit term to maximize).
         self.m.setObjective(power_error.sum() + satisfaction_weight * user_satisfaction.sum(),
                              GRB.MINIMIZE)
+        # doc:end balanced_oracle_satisfaction_term
 
         self.m.params.NonConvex = 2
         self.m.optimize()
