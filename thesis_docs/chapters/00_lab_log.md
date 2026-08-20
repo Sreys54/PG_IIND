@@ -1,5 +1,36 @@
 # Lab Log
 
+## 2026-08-19 — Week 4, Entregable 6: `TD3_TrackingOnly` throughput measured, Gate 3 re-confirmed, training launched
+
+**`scripts/train_td3.py`/`scripts/calibrate_td3_timing.py` gained
+`--reward {vanilla,tracking_only}`** (same one-script, not-a-fork pattern
+as `evaluate_oracle.py --variant`). `TestControlledComparisonInvariant`
+(`ev2gym_thesis/tests/test_week4.py`) updated to exercise the actual Part
+B arm; 10/10 passing.
+
+**Throughput measured, not carried over:** `SquaredTrackingErrorReward`
+-- 17.56 steps/s (5,000 timesteps, 284.8s, train_seed=100, 53 episodes),
+vs. Week 3 vanilla's 18.09 steps/s -- a ~2.9% *slowdown*, not the speedup
+one might guess for a simpler reward (the per-step cost is almost
+entirely environment/day-reconstruction overhead, not reward-function
+evaluation, so a shorter reward formula barely moves the number). At
+60,000 timesteps/seed: 57.0 min/seed, **170.9 min (2.85h) for 3 seeds** --
++3% vs. Week 3's 165.9 min estimate / 167.6 min actual for vanilla, well
+under the ~15% re-confirmation threshold. Gate 3 (60,000 x 3 seeds,
+already confirmed 2026-08-19) stands; training launched without asking
+again, per that threshold.
+
+**Process correction applied:** launched via the harness's own background-
+task tracking this time (`run_in_background: true`), not a bare `&` --
+the earlier balanced-oracle run's mistake (2026-08-19 entry above) is not
+repeated. Checkpointing (`CheckpointCallback`, `save_vecnormalize=True`)
+and the incrementally-flushed `learning_curve.csv`
+(`elapsed_wall_clock_s` column, written every `LEARNING_CURVE_LOG_FREQ_STEPS`)
+were already in place from Week 3's infrastructure -- satisfy the
+resumability/progress-visibility requirement without new code; monitored
+via the CSV's growing row count during the run, same method already used
+for the oracle grid runs.
+
 ## 2026-08-19 — Week 4: PI-TD3 falsified by two independent reward-only designs, pivoted to `TD3_TrackingOnly`
 
 **Before training, not after: the "does reward_pi actually differ from
