@@ -27,9 +27,26 @@ ALGORITHM_STYLE = {
     "TD3_vanilla_ts101": {"color": "#5fd35f", "marker": "v", "label": "TD3 (seed 101)"},
     "TD3_vanilla_ts102": {"color": "#1b6b1b", "marker": "D", "label": "TD3 (seed 102)"},
     "RandomPolicy": {"color": "#7f7f7f", "marker": "x", "label": "Random (control)"},
-    # Append new algorithms here as they're added (PI-TD3, optimal
-    # reference, ...) -- never reassign an existing entry's color/marker
-    # once a figure has used it.
+    # Week 4 additions (append only). TD3_TrackingOnly: a distinct hue
+    # family (purple) from TD3_vanilla's greens -- same algorithm-family
+    # visual grouping convention (hue = family, marker = seed) Week 3
+    # established. PI-TD3 was falsified before training (see
+    # thesis_docs/chapters/04_oracle_and_pitd3.md S4.3) and never got an
+    # entry here -- no arm named PI_TD3 exists to style.
+    "TD3_TrackingOnly_ts100": {"color": "#9467bd", "marker": "^", "label": "TD3-TrackingOnly (seed 100)"},
+    "TD3_TrackingOnly_ts101": {"color": "#c5b0d5", "marker": "v", "label": "TD3-TrackingOnly (seed 101)"},
+    "TD3_TrackingOnly_ts102": {"color": "#5b2c86", "marker": "D", "label": "TD3-TrackingOnly (seed 102)"},
+    # Oracles: bounds, not competitors (thesis_docs/chapters/04_oracle_and_pitd3.md
+    # S4.1) -- black/near-black, dashed, and (where a figure supports it)
+    # excluded from competitive comparison visuals (bars/boxplots/pareto/
+    # heatmap) in favor of a reference line/band in dedicated figures
+    # (f10_optimality_gap). "linestyle" is a new style key, consumed only
+    # where a figure draws lines (f01/f08/f10) -- ALGORITHM_STYLE entries
+    # without it default to a solid line via style_for's callers.
+    "Optimal_Oracle_Tracking": {"color": "#000000", "marker": "*", "label": "Oracle (tracking-only)", "linestyle": "--"},
+    "Optimal_Oracle_Balanced": {"color": "#525252", "marker": "P", "label": "Oracle (balanced)", "linestyle": "--"},
+    # Append new algorithms here as they're added -- never reassign an
+    # existing entry's color/marker once a figure has used it.
 }
 # doc:end algorithm_style
 

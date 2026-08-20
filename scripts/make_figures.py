@@ -50,9 +50,20 @@ HEADLINE_METRIC = "total_transformer_overload"  # the Week 1 headline finding
 
 ALGO_ORDER = list(ALGORITHM_STYLE.keys())
 
+# Week 4: the oracle is a bound, not a competitor
+# (thesis_docs/chapters/04_oracle_and_pitd3.md S4.1) -- excluded from the
+# comparative visuals below (bars/boxplot/pareto/heatmap), where mixing a
+# perfect-information ceiling in as a peer row would invite exactly the
+# misreading S4.1 warns against. It gets its own reference line/band in
+# f10_optimality_gap instead, and still appears normally in f01 (a real
+# power-dispatch curve, drawn dashed via ALGORITHM_STYLE's "linestyle").
+ORACLE_ALGORITHMS = {"Optimal_Oracle_Tracking", "Optimal_Oracle_Balanced"}
 
-def _algos_present(rows):
+
+def _algos_present(rows, exclude_oracle: bool = False):
     present = {r["algorithm"] for r in rows}
+    if exclude_oracle:
+        present -= ORACLE_ALGORITHMS
     return [a for a in ALGO_ORDER if a in present]
 
 
@@ -82,7 +93,8 @@ def make_f01_power_profile(rows):
         n_steps = len(power)
         t_hours = 5 + np.arange(n_steps) * 15 / 60.0  # config: hour=5, timescale=15min
         sty = style_for(algo)
-        ax.plot(t_hours, power, color=sty["color"], marker=None, label=sty["label"], linewidth=1.5)
+        ax.plot(t_hours, power, color=sty["color"], marker=None, label=sty["label"], linewidth=1.5,
+                linestyle=sty.get("linestyle", "-"))
         ax.fill_between(t_hours, power, transformer_kw, where=(power > transformer_kw),
                          color=sty["color"], alpha=0.25, interpolate=True)
 
@@ -139,7 +151,7 @@ def _reference_day_energy_requested(algo_cls=ChargeAsFastAsPossible, seed=REFERE
 
 def make_f02_metrics_bars(rows):
     grid = main_grid_rows(rows, REFERENCE_CONFIG)
-    algos = _algos_present(grid)
+    algos = _algos_present(grid, exclude_oracle=True)
 
     fig, axes = plt.subplots(1, len(METRICS_FOR_BARS), figsize=(4 * len(METRICS_FOR_BARS), 4.2))
     energy_requested = _reference_day_energy_requested()
@@ -193,7 +205,7 @@ def make_f02_metrics_bars(rows):
 # ---------------------------------------------------------------------------
 def make_f03_tradeoff_pareto(rows):
     grid = main_grid_rows(rows, REFERENCE_CONFIG)
-    algos = _algos_present(grid)
+    algos = _algos_present(grid, exclude_oracle=True)
 
     points = {}
     for algo in algos:
@@ -259,7 +271,7 @@ def make_f03_tradeoff_pareto(rows):
 # ---------------------------------------------------------------------------
 def make_f04_distributions(rows):
     grid = main_grid_rows(rows, REFERENCE_CONFIG)
-    algos = _algos_present(grid)
+    algos = _algos_present(grid, exclude_oracle=True)
 
     # Week 3: figure width now scales with algorithm count (was a fixed 6in
     # -- fine for 2 algorithms, cramped and label-overlapping once RL added
@@ -300,7 +312,10 @@ def make_f04_distributions(rows):
 # ---------------------------------------------------------------------------
 def make_f05_vs_baseline(rows):
     grid = main_grid_rows(rows, REFERENCE_CONFIG)
-    algos = _algos_present(grid)
+    # Oracle excluded: it isn't a "paired change vs. AFAP" competitor claim
+    # this figure is designed to make (thesis_docs/chapters/04_oracle_and_pitd3.md
+    # S4.1) -- its distance from every online algorithm is f10's job instead.
+    algos = _algos_present(grid, exclude_oracle=True)
     if "ChargeAsFastAsPossible" not in algos:
         print("f05: no AFAP rows found, skipping (AFAP is the baseline).")
         return
@@ -463,7 +478,7 @@ LOWER_IS_BETTER = {"total_transformer_overload"}
 
 def make_f07_metric_heatmap(rows):
     grid = main_grid_rows(rows, REFERENCE_CONFIG)
-    algos = _algos_present(grid)
+    algos = _algos_present(grid, exclude_oracle=True)
 
     for metric in METRICS_FOR_BARS:
         assert_total_reward_comparable(grid, metric)
@@ -520,10 +535,30 @@ def make_f07_metric_heatmap(rows):
 # f08_learning_curves (activated Week 3: reads each training run's own
 # learning_curve.csv -- like f09 reads its own separate source file, this
 # is NOT registry data; the registry has no reward-vs-timesteps time series
-# column, only per-run final stats)
+# column, only per-run final stats). Extended Week 4: TD3_TrackingOnly gets
+# its own panel, not a shared axis with vanilla -- the two arms train under
+# DIFFERENT reward functions (SquaredTrackingErrorReward vs.
+# SqTrError_TrPenalty_UserIncentives), so their episode-reward magnitudes
+# are not on a common scale. Plotting them on one shared axis would be the
+# assert_total_reward_comparable mistake in figure form.
 # ---------------------------------------------------------------------------
-TD3_TRAIN_SEEDS_ALGOS = ["TD3_vanilla_ts100", "TD3_vanilla_ts101", "TD3_vanilla_ts102"]
+LEARNING_CURVE_ARMS = [
+    ("TD3 vanilla", ["TD3_vanilla_ts100", "TD3_vanilla_ts101", "TD3_vanilla_ts102"]),
+    ("TD3-TrackingOnly", ["TD3_TrackingOnly_ts100", "TD3_TrackingOnly_ts101", "TD3_TrackingOnly_ts102"]),
+]
 LEARNING_CURVE_PATH_TEMPLATE = "experiments/phase2_algorithms/models/{algo}/learning_curve.csv"
+
+
+def _load_learning_curve(algo):
+    path = LEARNING_CURVE_PATH_TEMPLATE.format(algo=algo)
+    if not os.path.exists(path):
+        return None
+    with open(path, newline="") as f:
+        curve_rows = list(csv.DictReader(f))
+    return {
+        "timesteps": np.array([float(r["timesteps"]) for r in curve_rows]),
+        "mean_episode_reward": np.array([float(r["mean_episode_reward"]) for r in curve_rows]),
+    }
 
 
 def make_f08_learning_curves(rows):
@@ -533,56 +568,59 @@ def make_f08_learning_curves(rows):
               "-- skipping cleanly (inert until Week 3+ RL rows exist). Not an error.")
         return
 
-    curves = {}
-    for algo in TD3_TRAIN_SEEDS_ALGOS:
-        path = LEARNING_CURVE_PATH_TEMPLATE.format(algo=algo)
-        if not os.path.exists(path):
-            print(f"f08: {path} not found, skipping {algo}.")
-            continue
-        with open(path, newline="") as f:
-            curve_rows = list(csv.DictReader(f))
-        curves[algo] = {
-            "timesteps": np.array([float(r["timesteps"]) for r in curve_rows]),
-            "mean_episode_reward": np.array([float(r["mean_episode_reward"]) for r in curve_rows]),
-        }
-    if not curves:
-        print("f08: no learning_curve.csv files found for any TD3 training seed, skipping.")
+    arm_curves = {}
+    for arm_label, algos in LEARNING_CURVE_ARMS:
+        curves = {a: _load_learning_curve(a) for a in algos}
+        curves = {a: c for a, c in curves.items() if c is not None}
+        if curves:
+            arm_curves[arm_label] = curves
+        else:
+            print(f"f08: no learning_curve.csv files found for arm {arm_label!r}, skipping that panel.")
+    if not arm_curves:
+        print("f08: no learning_curve.csv files found for any arm, skipping.")
         return
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for algo, data in curves.items():
-        sty = style_for(algo)
-        ax.plot(data["timesteps"], data["mean_episode_reward"], color=sty["color"],
-                label=sty["label"], linewidth=1.3)
-    ax.set_xlabel("Training timesteps")
-    ax.set_ylabel("Mean episode reward\n(SB3 rolling window, last <=100 episodes)")
-    ax.set_title("TD3 vanilla learning curves, one line per training seed\n"
-                 "(station_v0_bogota, TRAIN_DAYS round-robin)", fontsize=10)
-    ax.legend(fontsize=8)
-    fig.tight_layout()
+    fig, axes = plt.subplots(1, len(arm_curves), figsize=(6.5 * len(arm_curves), 5), squeeze=False)
+    axes = axes[0]
+    for ax, (arm_label, curves) in zip(axes, arm_curves.items()):
+        for algo, data in curves.items():
+            sty = style_for(algo)
+            ax.plot(data["timesteps"], data["mean_episode_reward"], color=sty["color"],
+                    label=sty["label"], linewidth=1.3)
+        ax.set_xlabel("Training timesteps")
+        ax.set_title(arm_label, fontsize=10)
+        ax.legend(fontsize=8)
+    axes[0].set_ylabel("Mean episode reward\n(SB3 rolling window, last <=100 episodes)")
+    fig.suptitle("Learning curves by arm -- separate panels: different reward\n"
+                 "functions, NOT a common scale (station_v0_bogota, TRAIN_DAYS round-robin)", fontsize=10)
+    fig.tight_layout(rect=[0, 0, 1, 0.90])
     _save(fig, "f08_learning_curves")
 
+    all_algos = [a for _, curves in arm_curves.items() for a in curves]
     write_caption(
         "f08_learning_curves",
         what_it_shows=(
             "Mean episode reward (SB3's own rolling window over the last <=100 "
-            "completed episodes) vs. training timesteps, one line per TD3 training "
-            "seed. Source: each run's own learning_curve.csv "
+            "completed episodes) vs. training timesteps, one line per training seed, "
+            "in SEPARATE PANELS per arm -- vanilla TD3 (SqTrError_TrPenalty_UserIncentives) "
+            "and TD3-TrackingOnly (SquaredTrackingErrorReward) train under different "
+            "reward functions, so their episode-reward magnitudes are not comparable on "
+            "one shared axis (the assert_total_reward_comparable rule, in figure form). "
+            "Source: each run's own learning_curve.csv "
             "(ev2gym_thesis/rl/callbacks.py's LearningCurveCallback), NOT the main "
             "registry -- the registry has no reward-vs-timesteps time series column. "
-            "Reward values use the training reward function "
-            "(SqTrError_TrPenalty_UserIncentives), not any of the thesis's evaluation "
+            "Reward values use each arm's OWN training reward function, not any of "
             "metrics -- see thesis_docs/chapters/03_rl_baseline.md S3.4 for why those "
             "are not the same thing."
         ),
-        n_runs=len(curves),
+        n_runs=len(all_algos),
         configs=[REFERENCE_CONFIG],
-        algorithms=[style_for(a)["label"] for a in curves],
+        algorithms=[style_for(a)["label"] for a in all_algos],
         extra=(
-            "This is the first figure where seed-to-seed spread across the 3 "
-            "TD3_vanilla_ts* lines IS the signal, not noise to average away -- see "
-            "00_lab_log.md's Week 3 Entregable 7 entry for the cross-training-seed "
-            "dispersion analysis this figure visualizes."
+            "Seed-to-seed spread across each panel's 3 lines IS signal, not noise to "
+            "average away -- see 00_lab_log.md's Week 3 Entregable 7 entry (vanilla) "
+            "and Week 4's trackingonly_train_seed_dispersion.csv (TD3-TrackingOnly) "
+            "for the cross-training-seed dispersion analysis this figure visualizes."
         ),
     )
 
