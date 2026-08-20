@@ -99,36 +99,43 @@ class TestPIRewardFunction(unittest.TestCase):
 
 
 class TestControlledComparisonInvariant(unittest.TestCase):
-    """Entregable 10 item 2: vanilla and PI-TD3 training envs, built through
-    the shared env_factory.make_training_env code path, differ ONLY in
-    reward_fn -- asserted on the resolved objects, not by eye."""
+    """Entregable 10 item 2, updated for the actual Part B arm
+    (thesis_docs/chapters/04_oracle_and_pitd3.md S4.4): vanilla-TD3 and
+    TD3_TrackingOnly training envs, built through the shared
+    env_factory.make_training_env code path, differ ONLY in reward_fn --
+    asserted on the resolved objects, not by eye. (The PI-TD3 reward
+    module is still covered by TestPIRewardFunction above -- it is kept as
+    evidence for the falsified-design finding, not deleted -- but is no
+    longer the comparison this class exercises, since no arm trains on
+    it.)"""
 
     REFERENCE_CONFIG = "experiments/phase1_baseline/configs/station_v0_bogota.yaml"
 
+    def _tracking_only_env(self):
+        from ev2gym.rl_agent.reward import SquaredTrackingErrorReward
+        return make_training_env(self.REFERENCE_CONFIG, reward_fn=SquaredTrackingErrorReward, state_fn=DEFAULT_STATE_FN)
+
     def test_action_and_observation_spaces_are_identical(self):
         vanilla_env = make_training_env(self.REFERENCE_CONFIG, reward_fn=DEFAULT_REWARD_FN, state_fn=DEFAULT_STATE_FN)
-        pi_env = make_training_env(self.REFERENCE_CONFIG,
-                                    reward_fn=SqTrError_TrPenalty_UserIncentives_PI, state_fn=DEFAULT_STATE_FN)
-        self.assertEqual(vanilla_env.action_space.shape, pi_env.action_space.shape)
-        self.assertEqual(vanilla_env.observation_space.shape, pi_env.observation_space.shape)
-        (vanilla_env.action_space.low == pi_env.action_space.low).all()
-        (vanilla_env.action_space.high == pi_env.action_space.high).all()
+        tracking_only_env = self._tracking_only_env()
+        self.assertEqual(vanilla_env.action_space.shape, tracking_only_env.action_space.shape)
+        self.assertEqual(vanilla_env.observation_space.shape, tracking_only_env.observation_space.shape)
+        (vanilla_env.action_space.low == tracking_only_env.action_space.low).all()
+        (vanilla_env.action_space.high == tracking_only_env.action_space.high).all()
 
     def test_state_function_is_unchanged(self):
-        # Both arms must use PublicPST -- the PI-TD3 module changes the
+        # Both arms must use PublicPST -- TD3_TrackingOnly changes the
         # reward only (04_oracle_and_pitd3.md S4.4), not the state.
         vanilla_env = make_training_env(self.REFERENCE_CONFIG, reward_fn=DEFAULT_REWARD_FN, state_fn=DEFAULT_STATE_FN)
-        pi_env = make_training_env(self.REFERENCE_CONFIG,
-                                    reward_fn=SqTrError_TrPenalty_UserIncentives_PI, state_fn=DEFAULT_STATE_FN)
-        self.assertEqual(vanilla_env.unwrapped.state_fn, pi_env.unwrapped.state_fn)
+        tracking_only_env = self._tracking_only_env()
+        self.assertEqual(vanilla_env.unwrapped.state_fn, tracking_only_env.unwrapped.state_fn)
 
     def test_reward_fn_is_the_only_thing_that_differs(self):
         vanilla_env = make_training_env(self.REFERENCE_CONFIG, reward_fn=DEFAULT_REWARD_FN, state_fn=DEFAULT_STATE_FN)
-        pi_env = make_training_env(self.REFERENCE_CONFIG,
-                                    reward_fn=SqTrError_TrPenalty_UserIncentives_PI, state_fn=DEFAULT_STATE_FN)
-        self.assertNotEqual(vanilla_env.unwrapped.reward_fn, pi_env.unwrapped.reward_fn)
-        self.assertEqual(vanilla_env.unwrapped.config_path, pi_env.unwrapped.config_path)
-        self.assertEqual(vanilla_env.unwrapped.sample_mode, pi_env.unwrapped.sample_mode)
+        tracking_only_env = self._tracking_only_env()
+        self.assertNotEqual(vanilla_env.unwrapped.reward_fn, tracking_only_env.unwrapped.reward_fn)
+        self.assertEqual(vanilla_env.unwrapped.config_path, tracking_only_env.unwrapped.config_path)
+        self.assertEqual(vanilla_env.unwrapped.sample_mode, tracking_only_env.unwrapped.sample_mode)
 
 
 if __name__ == "__main__":

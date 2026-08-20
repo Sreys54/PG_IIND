@@ -1,7 +1,12 @@
 """
 Week 3, Entregable 5: train TD3 vanilla on station_v0_bogota, once per
 training seed in TRAIN_SEEDS. Never modifies ev2gym/rl_agent/*.py; only
-uses ev2gym_thesis/rl/*.
+uses ev2gym_thesis/rl/*. Extended Week 4: --reward {vanilla,tracking_only}
+selects the arm -- one script, not a fork, same reasoning as
+scripts/calibrate_td3_timing.py's flag. "pi" is deliberately NOT an option
+here: both PI-TD3 reward designs were falsified before training (see
+thesis_docs/chapters/04_oracle_and_pitd3.md S4.3) -- reward_pi.py stays in
+the repo as evidence, not as a trainable arm.
 
 All 3 training seeds are trained -- reporting only the best is explicitly
 prohibited by the Week 3 brief (RL is notoriously seed-sensitive; this is
@@ -10,8 +15,9 @@ literature). Each seed's run is independent and produces its own artifact
 directory, manifest, and learning curve.
 
 Usage:
-    PYTHONPATH=. python scripts/train_td3.py                  # train all TRAIN_SEEDS
-    PYTHONPATH=. python scripts/train_td3.py --seed 100        # train a single seed
+    PYTHONPATH=. python scripts/train_td3.py                            # train all TRAIN_SEEDS, vanilla
+    PYTHONPATH=. python scripts/train_td3.py --reward tracking_only      # train all TRAIN_SEEDS, TD3_TrackingOnly
+    PYTHONPATH=. python scripts/train_td3.py --seed 100                  # train a single seed
     PYTHONPATH=. python scripts/train_td3.py --seed 100 --resume experiments/phase2_algorithms/models/TD3_vanilla_ts100/checkpoints/td3_vanilla_ts100_30000_steps.zip
 """
 import argparse
@@ -28,6 +34,8 @@ import torch
 from stable_baselines3 import TD3
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+from ev2gym.rl_agent.reward import SquaredTrackingErrorReward
+
 from ev2gym_thesis.rl import config_rl
 from ev2gym_thesis.rl.callbacks import make_callbacks
 from ev2gym_thesis.rl.env_factory import make_training_env, DEFAULT_REWARD_FN, DEFAULT_STATE_FN
@@ -38,13 +46,18 @@ from ev2gym_thesis.registry import get_git_commit
 REFERENCE_CONFIG_PATH = "experiments/phase1_baseline/configs/station_v0_bogota.yaml"
 MODELS_DIR = "experiments/phase2_algorithms/models"
 
+# doc:begin reward_arms
+REWARD_FNS = {"vanilla": DEFAULT_REWARD_FN, "tracking_only": SquaredTrackingErrorReward}
+ARM_NAMES = {"vanilla": "TD3_vanilla", "tracking_only": "TD3_TrackingOnly"}
+# doc:end reward_arms
 
-def run_name(seed: int) -> str:
-    return f"TD3_vanilla_ts{seed}"
+
+def run_name(seed: int, reward_key: str = "vanilla") -> str:
+    return f"{ARM_NAMES[reward_key]}_ts{seed}"
 
 
-def build_model(seed: int, save_dir: str):
-    train_env = make_training_env(REFERENCE_CONFIG_PATH, sample_mode="round_robin")
+def build_model(seed: int, save_dir: str, reward_fn=DEFAULT_REWARD_FN):
+    train_env = make_training_env(REFERENCE_CONFIG_PATH, reward_fn=reward_fn, sample_mode="round_robin")
     venv = DummyVecEnv([lambda: train_env])
     venv = VecNormalize(
         venv,
@@ -77,8 +90,9 @@ def build_model(seed: int, save_dir: str):
     return model, train_env, venv
 
 
-def train_one_seed(seed: int, resume_checkpoint: str = None):
-    name = run_name(seed)
+def train_one_seed(seed: int, reward_key: str = "vanilla", resume_checkpoint: str = None):
+    reward_fn = REWARD_FNS[reward_key]
+    name = run_name(seed, reward_key)
     save_dir = os.path.join(MODELS_DIR, name)
     checkpoint_dir = os.path.join(save_dir, "checkpoints")
     os.makedirs(save_dir, exist_ok=True)
@@ -91,7 +105,7 @@ def train_one_seed(seed: int, resume_checkpoint: str = None):
                 f"Cannot resume: VecNormalize stats not found at {vecnorm_path!r} "
                 f"next to checkpoint {resume_checkpoint!r}."
             )
-        train_env = make_training_env(REFERENCE_CONFIG_PATH, sample_mode="round_robin")
+        train_env = make_training_env(REFERENCE_CONFIG_PATH, reward_fn=reward_fn, sample_mode="round_robin")
         venv = DummyVecEnv([lambda: train_env])
         venv = VecNormalize.load(vecnorm_path, venv)
         venv.training = True
@@ -99,7 +113,7 @@ def train_one_seed(seed: int, resume_checkpoint: str = None):
         model = TD3.load(resume_checkpoint, env=venv)
         timesteps_done = model.num_timesteps
     else:
-        model, train_env, venv = build_model(seed, save_dir)
+        model, train_env, venv = build_model(seed, save_dir, reward_fn=reward_fn)
         timesteps_done = 0
 
     remaining_timesteps = config_rl.TOTAL_TIMESTEPS - timesteps_done
@@ -136,7 +150,8 @@ def train_one_seed(seed: int, resume_checkpoint: str = None):
         "git_commit": get_git_commit(),
         "timestamp_utc": datetime.datetime.utcnow().isoformat(),
         "config_path": REFERENCE_CONFIG_PATH,
-        "reward_function": DEFAULT_REWARD_FN.__name__,
+        "reward_arm": reward_key,
+        "reward_function": reward_fn.__name__,
         "state_function": DEFAULT_STATE_FN.__name__,
         "sample_mode": "round_robin",
         "train_days_pool_size": len(TRAIN_DAYS),
@@ -192,6 +207,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=None,
                          help="Train only this training seed (must be in TRAIN_SEEDS). Default: train all TRAIN_SEEDS sequentially.")
+    parser.add_argument("--reward", choices=list(REWARD_FNS.keys()), default="vanilla",
+                         help="Which arm to train (default: vanilla, Week 3's arm).")
     parser.add_argument("--resume", type=str, default=None,
                          help="Path to a checkpoint .zip to resume from (requires --seed).")
     args = parser.parse_args()
@@ -205,6 +222,6 @@ if __name__ == "__main__":
             raise ValueError(f"seed {s} is not in TRAIN_SEEDS={TRAIN_SEEDS}")
 
     for seed in seeds:
-        train_one_seed(seed, resume_checkpoint=args.resume if seed == args.seed else None)
+        train_one_seed(seed, reward_key=args.reward, resume_checkpoint=args.resume if seed == args.seed else None)
 
-    print("\nAll requested training seeds complete.")
+    print(f"\nAll requested training seeds complete (arm={ARM_NAMES[args.reward]}).")

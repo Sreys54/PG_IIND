@@ -1,10 +1,13 @@
 """
 Week 3, Entregable 4: time-calibrate TD3 training on station_v0_bogota.
-Extended Week 4, Entregable 6: --reward {vanilla,pi} selects the reward
-function, so the exact same calibration path measures PI-TD3's throughput
-too -- one script, not a fork, per the task brief's stated preference
-("prefer the flag if it keeps the two runs provably identical apart from
-the reward").
+Extended Week 4, Entregable 6: --reward {vanilla,tracking_only} selects
+the reward function, so the exact same calibration path measures
+TD3_TrackingOnly's throughput too -- one script, not a fork, per the task
+brief's stated preference ("prefer the flag if it keeps the two runs
+provably identical apart from the reward"). "pi" was measured once (16.85
+steps/s, thesis_docs/chapters/00_lab_log.md's 2026-08-19 entry) but is no
+longer a training option: both PI-TD3 reward designs were falsified
+before training (thesis_docs/chapters/04_oracle_and_pitd3.md S4.3).
 
 Runs a fixed CALIBRATION_TIMESTEPS-step training run (config_rl's real
 hyperparameters, not a toy configuration) and reports wall-clock time, then
@@ -16,8 +19,8 @@ raise TOTAL_TIMESTEPS in ev2gym_thesis/rl/config_rl.py or launch a longer
 run based on this script alone.
 
 Usage:
-    PYTHONPATH=. python scripts/calibrate_td3_timing.py                  # vanilla TD3 (Week 3)
-    PYTHONPATH=. python scripts/calibrate_td3_timing.py --reward pi      # PI-TD3 (Week 4)
+    PYTHONPATH=. python scripts/calibrate_td3_timing.py                            # vanilla TD3 (Week 3)
+    PYTHONPATH=. python scripts/calibrate_td3_timing.py --reward tracking_only      # TD3_TrackingOnly (Week 4)
 """
 import argparse
 import time
@@ -25,15 +28,16 @@ import time
 from stable_baselines3 import TD3
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+from ev2gym.rl_agent.reward import SquaredTrackingErrorReward
+
 from ev2gym_thesis.rl import config_rl
 from ev2gym_thesis.rl.env_factory import make_training_env, DEFAULT_REWARD_FN
-from ev2gym_thesis.rl.reward_pi import SqTrError_TrPenalty_UserIncentives_PI
 from ev2gym_thesis.eval_protocol import TRAIN_DAYS, TRAIN_SEEDS
 
 REFERENCE_CONFIG_PATH = "experiments/phase1_baseline/configs/station_v0_bogota.yaml"
 EPISODE_LENGTH_STEPS = 96  # station_v0_bogota.yaml: simulation_length
 
-REWARD_FNS = {"vanilla": DEFAULT_REWARD_FN, "pi": SqTrError_TrPenalty_UserIncentives_PI}
+REWARD_FNS = {"vanilla": DEFAULT_REWARD_FN, "tracking_only": SquaredTrackingErrorReward}
 
 # Candidate total-timestep budgets to present for confirmation. Chosen after
 # seeing this run's measured steps/sec so the accompanying wall-clock
