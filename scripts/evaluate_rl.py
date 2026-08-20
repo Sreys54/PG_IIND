@@ -6,6 +6,14 @@ ev2gym_thesis.rl.env_factory.make_env, the identical config_utils
 day-override mechanism backfill_registry.py uses, so this is a paired
 comparison over literally identical scenarios, not merely similar ones.
 
+Extended Week 4, Entregable 7: the same grid for TD3_TrackingOnly (Part
+B's actual second arm, thesis_docs/chapters/04_oracle_and_pitd3.md S4.4 --
+PI-TD3 was falsified before training, see that chapter's S4.3). Not
+forked -- TD3_ALGORITHMS gained a `reward_fn` column so eval_td3
+constructs the env with the SAME reward function each checkpoint was
+trained under (TD3_TrackingOnly needs SquaredTrackingErrorReward, not
+DEFAULT_REWARD_FN) and records it in `notes`.
+
 Deterministic evaluation (predict(..., deterministic=True) for TD3): per
 thesis_docs/chapters/03_rl_baseline.md, this isolates policy quality from
 training-time exploration noise, which is a training concern, not an
@@ -22,10 +30,10 @@ randomness in this project is seed-controlled.
 Registry key collision, resolved per the brief: DEDUP_KEY_COLUMNS =
 (config_name, algorithm, seed, eval_day) uses the SCENARIO seed (SEEDS),
 not the training seed -- so each of the 3 training seeds gets its own
-algorithm name (TD3_vanilla_ts100/_ts101/_ts102) rather than colliding
-under one "TD3_vanilla" name. No aggregated/averaged rows are written here
--- the registry stores individual runs only; aggregation is Entregable 7's
-job.
+algorithm name (TD3_vanilla_ts100/_ts101/_ts102,
+TD3_TrackingOnly_ts100/_ts101/_ts102) rather than colliding under one
+name. No aggregated/averaged rows are written here -- the registry stores
+individual runs only; aggregation is Entregable 8's job.
 
 Usage:
     PYTHONPATH=. python scripts/evaluate_rl.py             # dry run: report plan, do not execute
@@ -37,6 +45,8 @@ import sys
 import time
 
 import numpy as np
+
+from ev2gym.rl_agent.reward import SquaredTrackingErrorReward
 
 from ev2gym_thesis.eval_protocol import SEEDS, EVAL_DAYS, TRAIN_SEEDS
 from ev2gym_thesis.rl.env_factory import make_env, reset_for_evaluation, DEFAULT_REWARD_FN, DEFAULT_STATE_FN
@@ -54,18 +64,24 @@ MODELS_DIR = "experiments/phase2_algorithms/models"
 # SCENARIO seed, not the training seed -- so a single "TD3_vanilla"
 # algorithm name would collide across all 3 training seeds on every
 # (seed, eval_day) cell. Each training seed gets its own algorithm name
-# instead.
+# instead. Each tuple is (algo_name, train_seed, model_path, reward_fn) --
+# reward_fn is the function each checkpoint was actually TRAINED under, so
+# evaluation constructs the env identically (env_factory.make_env's
+# reward_fn kwarg), not always DEFAULT_REWARD_FN.
 TD3_ALGORITHMS = [
-    ("TD3_vanilla_ts100", 100, f"{MODELS_DIR}/TD3_vanilla_ts100/final_model.zip"),
-    ("TD3_vanilla_ts101", 101, f"{MODELS_DIR}/TD3_vanilla_ts101/final_model.zip"),
-    ("TD3_vanilla_ts102", 102, f"{MODELS_DIR}/TD3_vanilla_ts102/final_model.zip"),
+    ("TD3_vanilla_ts100", 100, f"{MODELS_DIR}/TD3_vanilla_ts100/final_model.zip", DEFAULT_REWARD_FN),
+    ("TD3_vanilla_ts101", 101, f"{MODELS_DIR}/TD3_vanilla_ts101/final_model.zip", DEFAULT_REWARD_FN),
+    ("TD3_vanilla_ts102", 102, f"{MODELS_DIR}/TD3_vanilla_ts102/final_model.zip", DEFAULT_REWARD_FN),
+    ("TD3_TrackingOnly_ts100", 100, f"{MODELS_DIR}/TD3_TrackingOnly_ts100/final_model.zip", SquaredTrackingErrorReward),
+    ("TD3_TrackingOnly_ts101", 101, f"{MODELS_DIR}/TD3_TrackingOnly_ts101/final_model.zip", SquaredTrackingErrorReward),
+    ("TD3_TrackingOnly_ts102", 102, f"{MODELS_DIR}/TD3_TrackingOnly_ts102/final_model.zip", SquaredTrackingErrorReward),
 ]
 RANDOM_POLICY_ALGORITHM = "RandomPolicy"
 # doc:end registry_key_collision_resolution
 
 
-def _notes_for(train_seed=None):
-    base = f"reward={DEFAULT_REWARD_FN.__name__},state={DEFAULT_STATE_FN.__name__}"
+def _notes_for(reward_fn, train_seed=None):
+    base = f"reward={reward_fn.__name__},state={DEFAULT_STATE_FN.__name__}"
     return base + (f",train_seed={train_seed}" if train_seed is not None else ",control=random_policy")
 
 
@@ -182,10 +198,10 @@ class _RandomPolicyStepper:
         return obs, reward, done, info
 
 
-def eval_td3(algo_name, train_seed, model_path, seed, eval_day, git_commit):
+def eval_td3(algo_name, train_seed, model_path, reward_fn, seed, eval_day, git_commit):
     year, month, day = eval_day
     eval_day_str = f"{year:04d}-{month:02d}-{day:02d}"
-    env = make_env(REFERENCE_CONFIG_PATH, eval_day, seed)
+    env = make_env(REFERENCE_CONFIG_PATH, eval_day, seed, reward_fn=reward_fn)
     model, venv = load_trained_agent(model_path, env)
 
     t0 = time.perf_counter()
@@ -204,7 +220,7 @@ def eval_td3(algo_name, train_seed, model_path, seed, eval_day, git_commit):
         "oversubscription_ratio": round(N_PORTS * 50 / TRANSFORMER_KW, 3),
         "algorithm": algo_name, "algorithm_family": "rl", "seed": seed,
         "eval_day": eval_day_str, "sim_steps": 96, "runtime_s": round(runtime_s, 4),
-        "notes": _notes_for(train_seed),
+        "notes": _notes_for(reward_fn, train_seed),
     }
     row.update(stats_to_row(stats))
     return row
@@ -231,7 +247,7 @@ def eval_random_policy(seed, eval_day, git_commit):
         "oversubscription_ratio": round(N_PORTS * 50 / TRANSFORMER_KW, 3),
         "algorithm": RANDOM_POLICY_ALGORITHM, "algorithm_family": "rl", "seed": seed,
         "eval_day": eval_day_str, "sim_steps": 96, "runtime_s": round(runtime_s, 4),
-        "notes": _notes_for(train_seed=None),
+        "notes": _notes_for(DEFAULT_REWARD_FN, train_seed=None),
     }
     row.update(stats_to_row(stats))
     return row
@@ -239,13 +255,13 @@ def eval_random_policy(seed, eval_day, git_commit):
 
 def all_run_specs():
     specs = []
-    for algo_name, train_seed, model_path in TD3_ALGORITHMS:
+    for algo_name, train_seed, model_path, reward_fn in TD3_ALGORITHMS:
         for seed in SEEDS:
             for eval_day in EVAL_DAYS:
-                specs.append(("td3", algo_name, train_seed, model_path, seed, eval_day))
+                specs.append(("td3", algo_name, train_seed, model_path, reward_fn, seed, eval_day))
     for seed in SEEDS:
         for eval_day in EVAL_DAYS:
-            specs.append(("random", RANDOM_POLICY_ALGORITHM, None, None, seed, eval_day))
+            specs.append(("random", RANDOM_POLICY_ALGORITHM, None, None, None, seed, eval_day))
     return specs
 
 
@@ -268,7 +284,7 @@ if __name__ == "__main__":
     existing_keys = load_existing_keys()
     appended_total, skipped_total = 0, 0
 
-    for i, (kind, algo_name, train_seed, model_path, seed, eval_day) in enumerate(specs):
+    for i, (kind, algo_name, train_seed, model_path, reward_fn, seed, eval_day) in enumerate(specs):
         year, month, day = eval_day
         eval_day_str = f"{year:04d}-{month:02d}-{day:02d}"
         key = (REFERENCE_CONFIG_NAME, algo_name, str(seed), eval_day_str)
@@ -278,7 +294,7 @@ if __name__ == "__main__":
             continue
 
         if kind == "td3":
-            row = eval_td3(algo_name, train_seed, model_path, seed, eval_day, git_commit)
+            row = eval_td3(algo_name, train_seed, model_path, reward_fn, seed, eval_day, git_commit)
         else:
             row = eval_random_policy(seed, eval_day, git_commit)
 
