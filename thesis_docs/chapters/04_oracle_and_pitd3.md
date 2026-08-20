@@ -1,15 +1,17 @@
 # Chapter 4 — Perfect-Information Oracle and PI-TD3 (Week 4)
 
-> Status: Entregables 1–5 complete as of 2026-08-19 (preflight, this
-> skeleton, oracle timing calibration + Gate 2 approval, oracle evaluation
-> — both variants, 100/100 cells — and the PI-TD3 reward module). Sections
+> Status: Entregables 1–5 complete as of 2026-08-19 (preflight, oracle —
+> both variants, 100/100 cells — and, after two falsified reward-only
+> physics-adaptation attempts, a closed Part B pivot to a
+> `TD3_TrackingOnly` reward ablation; see S4.0 and S4.3). Sections
 > S4.1–S4.5, S4.7 are written in full. S4.6 is folded into S4.7 (oracle
-> results). S4.8–S4.10 are reserved for PI-TD3 training/evaluation/analysis
-> results that don't exist yet — Gate 3 (training wall-clock confirmation)
-> has not been passed. Full session history, including the Week 3
-> evaluation-bug detour that paused this week's work and the reference-
-> acquisition detour that paused Part B, in
-> `thesis_docs/chapters/00_lab_log.md`'s 2026-08-18/19 entries.
+> results). S4.8–S4.10 are reserved for `TD3_TrackingOnly`
+> training/evaluation/analysis results that don't exist yet — Gate 3
+> (training wall-clock confirmation) has not been passed for that arm.
+> Full session history, including the Week 3 evaluation-bug detour, the
+> reference-acquisition detour, and the two PI-TD3 design iterations and
+> why each failed, in `thesis_docs/chapters/00_lab_log.md`'s 2026-08-18/19
+> entries.
 
 ## S4.0 Scope deviation, stated up front
 
@@ -39,6 +41,20 @@ proceeding. Full account in `00_lab_log.md`'s 2026-08-18 correction entry
 and `03_rl_baseline.md` S3.11. Not repeated here; this chapter's own content
 below was not affected (the oracle's replay-generation path was built with
 that bug's exact failure mode in mind from the start, see S4.5).
+
+**`[SUPERSEDED]` 2026-08-19, kept for the record, not deleted: Part B's
+scope changed from delivering a trained "PI-TD3" arm to a falsified
+physics-adaptation attempt plus a reward ablation.** Two independent
+reward-only adaptations of PI-TD3's physics-informed principle
+(voltage-band → transformer-capacity analogue) were designed, built, and
+verified before either was trusted with training compute — both failed,
+for structurally different and now well-understood reasons (S4.3). No arm
+in this thesis is named `PI_TD3`/`PI-TD3` anywhere in the registry, code,
+or results. Part B's actual second training arm is `TD3_TrackingOnly`, a
+reward ablation Week 3 never ran (S4.4) — a real, if smaller, contribution
+this week still delivers, in place of the originally planned one. A
+faithful PI-TD3 port is recorded as a conditional stretch goal for the
+Week 6 grid-enabled phase (S4.3), not a commitment.
 
 ## S4.1 What a perfect-information oracle is, and is not
 
@@ -196,31 +212,6 @@ not silently dropped, as the more faithful port a future Week 6-7 grid-
 enabled phase could revisit once a power-flow model exists to differentiate
 through.
 
-### What is ported: Eq. 14 Term 1 (the physics penalty), adapted
-
-Term 1 of Eq. 14 (`λ1 · Σ_n min{0, 0.05 − |1−V_n,t|}`) penalizes voltage
-magnitude outside a ±5%-of-nominal band — zero while compliant,
-increasingly negative beyond it. `simulate_grid=False` has no voltage
-variable; the natural substitute, per the brief's own framing, is the
-transformer's power capacity — the one physical constraint that *does*
-exist in this configuration. Implemented in
-`ev2gym_thesis/rl/reward_pi.py`'s `transformer_capacity_margin_term`:
-**reinterpreted as a one-sided margin** (a transformer has no analogue of
-undervoltage; only exceeding capacity is a physical concern, unlike
-voltage's two-sided band), staying 0 while power draw is below
-`(1 − 0.05) × transformer_max_power` and ramping linearly negative above
-that pre-violation threshold — giving the agent gradient signal *before*
-an actual overload, matching the paper's own stated motivation for Term 1
-("richer gradient information", Sec. III-A). The 5% margin fraction is
-directly borrowed from the paper's own 0.05 p.u. voltage band; the penalty
-weight (`PI_TD3_PHYSICS_WEIGHT = 20.0`) is **not** — the paper's
-`λ1 = −5×10⁴` could not be reused with confidence (see below) and was
-calibrated against a differently-scaled (p.u.-bounded) quantity anyway;
-this thesis's weight is empirically set so the term's magnitude is
-comparable to, not dominated by or dominating, the existing reward's
-`-100 * get_how_overloaded()` term at a typical single-step overload —
-not tuned via a training sweep, a declared limitation, not a hidden one.
-
 ### A genuine ambiguity found in Eq. 14, recorded rather than resolved either way
 
 Applying the paper's own stated `λ1 = −5×10⁴` (Sec. IV-A) literally to
@@ -232,44 +223,169 @@ opposite of the paper's own prose description ("the first term penalizes
 voltage deviations", Sec. II-B). This may be a genuine sign inconsistency
 in the paper, or a misreading introduced by this PDF's extraction of a
 multi-line, subscript-heavy equation (a known risk of that extraction
-method) — not resolved with confidence either way, and **not propagated**
-into this thesis's term, which is built with an unambiguous, directly
-unit-tested sign instead (`ev2gym_thesis/tests/test_week4.py`'s
-`TestPIRewardFunction`).
+method) — not resolved with confidence either way. Not that it mattered in
+the end: neither design attempt below reused the paper's literal
+coefficient, for the reasons given in each.
 
-### What is not ported, and why
+### What was ported, tried, and falsified: a reward-only physics term does not survive contact with this configuration
 
-- **Eq. 14 Term 2 (profit)** — this thesis's reward family already
-  excluded the Business/ProfitMax objective in Week 3
-  (`03_rl_baseline.md` S3.2); porting it here would silently reopen that
-  decision.
-- **Eq. 14 Term 3 (a proactive, near-departure satisfaction indicator)** —
-  Week 3's base reward (`SqTrError_TrPenalty_UserIncentives`) already has
-  its own satisfaction penalty (`-1000 * (1 - score)` per departing EV).
-  Adding a second, structurally different satisfaction term would
-  introduce a second new variable into the comparison, contrary to S4.4's
-  single-variable design below.
+Two structurally different designs for the Eq. 14 Term 1 analogue
+(voltage band → transformer capacity) were built and verified — both
+failed, for different reasons, before either was trusted with three hours
+of training. This is reported as the result it is, not as a delay before
+a "real" result: **a reward-only physics-informed adaptation is not
+achievable in this configuration**, and the mechanism is now understood
+precisely enough to say why, and what would need to be true elsewhere in
+this thesis for it to work.
 
-## S4.4 Controlled-comparison design
+**Design 1 — instantaneous capacity margin.** `transformer_capacity_margin_term`
+(kept in `ev2gym_thesis/rl/reward_pi.py`, unused, for the record): 0 while
+`current_power < 0.95 × transformer_max_power`, ramping linearly negative
+above that pre-violation threshold — an action-dependent quantity, since
+`current_power` is a direct function of the agent's chosen action.
+Verified via `scripts/verify_pi_reward_differs.py`: Spearman rank
+correlation against the vanilla reward's existing `-100 *
+get_how_overloaded()` term was **exactly 1.0 at every weight tested (20
+through 2000)**.
 
-**Held identical between the vanilla-TD3 and PI-TD3 arms:** total
-timesteps (60,000/seed), `TRAIN_SEEDS` ([100, 101, 102]), `TRAIN_DAYS`
-round-robin sampling, state function (`PublicPST`), network architecture
-([64, 64]), replay buffer, `VecNormalize` setup — every hyperparameter in
-`ev2gym_thesis/rl/config_rl.py` — and the base reward terms (tracking
-error, existing overload penalty, existing satisfaction penalty).
-**Deliberately differs:** exactly one term — the physics-informed
-transformer-capacity-margin penalty, added on top of the unchanged base
-reward. This is a single-variable comparison, not a two-variable one (no
-action-projection layer was added — S4.3 already explains why the more
-invasive Algorithm-1-faithful mechanism was rejected as out of scope, not
-partially implemented as a projection layer instead). Asserted, not just
-declared: `ev2gym_thesis/tests/test_week4.py`'s
-`TestControlledComparisonInvariant` builds both arms through the shared
-`env_factory.make_training_env` code path and checks the resolved
-`action_space`/`observation_space`/`state_fn`/`config_path`/`sample_mode`
-are identical while `reward_fn` differs — on the actual resolved objects,
-not by inspection.
+| Weight | Pearson (full episode) | Spearman | mean \|ratio\| at relevant steps |
+|---:|---:|---:|---:|
+| 20 | 0.999977 | 1.0000 | 2.7% |
+| 100 | 0.999554 | 1.0000 | 13.5% |
+| 300 | 0.997529 | 1.0000 | 40.6% |
+| 1000 | 0.991130 | 1.0000 | 135% |
+| 2000 | 0.986452 | 1.0000 | 271% |
+
+**Mechanism:** both terms are monotonic functions of the same single
+scalar — instantaneous power versus instantaneous capacity. Any two
+monotone functions of the same scalar induce the same step ordering; the
+weight can rescale the numeric gap (Pearson falls) but can never create a
+ranking disagreement (Spearman cannot move). No amount of recalibration
+could have fixed this — it is a structural property of using the *action's
+realized outcome* as the term's only input, proven by the sweep itself
+before a single training step ran.
+
+**Design 2 — capacity-headroom / latent-exposure.** `headroom_penalty_term`:
+uses `env.charge_power_potential` — the power the *connected fleet* could
+draw at maximum rate, a function of which EVs are present and their state,
+not directly of the action taken — against the transformer's near-future
+minimum capacity. Genuinely broke the Spearman=1.0 tie (mean 0.9855 across
+6 (day, seed) cells, `scripts/verify_headroom_term.py`), but a second,
+independent verification (the same script, required before trusting any
+result that "worked") found why it moved: `charge_power_potential`
+excludes any EV once it reaches 100% SoC, so charging EVs to full **faster**
+removes them from the term's sum, regardless of whether that fast charging
+caused a real overload.
+
+| Check | AFAP | Round Robin |
+|---|---:|---:|
+| Headroom term nonzero steps (of 96) | 2 | 27 |
+| Headroom term sum | −99.3 | −3236.1 |
+| Correlation(headroom term, mean fleet SoC) | +0.68 | +0.66 |
+
+Round Robin — the heuristic that already nearly eliminates transformer
+overload (Week 1-3 results) — was penalized **~32× more often** than
+AFAP, the unmanaged baseline that overloads this station routinely. The
+strongly positive SoC correlation confirms the mechanism directly: raising
+fleet SoC *lowers* the penalty. **The term's gradient points toward
+charging faster and more completely — toward AFAP — not toward
+capacity-aware pacing.** This is not a calibration problem either; it is
+a structural property of any measure of *pending demand* under an
+uncontrolled completion time.
+
+A repair considered and rejected: weighting the term by each EV's
+*remaining* need rather than counting it fully or not at all. This
+relocates the same flaw rather than fixing it — any function of "how much
+is still owed" falls when the owing is paid off sooner, so "finish
+everyone as fast as possible" remains a way to minimize the penalty. The
+signal that would actually resist this — infeasibility relative to a
+**departure deadline**, since total remaining energy against a fixed
+deadline does not shrink just because charging was eager — needs each EV's
+time of departure, and `ev2gym.rl_agent.state.PublicPST` withholds that
+information *deliberately*, because a real public-station operator does
+not have it either (confirmed by reading `state.py:6-63`: the exposed
+per-EV features are a full/not-full flag, cumulative already-delivered
+energy, and elapsed — not remaining — dwell time; see the state-extension
+question resolved below). Both design failures trace back to the same
+wall from two different directions.
+
+**Also considered and rejected:** extending `PublicPST` to expose
+departure time, which would have fixed Design 2's flaw directly. Rejected
+on realism grounds, not cost: a public charging station's operator does
+not know when a walk-up user intends to leave, and `PublicPST`'s omission
+of this is the EV2Gym paper's own deliberate modeling choice for the
+Public-PST problem family (Sec. III-A: *"we assume that information about
+EV arrival and departure time... is unavailable"*) — the same family this
+thesis chose in Week 3 specifically because it fits a public station.
+Extending the state would let the learned policy depend on information a
+real Bogotá operator would not have, undercutting this thesis's realism
+claim more than a weaker physics term costs it. Extending the state for
+only the PI arm was also rejected: it would make the arm differ from
+vanilla TD3 in two variables (state *and* reward), so no result could be
+attributed to either one.
+
+**Consequence, stated as a finding, not a limitation buried in a
+paragraph:** PI-TD3's physics-informed mechanism requires the physics it
+was designed for. A voltage constraint is (a) genuinely absent from any
+reward this thesis's baseline already uses, (b) reducible by *temporal
+load shifting* rather than simply by charging faster or more completely,
+and (c) observable in a way that doesn't require assuming information a
+real operator lacks. None of the three hold for a transformer-capacity
+substitute under `simulate_grid=False` and `PublicPST` — (a) fails for
+Design 1, (b)/(c) fail for Design 2. All three hold once
+`simulate_grid=True` and the IEEE 34-bus feeder exist (Week 6-7): voltage
+is a per-bus quantity the baseline reward has no term for, reducible by
+shifting *which bus* or *when* charging happens rather than by charging
+speed alone, and observable from the grid model without assuming
+knowledge of user intent. **This is recorded as a conditional stretch
+goal for the Week 6 infrastructure phase, not a commitment** — if that
+phase's own scope leaves room, a faithful PI-TD3 port (voltage band, and
+possibly the Algorithm 1 rollout mechanism deferred in this chapter's
+opening) is the natural next attempt; if it doesn't, this chapter has
+already explained why Week 4 did not attempt a thinner substitute.
+
+`reward_pi.py` and both failed designs stay in the repository and in git
+history — they are the evidence for this section, not dead code to prune.
+
+## S4.4 Controlled comparison: `TD3_TrackingOnly` reward ablation
+
+With the physics-adaptation line closed, Week 4's second training arm
+answers a question Week 3 assumed rather than measured: **does encoding
+transformer overload and user-satisfaction penalties into the training
+reward (`SqTrError_TrPenalty_UserIncentives`, Week 3's choice, justified
+by reasoning in `03_rl_baseline.md` S3.2) actually buy anything over
+optimizing tracking error alone (`SquaredTrackingErrorReward`, EV2Gym's
+own bare default)?**
+
+**Held identical to Week 3's vanilla-TD3 arm:** total timesteps
+(60,000/seed), `TRAIN_SEEDS` ([100, 101, 102]), `TRAIN_DAYS` round-robin
+sampling, state function (`PublicPST`), network architecture ([64, 64]),
+replay buffer, `VecNormalize` setup — every hyperparameter in
+`ev2gym_thesis/rl/config_rl.py`. **Deliberately differs:** the reward
+function only — `SquaredTrackingErrorReward` in place of
+`SqTrError_TrPenalty_UserIncentives`, both pre-existing, unmodified
+`ev2gym.rl_agent.reward` functions, so this arm needs no new adaptation,
+no sign-convention question, and no observability question — a genuinely
+single-variable comparison, in contrast to the two design attempts above.
+Selected via `scripts/calibrate_td3_timing.py`/`scripts/train_td3.py`'s
+existing `--reward` flag (`vanilla`/`pi` extended to include
+`tracking_only`), not a fork.
+
+**`total_reward` is not comparable between this arm and Week 3's vanilla
+TD3** (different reward functions — same rule as `03_rl_baseline.md`
+S3.5): the comparison runs on the shared environment metrics
+(`total_transformer_overload`, `average_/min_energy_user_satisfaction`,
+`total_ev_served`, `tracking_error`). `ev2gym_thesis/figures.py`'s
+`assert_total_reward_comparable` guardrail is expected to raise if
+anything tries to plot `total_reward` across the two — verified, not
+assumed (see S4.9).
+
+Asserted, not just declared: `ev2gym_thesis/tests/test_week4.py`'s
+`TestControlledComparisonInvariant` (extended for this arm) builds both
+training envs through the shared `env_factory.make_training_env` code
+path and checks the resolved `action_space`/`observation_space`/
+`state_fn`/`config_path`/`sample_mode` are identical while `reward_fn`
+differs — on the actual resolved objects, not by inspection.
 
 ## S4.5 Registry comparability rules for this week's rows
 

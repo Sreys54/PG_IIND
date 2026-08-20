@@ -73,7 +73,7 @@ Copy `CLAUDE.md` (separate file) into the repo root.
 | 1. Baseline characterization | Objective 1 | `semana-1` | 1 |
 | 2. Station + local-transformer model validation | Objective 2 | `semana-2` | 2 |
 | 3. RL baseline vanilla (TD3) | Objective 3 (part 1) | `semana-3` | 3 |
-| 4. Optimal reference (free solver, no Gurobi) [SUPERSEDED 2026-08-18, see amendment below — Gurobi academic license now active, oracle uses Gurobi] + PI-TD3 | Objective 3 (part 2) | `semana-4` | 4 |
+| 4. Optimal reference (free solver, no Gurobi) [SUPERSEDED 2026-08-18, see amendment below — Gurobi academic license now active, oracle uses Gurobi] + PI-TD3 [SUPERSEDED 2026-08-19 — falsified as a reward-only adaptation, replaced by a `TD3_TrackingOnly` ablation, see the Week 4 section below] | Objective 3 (part 2) | `semana-4` | 4 |
 | 5. Full algorithm comparison (heuristics + RL + optimal reference) | Objective 3 (part 3) | `semana-5` | 5 |
 | 6. Infrastructure guidelines | Objective 4 | `semana-6` | 6 |
 | 7. Replicability + writing catch-up | Objective 5 | `semana-7` | 7 |
@@ -221,21 +221,47 @@ Copy `CLAUDE.md` (separate file) into the repo root.
       steps. **Actually implemented with Gurobi** (`ev2gym/baselines/gurobi_models/tracking_error.py`,
       unmodified, fed a G2V-forced replay generated in `ev2gym_thesis/oracle/`)
       — see `thesis_docs/chapters/04_oracle_and_pitd3.md`.
-- [ ] Bring in **PI-TD3** as a physics-informed ablation on top of the
+- [x] [SUPERSEDED 2026-08-19, text kept for the record] Bring in **PI-TD3** as a physics-informed ablation on top of the
       Week 3 vanilla-TD3 wrapper (drop-in reward/state module, not a
       rewrite), per the PI-TD3 paper's Algorithm 1 / reward Eq. 14.
-- [ ] Add `algorithm_family="optimal"` rows to the registry — this is what
+      **Two independent reward-only adaptations were built and verified,
+      both falsified before training** (Spearman rank correlation with the
+      existing overload penalty = 1.0 at every weight for design 1; a
+      confirmed perverse SoC gradient for design 2 — see
+      `thesis_docs/chapters/04_oracle_and_pitd3.md` S4.3 for the full
+      mechanism and evidence). No arm named `PI_TD3` exists anywhere in
+      this project. Replaced with a `TD3_TrackingOnly` reward ablation
+      (S4.4) — a real, smaller, in-scope contribution. A faithful PI-TD3
+      port (voltage band, `simulate_grid=True`) is a **conditional stretch
+      goal for Week 6**, not a commitment — see that week's entry below.
+- [x] Add `algorithm_family="optimal"` rows to the registry — this is what
       lifts `scripts/check_claims.py`'s "optimal" vocabulary restriction.
+      Done: 100 rows (`Optimal_Oracle_Tracking` + `Optimal_Oracle_Balanced`,
+      50 cells each).
 
 ## Week 5 (revised) — Full Algorithm Comparison (Objective 3, part 3)
 - [ ] Run all algorithms accumulated so far (AFAP, Round Robin, TD3
-      vanilla, PI-TD3, optimal reference) over the same 50-cell evaluation
+      vanilla, `TD3_TrackingOnly`, optimal reference — not PI-TD3, see
+      Week 4's amendment above) over the same 50-cell evaluation
       grid.
 - **Deliverable:** comparison table + plots in
   `experiments/phase2_algorithms/results/`.
 - **Milestone:** tag `v0.3-algorithms-compared`.
 
 ## Week 6 — Infrastructure Guidelines (Objective 4)
+
+> **Conditional stretch goal, added 2026-08-19 (see Week 4's amendment
+> above and `thesis_docs/chapters/04_oracle_and_pitd3.md` S4.3):** Week 4
+> found that a faithful PI-TD3 adaptation is not achievable under
+> `simulate_grid=False` — the voltage constraint it needs doesn't exist in
+> that configuration. `simulate_grid=True` + the IEEE 34-bus feeder
+> (this week) restores that constraint. **If this week's own scope leaves
+> room, a faithful PI-TD3 port (the voltage-band reward term, and possibly
+> Algorithm 1's differentiable-rollout mechanism, deferred at Week 4 on
+> scope grounds) is the natural stretch goal here.** Not a commitment —
+> if Week 6's infrastructure-guidelines scope doesn't leave room, this is
+> not attempted, and Week 4's chapter already explains why.
+
 - [ ] Pick the recommended algorithm (explicit trade-off discussion:
       satisfaction vs. profit vs. voltage compliance).
 - [ ] Stress-test at 2–3 load multipliers (e.g., 1.0×, 1.3×, 1.6×, using

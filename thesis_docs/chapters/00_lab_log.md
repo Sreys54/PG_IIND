@@ -1,5 +1,148 @@
 # Lab Log
 
+## 2026-08-19 — Week 4: PI-TD3 falsified by two independent reward-only designs, pivoted to `TD3_TrackingOnly`
+
+**Before training, not after: the "does reward_pi actually differ from
+vanilla" check the user demanded caught a real problem the smoke test
+(one AFAP episode, correlation ~1.0 but only 3 nonzero steps) had not
+surfaced clearly enough to act on.** Full protocol, in order.
+
+**Design 1 (instantaneous capacity margin) -- decisively falsified.**
+`transformer_capacity_margin_term`: 0 while `current_power <
+0.95*max_power`, ramping negative above that pre-violation threshold.
+Weight sweep (`scripts/verify_pi_reward_differs.py`, one AFAP episode,
+`station_v0_bogota`, seed 0, 2022-01-17):
+
+| Weight | Pearson (full episode) | Spearman | mean |ratio| at relevant steps |
+|---:|---:|---:|---:|
+| 20 (original) | 0.999977 | 1.0000 | 2.7% |
+| 100 | 0.999554 | 1.0000 | 13.5% |
+| 300 | 0.997529 | 1.0000 | 40.6% |
+| 1000 | 0.991130 | 1.0000 | 135% |
+| 2000 | 0.986452 | 1.0000 | 271% |
+
+**Spearman = 1.0 at every weight tested.** Mechanism: both this term and
+the vanilla reward's existing `-100 * tr.get_how_overloaded()` are
+monotonic functions of the same instantaneous scalar (current power vs.
+current capacity) -- any two monotone functions of the same scalar induce
+the same step ordering, so no weight could ever create a ranking
+disagreement. This was proven with five minutes of CPU, not inferred from
+three hours of a flat learning curve.
+
+**Reward-component decomposition** (same episode, needed to calibrate any
+future weight against a measured target rather than a qualitative guess):
+tracking term sums to -37,778.42 (16/96 nonzero steps), the existing
+overload term to -3,732.25 (2/96 steps), the original raw physics term to
+only -52.09 (3/96 steps) -- confirming the original weight (20.0) was
+qualitatively guessed, not measured, and badly undersized regardless of
+the deeper Spearman problem.
+
+**Design 2 (capacity-headroom / latent-exposure) -- also falsified, for a
+different reason.** Used `env.charge_power_potential` (the CONNECTED
+FLEET's max-rate demand, action-independent in principle) against the
+transformer's near-future minimum capacity over a horizon `H`. Genuinely
+broke the Spearman tie:
+
+| day | seed | Spearman(vanilla, PI) | disagreement steps |
+|---|---:|---:|---:|
+| 2022-01-17 | 0 | 0.9565 | 4/96 |
+| 2022-01-17 | 1 | 1.0000 | 0/96 |
+| 2022-02-14 | 0 | 0.9565 | 4/96 |
+| 2022-02-14 | 1 | 1.0000 | 0/96 |
+| 2022-03-05 | 0 | 1.0000 | 2/96 |
+| 2022-03-05 | 1 | 1.0000 | 0/96 |
+
+Mean Spearman 0.9855 across 6 cells -- real movement, but the *reason* it
+moved turned out to be the problem. Horizon sensitivity (`H` in {1,2,4,8}):
+**completely flat** -- `station_v0_bogota`'s `transformer.max_power` is a
+constant 100.0 kW all day (no demand-response events configured), so
+`min(max_power[t:t+H])` never differs from `max_power[t]` regardless of
+`H` -- the anticipatory-on-the-capacity-side half of the design is inert
+for this station's config, confirmed directly (`(mp == mp[0]).all() ==
+True`), not assumed.
+
+Predictability from the observation the policy actually sees (`PublicPST`):
+R^2 = 0.5535 (linear regression, 576 samples across 3 `EVAL_DAYS` x 2
+seeds under Round Robin) -- moderate, not the "high" hypothesized, a real
+caveat even before the decisive problem below.
+
+**The decisive problem, control-responsiveness + SoC-gradient check
+(`scripts/verify_headroom_term.py`), same (config, day, seed) cell:**
+
+| | AFAP | Round Robin |
+|---|---:|---:|
+| Headroom term nonzero steps (/96) | 2 | 27 |
+| Headroom term sum | -99.298 | -3236.085 |
+| Correlation(headroom term, mean fleet SoC) | +0.6814 | +0.6617 |
+
+Round Robin -- the heuristic that already nearly eliminates transformer
+overload -- was penalized **~32x more often** than AFAP, the unmanaged
+baseline that overloads this station routinely. Mechanism, confirmed by
+the correlation: `charge_power_potential` excludes an EV once it reaches
+100% SoC, so charging faster and more completely (AFAP's whole strategy)
+removes EVs from the term's sum regardless of whether that fast charging
+caused a real overload. **The gradient points toward AFAP, the exact
+baseline this thesis is trying to beat.**
+
+A repair was considered (weight the term by remaining need instead of
+counting full/not-full) and rejected as relocating the same flaw, not
+fixing it: any measure of pending demand falls when demand is satisfied
+sooner, so "finish everyone as fast as possible" remains a way to minimize
+it under any variant. The signal that would resist this -- infeasibility
+against a **departure deadline** -- needs each EV's remaining time to
+departure, and confirmed by reading `ev2gym/rl_agent/state.py:6-63`
+directly: `PublicPST` exposes a full/not-full flag, cumulative
+ALREADY-delivered energy, and ELAPSED (not remaining) dwell time -- no
+departure time, no remaining-energy figure. This is deliberate: the
+EV2Gym paper's own Public-PST problem formulation (Sec. III-A) assumes
+"information about EV arrival and departure time... is unavailable" to
+the operator, which is exactly why this thesis chose `PublicPST` for a
+public-station scenario in Week 3.
+
+**Extending the state to fix this was considered and rejected, on realism
+grounds, not cost.** A real Bogota public-station operator does not know
+when a walk-up user intends to leave; encoding it into the observation
+would let the learned policy depend on information that operator
+categorically lacks, undercutting this thesis's realism claim more than a
+weaker physics term costs it. Extending the state for only the PI arm
+(cheaper) was rejected on a second, independent ground: it would make the
+arm differ from vanilla TD3 in two variables (state AND reward), so no
+result could be attributed to either one.
+
+**Verdict, stated as a finding with a mechanism, not a delay before a
+"real" result:** a reward-only physics-informed adaptation of PI-TD3 is
+not achievable under `simulate_grid=False` + `PublicPST`. Design 1 failed
+because its input (instantaneous realized power) is already captured by
+the baseline reward. Design 2 failed because its input
+(connected-fleet potential) can be driven to zero by exactly the
+behavior this thesis wants to discourage, and the fix needs information
+`PublicPST` deliberately withholds. **PI-TD3's mechanism requires the
+physics it was designed for** -- a voltage constraint, absent from the
+baseline reward, reducible by load-shifting rather than charging speed,
+and observable without assuming operator knowledge the real scenario
+lacks. All three hold once `simulate_grid=True` + the IEEE 34-bus feeder
+exist (Week 6). Recorded there as a conditional stretch goal, not a
+commitment (`PROJECT_ROADMAP.md`'s Week 6 entry, amended same session).
+
+**No arm named `PI_TD3`/`PI-TD3` exists anywhere in this project as a
+result.** `ev2gym_thesis/rl/reward_pi.py` and both failed designs stay in
+the repository and git history -- they are the evidence for this finding,
+not dead code. Part B's actual second training arm, decided in the same
+session: **`TD3_TrackingOnly`**, a reward ablation (Week 3's
+`SqTrError_TrPenalty_UserIncentives` vs. EV2Gym's bare
+`SquaredTrackingErrorReward`) using two pre-existing, unmodified
+`ev2gym.rl_agent.reward` functions -- no new adaptation, no sign
+ambiguity, no observability question, a genuinely single-variable
+comparison the two design attempts above could not achieve. Answers a
+real question Week 3 assumed rather than measured: does encoding
+transformer/satisfaction penalties into the training reward actually buy
+anything over optimizing tracking error alone? Full design in
+`thesis_docs/chapters/04_oracle_and_pitd3.md` S4.4.
+
+`PROJECT_ROADMAP.md` and `CLAUDE.md` corrected in the same session
+(`[SUPERSEDED]` markers, dated notes, old text kept not deleted) to
+reflect the pivot and the Week 6 conditional stretch goal.
+
 ## 2026-08-19 — Week 4, Entregable 5: PI-TD3 scope resolved after reading the paper in full, reward module built and tested
 
 **Read `pi_td3_paper.pdf` (arXiv:2510.12335v2) in full before writing any

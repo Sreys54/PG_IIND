@@ -24,7 +24,7 @@ from ev2gym.rl_agent.reward import SqTrError_TrPenalty_UserIncentives
 from ev2gym.baselines.heuristics import ChargeAsFastAsPossible
 
 from ev2gym_thesis.rl.env_factory import make_env
-from ev2gym_thesis.rl.reward_pi import SqTrError_TrPenalty_UserIncentives_PI, transformer_capacity_margin_term, PI_TD3_PHYSICS_WEIGHT
+from ev2gym_thesis.rl.reward_pi import SqTrError_TrPenalty_UserIncentives_PI, anticipated_overload_term, PI_TD3_PHYSICS_WEIGHT
 
 REFERENCE_CONFIG_PATH = "experiments/phase1_baseline/configs/station_v0_bogota.yaml"
 REFERENCE_DAY = (2022, 1, 17)
@@ -39,7 +39,7 @@ def run_and_capture():
     def capturing_wrapper(env_, total_costs, user_satisfaction_list, *args):
         v = SqTrError_TrPenalty_UserIncentives(env_, total_costs, user_satisfaction_list, *args)
         p = SqTrError_TrPenalty_UserIncentives_PI(env_, total_costs, user_satisfaction_list, *args)
-        physics_only = PI_TD3_PHYSICS_WEIGHT * transformer_capacity_margin_term(env_)
+        physics_only = PI_TD3_PHYSICS_WEIGHT * anticipated_overload_term(env_)
         overload = sum(tr.get_how_overloaded() for tr in env_.transformers)
         vanilla_series.append(v)
         pi_series.append(p)
@@ -70,8 +70,9 @@ if __name__ == "__main__":
 
     print(f"Episode: {n_steps} steps, ChargeAsFastAsPossible, station_v0_bogota, seed=0, 2022-01-17")
     print(f"Steps with actual overload (get_how_overloaded() > 0): {n_overload_steps}/{n_steps}")
-    print(f"Steps with physics term active (>=95% capacity, possibly before actual overload): {n_physics_active_steps}/{n_steps}")
-    print(f"Physics term active but NOT yet overloaded (the 95-100% margin band): "
+    print(f"Steps with physics term active (connected-fleet potential > capacity): {n_physics_active_steps}/{n_steps}")
+    print(f"Physics term active but NOT yet overloaded (latent demand exceeds capacity, "
+          f"but the agent's chosen action avoided realized overload this step): "
           f"{int(((physics_only < 0) & (overload == 0)).sum())}/{n_steps}")
 
     diff = pi - vanilla
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     print(f"PI reward:           sum={pi.sum():.2f}, min={pi.min():.2f}, max={pi.max():.2f}")
     print(f"PI - vanilla (the physics contribution): sum={diff.sum():.2f}, "
           f"nonzero steps={int((diff != 0).sum())}/{n_steps}")
-    print(f"Matches PI_TD3_PHYSICS_WEIGHT * transformer_capacity_margin_term exactly? "
+    print(f"Matches PI_TD3_PHYSICS_WEIGHT * anticipated_overload_term exactly? "
           f"{np.allclose(diff, physics_only)}")
 
     corr = np.corrcoef(vanilla, pi)[0, 1]

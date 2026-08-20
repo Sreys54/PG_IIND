@@ -237,6 +237,31 @@ only the "already in repo" assumption was wrong):
   `Progress_Log_Thesis_Project.docx` extension. This is the last remaining
   Week 3 deliverable; no merge to `main` or tag until the user confirms.
 
+**Correction, 2026-08-19: the "Current Phase" section above is stale —
+kept for the historical record, not rewritten in place.** Real current
+state:
+- **Week 3 is fully closed**, including a correction found during Week 4
+  preflight: `scripts/evaluate_rl.py`'s evaluation steppers had an unseeded
+  `env.reset()` bug corrupting all 200 TD3/RandomPolicy evaluation rows.
+  Fixed on `semana-3` (commit `88c767e`, "Fix Week 3 evaluation-scenario
+  bug..."), re-evaluated, `Week3_...docx` regenerated with a correction
+  section. `main`/`semana-3`/`semana-4` all point to that commit.
+- **Active phase: Week 4 — perfect-information oracle (done) + a falsified
+  PI-TD3 adaptation attempt (done, reported as a finding) + a
+  `TD3_TrackingOnly` reward-ablation arm (in progress).** Active branch:
+  `semana-4`, branched from the corrected `semana-3`/`main` tip.
+- The oracle (`Optimal_Oracle_Tracking` + `Optimal_Oracle_Balanced`,
+  50 cells each, `ev2gym_thesis/oracle/`) is complete and verified.
+- **No arm named `PI_TD3`/`PI-TD3` exists in this project.** Two
+  reward-only physics-adaptations were built and falsified before training
+  (see `thesis_docs/chapters/04_oracle_and_pitd3.md` S4.3 for the full
+  mechanism). Part B's actual second training arm is `TD3_TrackingOnly` (a
+  reward ablation vs. Week 3's `SqTrError_TrPenalty_UserIncentives`
+  choice). A faithful PI-TD3 port is a conditional stretch goal for Week 6
+  (`PROJECT_ROADMAP.md`'s Week 6 entry), not a commitment.
+- Full session account in `thesis_docs/chapters/00_lab_log.md`'s
+  2026-08-18/19 entries.
+
 ## Useful Commands (reference, don't re-derive these each time)
 
 ```bash
