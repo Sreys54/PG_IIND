@@ -1,29 +1,39 @@
 """
 Week 3, Entregable 4: time-calibrate TD3 training on station_v0_bogota.
+Extended Week 4, Entregable 6: --reward {vanilla,pi} selects the reward
+function, so the exact same calibration path measures PI-TD3's throughput
+too -- one script, not a fork, per the task brief's stated preference
+("prefer the flag if it keeps the two runs provably identical apart from
+the reward").
 
 Runs a fixed CALIBRATION_TIMESTEPS-step training run (config_rl's real
 hyperparameters, not a toy configuration) and reports wall-clock time, then
 extrapolates linearly to candidate total-timestep budgets. This script does
-NOT run the full Week 3 training -- it exists to produce the table
-CLAUDE.md rule 2 requires before any long RL training run, and the results
-below are meant to be pasted into a request for the user's explicit
-go-ahead. Do not raise TOTAL_TIMESTEPS in ev2gym_thesis/rl/config_rl.py or
-launch a longer run based on this script alone.
+NOT run the full training -- it exists to produce the table CLAUDE.md rule
+2 requires before any long RL training run, and the results below are
+meant to be pasted into a request for the user's explicit go-ahead. Do not
+raise TOTAL_TIMESTEPS in ev2gym_thesis/rl/config_rl.py or launch a longer
+run based on this script alone.
 
 Usage:
-    PYTHONPATH=. python scripts/calibrate_td3_timing.py
+    PYTHONPATH=. python scripts/calibrate_td3_timing.py                  # vanilla TD3 (Week 3)
+    PYTHONPATH=. python scripts/calibrate_td3_timing.py --reward pi      # PI-TD3 (Week 4)
 """
+import argparse
 import time
 
 from stable_baselines3 import TD3
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from ev2gym_thesis.rl import config_rl
-from ev2gym_thesis.rl.env_factory import make_training_env
+from ev2gym_thesis.rl.env_factory import make_training_env, DEFAULT_REWARD_FN
+from ev2gym_thesis.rl.reward_pi import SqTrError_TrPenalty_UserIncentives_PI
 from ev2gym_thesis.eval_protocol import TRAIN_DAYS, TRAIN_SEEDS
 
 REFERENCE_CONFIG_PATH = "experiments/phase1_baseline/configs/station_v0_bogota.yaml"
 EPISODE_LENGTH_STEPS = 96  # station_v0_bogota.yaml: simulation_length
+
+REWARD_FNS = {"vanilla": DEFAULT_REWARD_FN, "pi": SqTrError_TrPenalty_UserIncentives_PI}
 
 # Candidate total-timestep budgets to present for confirmation. Chosen after
 # seeing this run's measured steps/sec so the accompanying wall-clock
@@ -32,8 +42,8 @@ EPISODE_LENGTH_STEPS = 96  # station_v0_bogota.yaml: simulation_length
 CANDIDATE_BUDGETS = [15_000, 30_000, 60_000, 90_000]
 
 
-def build_model(seed: int):
-    train_env = make_training_env(REFERENCE_CONFIG_PATH, sample_mode="round_robin")
+def build_model(seed: int, reward_fn=DEFAULT_REWARD_FN):
+    train_env = make_training_env(REFERENCE_CONFIG_PATH, reward_fn=reward_fn, sample_mode="round_robin")
     venv = DummyVecEnv([lambda: train_env])
     venv = VecNormalize(
         venv,
@@ -66,12 +76,18 @@ def build_model(seed: int):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reward", choices=list(REWARD_FNS.keys()), default="vanilla",
+                         help="Which reward function to calibrate (default: vanilla, Week 3's arm).")
+    args = parser.parse_args()
+    reward_fn = REWARD_FNS[args.reward]
+
     seed = TRAIN_SEEDS[0]
-    print(f"Calibrating TD3 for {config_rl.CALIBRATION_TIMESTEPS} timesteps "
+    print(f"Calibrating TD3 (reward={args.reward}) for {config_rl.CALIBRATION_TIMESTEPS} timesteps "
           f"(train_seed={seed}, real config_rl.py hyperparameters, "
           f"station_v0_bogota, round-robin day cycling over {len(TRAIN_DAYS)} TRAIN_DAYS)...")
 
-    model, train_env = build_model(seed)
+    model, train_env = build_model(seed, reward_fn=reward_fn)
 
     t0 = time.perf_counter()
     model.learn(total_timesteps=config_rl.CALIBRATION_TIMESTEPS)

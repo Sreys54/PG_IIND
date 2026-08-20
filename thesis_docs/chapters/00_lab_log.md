@@ -1,5 +1,362 @@
 # Lab Log
 
+## 2026-08-19 — Week 4, Entregable 5: PI-TD3 scope resolved after reading the paper in full, reward module built and tested
+
+**Read `pi_td3_paper.pdf` (arXiv:2510.12335v2) in full before writing any
+code** — CLAUDE.md rule 3 / the task brief's explicit requirement.
+Surfaced a finding the brief's original §4.1 framing did not anticipate:
+**PI-TD3's actual novel mechanism is not primarily its reward shape.**
+Algorithm 1 line 11 uses a K-step, model-based, *differentiable* rollout
+(Eq. 20) — a differentiable transition model (Eq. 18) and differentiable
+reward (Eq. 14) simulate K steps forward and backpropagate gradients
+directly into the actor, bypassing the environment. Fig. 3b's own
+rollout-horizon ablation (K=5 vs. K≥20: roughly a 4x difference in final
+reward) is the paper's own evidence this mechanism, not the reward term
+alone, drives PI-TD3's sample-efficiency gain over vanilla TD3.
+
+**Presented to the user as a genuine "is this too thin to call PI-TD3"
+moment** (the brief's own escape hatch), with three options: (a) a thin,
+reward-only adaptation, explicitly declared as such; (b) build the full
+differentiable-rollout mechanism (a custom transition model + replacing
+SB3's `TD3.train()`, materially larger scope); (c) drop PI-TD3 from
+Weeks 4-5 and report the scoping finding instead. **User chose (a).**
+
+**Built `ev2gym_thesis/rl/reward_pi.py`** — a drop-in for
+`env_factory.DEFAULT_REWARD_FN`, requiring zero changes to
+`env_factory.py`/`config_rl.py`/`callbacks.py`/`eval_utils.py` (the Week 3
+separation held, confirmed rather than assumed). Ports only Eq. 14 Term 1
+(the physics penalty: 0 within a ±5%-of-nominal voltage band, increasingly
+negative beyond it), reinterpreted for a one-sided transformer-capacity
+margin since `simulate_grid=False` has no voltage variable — the 5% margin
+fraction is borrowed directly from the paper; the penalty weight
+(`PI_TD3_PHYSICS_WEIGHT = 20.0`) is not, and is labeled "set for this
+project," not tuned via a sweep. Base reward
+(`SqTrError_TrPenalty_UserIncentives`) kept byte-identical to Week 3's
+vanilla-TD3 arm — Eq. 14's profit term (Term 2) and its dense
+near-departure satisfaction term (Term 3) were both deliberately NOT
+ported (the first would reopen Week 3's S3.2 rejection of the
+Business/ProfitMax family; the second would introduce a second new
+variable into the comparison, since Week 3's base reward already has its
+own satisfaction penalty).
+
+**A genuine ambiguity found in Eq. 14 while adapting it, recorded rather
+than silently resolved either way:** the paper's own stated `λ1 = -5×10⁴`
+(Sec. IV-A), applied literally to Term 1, produces a positive contribution
+that GROWS as voltage violations worsen — under a maximized reward
+(Eq. 16), this rewards larger violations, opposite to the paper's own
+prose ("the first term penalizes voltage deviations", Sec. II-B). Could be
+a genuine sign inconsistency in the paper or a misreading from this PDF's
+extraction of a multi-line, subscript-heavy equation (a known risk) — not
+resolved with confidence either way. Not propagated: this thesis's own
+term was built with an unambiguous, directly-tested sign instead, matching
+the paper's prose description of intent rather than its literal numeric
+coefficient.
+
+**Verified before moving on, not just written:** smoke-tested
+`transformer_capacity_margin_term` against a real `ChargeAsFastAsPossible`
+episode on `station_v0_bogota` (known to overload this station) — 93/96
+steps at 0 (within margin), 3/96 steps negative (worst -31.68), all terms
+≤0, matching the designed shape exactly. `ev2gym_thesis/tests/test_week4.py`
+added: 10 tests (7 for the reward term's exact shape — zero within margin,
+zero at the boundary, negative and worsening beyond it, correct
+multi-transformer summation — and 3 for the controlled-comparison
+invariant, asserted on the real resolved `TrainingDayCyclingEnv` objects
+built through `env_factory.make_training_env`, not by inspection). All
+10/10 passing.
+
+**Entregable 6 (PI-TD3 training throughput calibration) — done, Gate 3
+presented, awaiting confirmation.** Extended `scripts/calibrate_td3_timing.py`
+with a `--reward {vanilla,pi}` flag (one script, not a fork, per the
+brief's stated preference — the exact same calibration path measures
+either reward). Measured: **16.85 steps/s** (5,000 timesteps, 296.8s,
+train_seed=100, 53 episodes) — a ~6.9% slowdown vs. Week 3's vanilla-TD3
+measurement (18.09 steps/s), consistent with the small added per-step
+Python loop over transformers in `transformer_capacity_margin_term`.
+Extrapolated to 60,000 timesteps/seed (the same budget Week 3 used, not
+assumed to carry over automatically): **59.4 min/seed, 178.1 min (2.97h)
+total for 3 seeds** — vs. Week 3's 165.9 min (2.8h) estimate / 167.6 min
+(2.79h) actual for vanilla TD3. Per `CLAUDE.md` rule 2, training does not
+launch until the user explicitly confirms this budget — presented, not
+assumed, even though the same numeric budget worked for Week 3.
+
+## 2026-08-19 — Week 4: references acquired, Balanced oracle built and verified, 100-cell oracle grid complete (branch `semana-4`)
+
+**Process correction, noted for the record:** the balanced-oracle grid run
+was launched with a bare `nohup ... &` inside a single Bash call, which the
+harness could not track as a background task -- no completion notification
+arrived; progress had to be polled manually via the registry row count.
+Not repeated: subsequent long runs use the tool's own `run_in_background`
+mechanism, which does notify on completion.
+
+**Reference acquisition (§2 of the user's consolidated instruction).**
+`thesis_docs/references/` previously held only a `.docx` proposal file --
+`CLAUDE.md` asserted PDFs that did not exist, discovered when Week 4 tried
+to read `pi_td3_paper.pdf` and correctly stopped rather than reconstruct
+Algorithm 1/Eq. 14 from memory (2026-08-18 entry above). Fetched and
+verified (not just downloaded -- header/content-checked, since `curl`
+saves an HTML error page as `.pdf` without complaining):
+
+- `ev2gym_paper.pdf` (arXiv:2404.01849v1) and `pi_td3_paper.pdf`
+  (arXiv:2510.12335v2) -- both confirmed genuine PDFs with plausible page
+  counts (10 and 18 pages respectively; a `file`-reported "2 page(s)" for
+  the EV2Gym PDF was a false alarm from that utility -- the actual content,
+  read in full, has 10 pages including all sections through the
+  bibliography).
+- Colombian regulatory PDFs (Ley 1964/2019, RETIE Res. 40117/2024, RETIE
+  Libro 3) -- confirmed genuine (`%PDF-1.x` headers). The RETIE Res. 40117
+  URL needed proper UTF-8 percent-encoding of the accented "ó"
+  (`Resoluci%C3%B3n_...`) -- the literal accented URL 404'd.
+- The two CREG resolutions (40223/2021, 40123/2024) are HTML-only at their
+  official source, no PDF alternative found. No HTML-to-PDF renderer was
+  available in this environment (`wkhtmltopdf`, `pandoc`, `weasyprint`,
+  `pdfkit` all checked, all absent) -- saved as raw HTML with retrieval
+  date/URL rather than fabricating a PDF or silently substituting a
+  different source. Declared as a limitation in
+  `thesis_docs/references/REFERENCES.md`, not worked around silently.
+- Zandrazavi et al. (2022) and Mahmoud (2017) Ch. 1 remain pending
+  (advisor / institutional access respectively) -- Weeks 6-7, not a Week 4
+  blocker. Full citations, DOIs, and status in `REFERENCES.md`.
+- `CLAUDE.md`'s references section corrected with a dated note (2026-08-19,
+  same discipline as `02_model_validation.md`'s correction) -- the original
+  list is kept, not deleted, with a pointer to `REFERENCES.md` as the new
+  source of truth.
+- **Read in full: `ev2gym_paper.pdf`.** Beyond confirming it's genuine,
+  this surfaced something directly relevant to the Balanced oracle work
+  below: Eq. 24 states the profit-maximization problem's departure
+  constraint as `E_{j,i,t} >= E*_{j,i,t}` -- a same-unit (kWh) comparison
+  with no multiplication by any other energy term. `profit_max.py`'s
+  installed `user_satisfaction` term (`ev_des_energy * ev_max_energy -
+  energy`) does not match this formal definition either -- a second,
+  independent confirmation (beyond the dimensional-analysis argument
+  already in `04_oracle_and_pitd3.md`) that the installed class's
+  satisfaction term is not a faithful implementation of the paper's own
+  formulation, not just internally unit-inconsistent.
+
+**Balanced oracle verification (§3) -- "satisfaction is free" was checked,
+not just believed, before writing it anywhere.** The concern raised: an
+identical `ObjVal` across three penalty weights (0.5x/1x/2x) on the
+reference cell has two explanations -- the penalty is genuinely 0 at the
+optimum, or the term never entered the model (a silently-inert Gurobi
+objective term is a common, easy-to-produce bug, and this code was fresh
+and freshly adapted across a units fix). Ran the full protocol
+(`scripts/verify_balanced_oracle_objective.py`):
+
+1. **Penalty value at optimum, measured directly** (not inferred from
+   `ObjVal`): `user_satisfaction.sum() = 0.0` exactly, weight=1.0.
+2. **Absurd-weight probe** (weight=1e6): `ObjVal` still identical to
+   weight=1.0's. Necessary but not sufficient, as expected -- both
+   hypotheses predict this.
+3. **Positive control (decisive):** built a stressed replay (transformer
+   `tra_max_amps`/`tra_min_amps` scaled down on a copy, diagnostic-only
+   helper, not part of the production pipeline) and re-solved at
+   0.5x/1x/2x. At 0.2x capacity, satisfaction was STILL free (0.0 penalty,
+   identical `ObjVal`) -- inconclusive, correctly reported as such rather
+   than claimed as proof either way. Escalated to 0.05x capacity: **the
+   term became decisively live** -- `ObjVal` differs by weight (31595 /
+   32452 / 34145 at weight 0.5/1.0/2.0) and, critically, the satisfaction
+   penalty *decreases* monotonically as weight increases (1731 -> 1697 ->
+   1694) while the implied tracking-error component *increases*
+   correspondingly (30730 -> 30754 -> 30757) -- the exact tradeoff pattern
+   a correctly-functioning weighted objective must produce. This rules out
+   the dead-term hypothesis.
+4. **Solution comparison, not just objective values:** on the real
+   (unstressed) reference cell, Balanced's action array is NOT
+   byte-identical to Tracking-only's despite the tied `ObjVal` (max abs
+   diff 0.578 in the normalized `[0,1]` action space, at one specific
+   port/timestep) -- confirming the term is actively selecting among
+   multiple LP-tied optima, not inert.
+5. **Code order**, read directly from `ev2gym_thesis/oracle/balanced_model.py`:
+   `user_satisfaction` variable created, then constrained (at departure
+   timesteps only, matching `profit_max.py`'s own pattern of leaving
+   non-departure entries unconstrained so the minimization drives them to
+   their default lower bound of 0), then referenced in `setObjective` --
+   no shadowing, no reordering bug.
+
+**Verdict: "satisfaction is free" on the real 50-cell grid is a real
+result, not a bug artifact** -- confirmed by a protocol capable of
+detecting the bug it was designed to catch, not just consistent with one
+untested hypothesis.
+
+**A second, unanticipated finding surfaced while confirming this against
+the full grid (not just the reference cell): the two oracle variants are
+NOT identical on every reported metric, even though they tie exactly on
+Gurobi's own internal objective.** Checked across all 50 cells, not
+assumed from the reference cell alone:
+
+| Metric | Identical across all 50 cells? |
+|---|---|
+| `total_ev_served` | Yes (0.000000 max diff) |
+| `total_transformer_overload` | Yes (0.000000 max diff) |
+| `min_energy_user_satisfaction` | Yes (0.000000 max diff) |
+| `average_user_satisfaction` | Yes (0.000000 max diff) |
+| `tracking_error` | **No** -- Balanced consistently ~1-1.5% LOWER than Tracking-only, all 50 cells, same direction every time |
+| `total_profits` | No -- small, consistent difference (max 0.53) |
+| `battery_degradation` | No -- negligible but nonzero (max 0.000023) |
+
+**Root cause, traced, not guessed:** Gurobi's internal `power_error.sum()`
+objective is computed from the LP's own linear energy-update model
+(`energy[t] = energy[t-1] + current * voltage * efficiency * dt`). EV2Gym's
+*actual* simulated charging uses a two-stage (CC/CV) nonlinear SoC curve
+once above a transition threshold (`ev2gym_paper.pdf` Eq. 1-2, Table III,
+Fig. 3 -- confirmed by reading the paper the same session this was found,
+not assumed). The LP has multiple solutions tied at the exact same
+`power_error.sum()` (confirmed: both variants' `ObjVal` match exactly, to
+the cell, on every one of the 50 cells checked); Balanced's extra
+satisfaction term breaks that tie differently than Tracking-only's bare
+objective does. When each variant's chosen (LP-tied, but different)
+action sequence is replayed through EV2Gym's actual nonlinear simulator to
+compute the registry's `tracking_error`/`total_profits`/
+`battery_degradation` metrics, the two variants' realized values diverge
+slightly -- small, consistent, and fully explained, not noise and not a
+bug. This is the oracle-domain analogue of Week 3's reward-vs-metric
+misalignment (`03_rl_baseline.md` S3.4): the optimized quantity and the
+reported metric are related but not identical, here because of a
+linear-vs-nonlinear MODEL mismatch between the LP and the real simulator,
+rather than a differing objective formula.
+
+**Both oracle variants remain a valid, dominant bound** -- the ~90-unit
+Balanced-vs-Tracking gap is negligible next to the gap to every online
+algorithm on the same reference cell: `tracking_error` = 6388-6482
+(oracle, both variants) vs. 14477 (Round Robin), 33111 (TD3 seed 100),
+43608 (RandomPolicy), 72374 (AFAP). The Entregable 10 tripwire condition
+("the oracle is no worse than every online algorithm on the metric it
+optimizes") holds comfortably for both variants on every cell checked.
+
+**Consequence for the chapter, per the user's explicit instruction ("if
+Balanced == Tracking on every cell, do not keep two identical columns"):**
+they are demonstrably NOT identical on the registry's own reported
+`tracking_error`/`total_profits`/`battery_degradation` -- only tied on
+`total_ev_served`, `total_transformer_overload`, `min_/average_user_satisfaction`,
+and the LP's internal (unreported) objective. Both variants are kept as
+separate columns, with this nuance stated plainly rather than either
+collapsing them or reporting the tie without explaining why the "identical"
+values and the "different" values aren't the same set of metrics.
+
+**Balanced oracle grid run: 50/50 cells, 0 infeasible.** Weight
+`SATISFACTION_PENALTY_WEIGHT = 1.0` (declared origin: adapted from
+`profit_max.py`'s penalty in structure, not scale -- see
+`ev2gym_thesis/oracle/balanced_model.py`'s doc comment). `--variant`
+flag added to `scripts/evaluate_oracle.py` rather than forking a second
+script, per the project's "extend, don't fork" convention.
+
+## 2026-08-18 — Week 4 kickoff: Gate 1 preflight, amendments, Entregables 2-3 (branch `semana-4`, from corrected `semana-3`)
+
+**Scope deviation, reduction not addition (see `04_oracle_and_pitd3.md` S4.0
+and `PROJECT_ROADMAP.md`'s 2026-08-18 amendment):** Week 3's handback
+document declared Week 4 as a perfect-information reference using a free
+solver, no Gurobi — that plan is now amended. A Gurobi **academic** license
+is active on this machine, verified directly (`gurobipy` reports `LicenseID
+2853634`, `"Academic license - for non-commercial use only - expires
+2027-08-14"`), reversing Week 2's finding of a size-limited "Restricted"
+license. The oracle now uses Gurobi via the unmodified
+`ev2gym/baselines/gurobi_models/`. This is a reduction in deviation from
+the *original* roadmap (which always planned Gurobi for this phase), not a
+second new deviation — recorded as an amendment in `PROJECT_ROADMAP.md` and
+`02_model_validation.md`, both dated 2026-08-18, with every superseded
+"free solver" sentence marked `[SUPERSEDED]`, kept, not deleted.
+
+**Gate 1 — preflight findings (full detail in the chat record; summarized
+here for the permanent log):**
+- Model size for `station_v0_bogota`: ~9,000 vars, ~1,536 binary — well
+  inside the unlimited academic license.
+- Inventoried all 3 `gurobi_models/` classes plus the adjacent
+  `mpc/V2GProfitMax.py` (receding-horizon, rejected on that basis alone).
+  Recommended `PowerTrackingErrorrMin` (tracking_error.py) over
+  `V2GProfitMaxOracleGB` (profit_max.py, Business/ProfitMax family already
+  rejected for this thesis in Week 3) and `V2GProfitMax_Grid_OracleGB`
+  (v2g_grid.py, requires `simulate_grid=True`, reserved for Weeks 6-7).
+- Found, by tracing `ev2gym_env.py:227` and `replay.py:89-90`, that
+  `v2g_enabled=False` does NOT zero the replay's discharge-current bounds —
+  only gates the RL/heuristic action-space sign. Left unfixed, the oracle
+  would have V2G capability none of the compared algorithms have. This was
+  praised explicitly as the kind of thing that had to be caught before any
+  run, and is fixed by `ev2gym_thesis/oracle/replay_utils.force_g2v`.
+- Confirmed the oracle bypasses `reward_function`/`state_function` entirely
+  (reads a pickled replay directly) — `total_reward` is undefined for
+  oracle rows, `notes` records `reward=none`.
+
+**User amendments accepted at Gate 1:**
+1. **Two oracle variants**, not a single composite one —
+   `Optimal_Oracle_Tracking` (untouched objective, the defensible bound on
+   tracking error) and `Optimal_Oracle_Balanced` (same model + a
+   satisfaction penalty term, not yet implemented) — because a composite
+   objective is not a decomposable bound, and the tripwire test asserting
+   the oracle beats every online algorithm on its own optimized metric
+   needs a single-objective target to be meaningful. Full reasoning in
+   `04_oracle_and_pitd3.md` S4.2's Amendment 1.
+2. **Replay-vs-`make_env` parity must be proven empirically before any
+   full-grid run**, not assumed — directly motivated by the Week 3 bug
+   this same session found (below). Three properties verified before
+   trusting any oracle result: the replay's oracle-relevant fields are
+   algorithm-independent (compared `ChargeAsFastAsPossible` vs.
+   `RoundRobin` byte-for-byte); the replay matches `make_env`'s scenario
+   element-by-element (14 EVs, `station_v0_bogota`, seed 0, 2022-01-17, all
+   fields array-equal); replay generation is deterministic across two
+   independent runs. Full detail in `04_oracle_and_pitd3.md` S4.5.
+
+**Between Gate 1 and Entregable 2: Week 3 evaluation-bug detour.** Building
+the parity check above surfaced a bug in Week 3's *evaluation* pipeline
+(unrelated to Gurobi) serious enough that Week 4 was paused entirely to fix
+it on `semana-3`, per the user's explicit sequencing decision, before any
+further Week 4 work. Full account in this file's next entry below and
+`03_rl_baseline.md` S3.11 — not repeated here. `semana-4` was re-branched
+from the corrected `semana-3`/`main` tip (commit `88c767e`) after that fix
+landed.
+
+**Entregable 2 — `thesis_docs/chapters/04_oracle_and_pitd3.md` skeleton,
+done.** S4.0 (scope deviation), S4.1 (what the oracle is/isn't), S4.2
+(selection rationale + Amendment 1), S4.5 (registry comparability rules +
+the parity verification) written in full, methodological content before
+any results exist, per the project's standing discipline. S4.3/S4.4
+(PI-TD3) deliberately left reserved — not started, per the brief's
+instruction not to begin Part B before the oracle clears Gate 2.
+`scripts/check_claims.py` initially flagged two false positives in this
+chapter (a "distance from the bound" phrasing and the reserved
+`algorithm_family` registry value, both meta-references to the vocabulary
+restriction itself, not results claims — the same class of false positive
+Week 2 hit) — reworded per that precedent (not the checker), passes clean.
+
+**Entregable 3 — `scripts/calibrate_oracle_timing.py`, done. Full table:**
+
+Built `ev2gym_thesis/oracle/replay_utils.py`
+(`generate_replay`/`force_g2v`/`build_g2v_replay_for_cell`) and ran the
+calibration on `station_v0_bogota`'s reference cell (`REFERENCE_DAY`
+2022-01-17, `SEEDS[0]=0`), the real unmodified
+`PowerTrackingErrorrMin`, not a shrunk toy model:
+
+| Quantity | Value |
+|---|---|
+| Replay generation + G2V-forcing | 3.94s |
+| Model build (Python-side, pre-optimize) | 0.41s |
+| Gurobi solve (`Model.optimize` wall-clock) | **0.10s** |
+| NumVars / NumBinVars | 9,024 / 1,536 |
+| NumConstrs (linear) / NumQConstrs (quadratic) | 10,546 / 2,304 |
+| Status | solved to a certified optimum (1 B&B node, gap 0.00%) |
+| Presolve reduction | 10,476 of 10,546 rows removed; 8,200 of 9,024 columns removed |
+
+Solve time measured via a scoped monkeypatch of `gurobipy.Model.optimize`
+(records wall-clock around the real call, restored immediately after,
+touches no file on disk) — the only way to isolate build-time from
+solve-time without editing the unmodified library class, whose `__init__`
+fuses model construction and `self.m.optimize()` into one method.
+
+**Extrapolation:** 50 cells (tracking-only) × 4.45s/cell ≈ **3.7 minutes**
+total. Both variants (2×50=100 cells), *assuming* the not-yet-implemented
+balanced variant costs the same per cell — an explicitly flagged estimate,
+not a measurement — ≈**7.4 minutes**. This is far under the brief's
+~3-minutes-per-cell concern threshold; no MIP-gap/time-limit approximation
+is needed at this station size. Also found and reported at Gate 2:
+`PowerTrackingErrorrMin.__init__` does not currently wire a `MIPGap=`/
+`timelimit=` kwarg to `self.m.setParam` before its internal
+`self.m.optimize()` call (unlike `profit_max.py`/`v2g_grid.py`, which do)
+— moot given the measured speed, but noted for the record since the
+balanced variant, once built, may not be as fast.
+
+**Gate 2 — presented to the user, awaiting confirmation before any
+full-grid oracle run** (either variant). Recommended candidate: full
+optimality for the tracking-only 50-cell grid (~3.7 min), given the
+measured solve time makes gap/time-limit tricks unnecessary.
+
 ## 2026-08-18 — Week 3 correction: TD3/RandomPolicy evaluation ran uncontrolled scenarios, not the registered ones (branch `semana-3`)
 
 **Context: this was found while doing Week 4 preflight work, not while

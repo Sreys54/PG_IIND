@@ -201,4 +201,12 @@ experiments/phase2_algorithms/configs/_tmp_train_day_configs/
 # each run's manifest.json (see thesis_docs/chapters/03_rl_baseline.md).
 experiments/phase2_algorithms/models/
 
+# Week 4 oracle artifacts (day-config copies, raw and G2V-forced replay
+# pickles) -- regenerable from a config + day + scenario_seed via
+# ev2gym_thesis/oracle/replay_utils.py, not meant to be committed. Gurobi
+# .log/.lp dumps are covered by the *.lp/*.mps rules above.
+experiments/phase4_oracle/configs/_tmp_oracle_day_configs/
+experiments/phase4_oracle/replays_raw/
+experiments/phase4_oracle/replays_g2v/
+
 MPC EVCS V2G - v2/

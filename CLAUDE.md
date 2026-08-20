@@ -26,8 +26,33 @@ Full plan lives in `PROJECT_ROADMAP.md` at repo root (8-week compressed
 version) — **read it** before starting work in a new phase if you (Claude)
 are unsure what's next.
 
-Reference papers live in `thesis_docs/references/` (NOT `docs/` — that
-folder already holds this repo's own Sphinx documentation, don't touch it):
+**Correction, 2026-08-19 (Week 4): the list below asserted files that did
+not exist in this repo** — discovered when Week 4's PI-TD3 work tried to
+read `pi_td3_paper.pdf` and found `thesis_docs/references/` held only a
+`.docx` proposal file. Costed a round trip (stopped rather than guess at
+Algorithm 1/Eq. 14 from memory, correctly, but the gap itself shouldn't
+have existed). Real, current state — see
+`thesis_docs/references/REFERENCES.md` for full citations, DOIs,
+acquisition status, and (for regulatory documents) retrieval dates/URLs;
+this list is not the source of truth any more, that file is:
+- `ev2gym_paper.pdf`, `pi_td3_paper.pdf` — **in repo**, fetched 2026-08-19
+  from arXiv (2404.01849 / 2510.12335v2).
+- Colombian regulatory PDFs — **in repo**, fetched 2026-08-19 (Ley
+  1964/2019, RETIE Res. 40117/2024, RETIE Libro 3; the two CREG
+  resolutions, 40223/2021 and 40123/2024, are HTML, not PDF — no
+  HTML-to-PDF renderer was available, declared as a limitation in
+  `REFERENCES.md` rather than worked around silently). Weeks 6-7 material,
+  not read into Week 4.
+- `microgrid_chapter.pdf` (Mahmoud 2017, Ch. 1) — **pending institutional
+  access** (paywalled, Uniandes library/document delivery). Weeks 6-7.
+- Zandrazavi et al. (2022), Energy 241 — **pending from advisor** (she is
+  the paper's third author). Weeks 6-7, required reading before the Week 6
+  IEEE 34-bus phase specifically (unbalanced-network treatment), plus a
+  required literature-review positioning paragraph once acquired.
+
+Original list, kept for the historical record of what was assumed present
+(the reasoning below for *why* each source matters is still accurate,
+only the "already in repo" assumption was wrong):
 - `ev2gym_paper.pdf` — simulator paper (models, baseline algorithms, metrics
   in Table V).
 - `pi_td3_paper.pdf` — physics-informed RL for voltage-constrained charging

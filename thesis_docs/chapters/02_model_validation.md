@@ -144,3 +144,23 @@ served energy under an unconstrained transformer) and the unmanaged AFAP
 baseline (lower reference) should appear as horizontal reference lines on
 relevant figures, labelled as bounds -- they bracket the achievable region
 without identifying the best point within it. Not yet implemented (Deliverable 4).
+
+**Correction, 2026-08-18 (Week 4 preflight): the license status above is
+now out of date.** This section's own text was believed accurate when
+written (2026-08-12): a Gurobi capability check that session found only a
+`"Restricted — for non-production use only"` license, the free/size-limited
+default that ships with `gurobipy`, not an academic one -- so the project
+policy above (no module imports `gurobipy`) was the correct call at the
+time. As of 2026-08-18, a Gurobi **academic** license is active on this
+machine -- verified directly, not assumed: `gurobipy` reports `LicenseID
+2853634`, `"Academic license - for non-commercial use only - expires
+2027-08-14"`. This is unlimited (no 2,000-variable/2,000-constraint cap),
+confirmed by successfully building and solving a real ~9,000-variable
+model for `station_v0_bogota` (see `thesis_docs/chapters/04_oracle_and_pitd3.md`).
+The "no module depends on Gurobi" policy above is superseded, not deleted:
+`ev2gym/baselines/gurobi_models/tracking_error.py` (unmodified) is now used
+for the Week 4 perfect-information oracle, fed a replay generated and
+G2V-forced by `ev2gym_thesis/oracle/` -- see that chapter for the full
+account. `scripts/run_optimal_reference.py`'s self-contained
+license-capability-check design is kept as a template but is no longer the
+only Gurobi-related code path in this project.

@@ -73,7 +73,7 @@ Copy `CLAUDE.md` (separate file) into the repo root.
 | 1. Baseline characterization | Objective 1 | `semana-1` | 1 |
 | 2. Station + local-transformer model validation | Objective 2 | `semana-2` | 2 |
 | 3. RL baseline vanilla (TD3) | Objective 3 (part 1) | `semana-3` | 3 |
-| 4. Optimal reference (free solver, no Gurobi) + PI-TD3 | Objective 3 (part 2) | `semana-4` | 4 |
+| 4. Optimal reference (free solver, no Gurobi) [SUPERSEDED 2026-08-18, see amendment below — Gurobi academic license now active, oracle uses Gurobi] + PI-TD3 | Objective 3 (part 2) | `semana-4` | 4 |
 | 5. Full algorithm comparison (heuristics + RL + optimal reference) | Objective 3 (part 3) | `semana-5` | 5 |
 | 6. Infrastructure guidelines | Objective 4 | `semana-6` | 6 |
 | 7. Replicability + writing catch-up | Objective 5 | `semana-7` | 7 |
@@ -102,6 +102,20 @@ Copy `CLAUDE.md` (separate file) into the repo root.
 > The MPC/Gurobi-baseline text immediately below is kept for the historical
 > record of what was originally planned, not deleted — it's superseded by
 > the Week 3/4/5 sections further down this document, not replaced in place.
+
+> **Amendment 2026-08-18 (Week 4 kickoff, see `thesis_docs/chapters/00_lab_log.md` and
+> `04_oracle_and_pitd3.md`): point 2 above is now out of date — [SUPERSEDED],
+> sentence kept, not deleted.** A Gurobi **academic** license (not the
+> "Restricted — for non-production use only" license found in Week 2) is
+> now active on this machine, verified directly (`gurobipy` reports
+> `LicenseID 2853634`, "Academic license - for non-commercial use only -
+> expires 2027-08-14"). Week 4's perfect-information oracle therefore uses
+> Gurobi via `ev2gym/baselines/gurobi_models/`, not a free solver — every
+> "free solver (HiGHS/CVXPY/OR-Tools)" sentence in this document and in
+> `03_rl_baseline.md` S3.6 is superseded by this amendment, kept in place
+> rather than deleted, per the project's standing correction-record
+> convention. This is a reduction in deviation from the ORIGINAL
+> Gurobi-first plan (further above), not a second new deviation.
 
 > **Grid-scope note (resolved 2026-08-12, see `thesis_docs/chapters/02_model_validation.md`):**
 > `simulate_grid: False` (single station, own local transformer) is used
@@ -200,11 +214,13 @@ Copy `CLAUDE.md` (separate file) into the repo root.
 - **Milestone:** intermediate toward `v0.3-algorithms-compared` (tagged in
   Week 5, once the full comparison is assembled) — no tag this week.
 
-## Week 4 (revised) — Optimal Reference (free solver) + PI-TD3 (Objective 3, part 2)
-- [ ] Implement the offline, perfect-information upper bound designed in
+## Week 4 (revised) — Optimal Reference (free solver) [SUPERSEDED 2026-08-18 — Gurobi academic license now active, see the amendment above] + PI-TD3 (Objective 3, part 2)
+- [ ] [SUPERSEDED 2026-08-18, text kept for the record] Implement the offline, perfect-information upper bound designed in
       Week 3's note, using a free solver (HiGHS via SciPy/PuLP, CVXPY, or
       OR-Tools — no `gurobipy` import anywhere), sized for 8 ports x 96
-      steps.
+      steps. **Actually implemented with Gurobi** (`ev2gym/baselines/gurobi_models/tracking_error.py`,
+      unmodified, fed a G2V-forced replay generated in `ev2gym_thesis/oracle/`)
+      — see `thesis_docs/chapters/04_oracle_and_pitd3.md`.
 - [ ] Bring in **PI-TD3** as a physics-informed ablation on top of the
       Week 3 vanilla-TD3 wrapper (drop-in reward/state module, not a
       rewrite), per the PI-TD3 paper's Algorithm 1 / reward Eq. 14.
