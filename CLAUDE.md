@@ -156,6 +156,31 @@ only the "already in repo" assumption was wrong):
    if a Gurobi call fails due to licensing, tell me immediately rather than
    silently switching to a different solver, since MPC/optimal baselines
    are a required comparison point.
+7. **Excel exports (added 2026-09-09):** any `.xlsx` generated in this
+   project — a human-readable export of a results CSV, or any other
+   spreadsheet meant for me to read by eye — must go through
+   `ev2gym_thesis/xlsx_export.py::export_formatted_xlsx`, never a plain
+   `df.to_excel()`. That function enforces:
+   - Every column header renamed to a detailed, unit-bearing label (e.g.
+     `"Gross Margin, Revenue minus Cost (COP per simulated day)"`, never
+     a bare `gross_margin_cop`). If a column's scale is ambiguous or
+     inconsistent with a same-sounding column elsewhere in the project
+     (this project's own `average_user_satisfaction` is a 0-1 fraction
+     while `min_energy_user_satisfaction` is already on a 0-100 scale),
+     the label states which scale applies.
+   - Thousand-separator number formats matched to the value's type, using
+     the constants already defined in `xlsx_export.py`
+     (`COP_FORMAT`/`KWH_FORMAT` = `#,##0.00`; `COP_PER_KWH_FORMAT` =
+     `#,##0.0000` for exact reference-tariff constants; `COUNT_FORMAT` =
+     `#,##0`; `PCT_ALREADY_SCALED_FORMAT` = a literal `"%"` appended
+     without re-multiplying, for a value already on a 0-100 scale;
+     `PCT_FRACTION_FORMAT` = Excel's native `0.00%`, for a true 0-1
+     fraction) — add a new constant there rather than inventing a
+     one-off format string in a calling script.
+   - Bold, frozen header row; column widths sized so headers aren't
+     truncated.
+   - A hard check that every column has an explicit label (raises if one
+     is missing) — do not work around this check.
 
 ## Current Phase
 
