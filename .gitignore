@@ -194,6 +194,7 @@ eval_logs/
 # "not tracked yet" meant "not generated yet", per this file's own standing
 # instruction above.
 !/results/economics_cop.csv
+!/results/economics_cop.xlsx
 # Week 5 Part B (2026-09-09): same check repeated, same bug found again --
 # all 12 new week5_*.csv outputs were silently swallowed by the blanket
 # rule above. Added before closeout this time, not at it.
@@ -205,10 +206,25 @@ eval_logs/
 !/results/week5_ens_compliance.csv
 !/results/week5_requested_energy_by_cell.csv
 !/results/week5_margin_vs_overload.csv
+# Formatted .xlsx twins of the above (2026-09-09) -- human-readable
+# exports (ev2gym_thesis/xlsx_export.py), same allowlist treatment as
+# their source CSVs, added at the same time this round.
+!/results/week5_master_comparison.xlsx
+!/results/week5_old_vs_new_ci.xlsx
+!/results/week5_seed_overload_distribution.xlsx
+!/results/week5_optimality_gap.xlsx
+!/results/week5_oracle_tiebreak_noise_floor.xlsx
+!/results/week5_ens_compliance.xlsx
+!/results/week5_requested_energy_by_cell.xlsx
+!/results/week5_margin_vs_overload.xlsx
 !/results/week5_horizon_sensitivity.csv
 !/results/week5_horizon_sensitivity_summary.csv
 !/results/week5_td3_budget_curve.csv
 !/results/week5_td3_budget_curve_summary.csv
+!/results/week5_horizon_sensitivity.xlsx
+!/results/week5_horizon_sensitivity_summary.xlsx
+!/results/week5_td3_budget_curve.xlsx
+!/results/week5_td3_budget_curve_summary.xlsx
 !/results/master_results_prefix_week5_setpoint_fix.csv
 models_RL/
 plots/
