@@ -1,5 +1,556 @@
 # Lab Log
 
+## 2026-09-09 (continued) — Figures regenerated against the Gate 4 grid: 3 real bugs found by visual QA
+
+**All 11 existing figures regenerated (`scripts/make_figures.py`) against
+the corrected 13-algorithm, 1300-row grid — full FIGURE_SPECS/renaming
+refactor (section 17.1) NOT done this pass, deferred, flagged explicitly
+rather than rushed.** The existing figure code handled 13 algorithms
+without crashing (it iterates `_algos_present(rows)` dynamically), but
+visual QA — opening every regenerated PNG, per this project's own standing
+rule — found 3 real bugs, consistent with every prior week's experience
+that this step catches things automated tests don't:
+
+1. **`f02_metrics_bars`'s last panel still plotted EV2Gym's `total_profits`,
+   labeled "Profits".** Exactly the bug flagged in an earlier review and
+   never actually implemented. Fixed: `METRICS_FOR_BARS`/`METRIC_LABELS`
+   now use `gross_margin_cop` (merged in from `results/economics_cop.csv`
+   via a new `_merge_economics()` step), with a footnote stating the
+   non-discrimination caveat (05_algorithm_comparison.md S5.1) directly on
+   the figure, not just in the caption sidecar.
+2. **`f02`'s and `f04`'s titles were hardcoded to "5-seed x 10-day"**,
+   stale since the Gate 4 grid rebuild — silently inconsistent with the
+   correct `n=100`/`n=50` counts already computed dynamically next to
+   them. Fixed to compute from `len(SEEDS)`/`len(EVAL_DAYS)` so this can't
+   drift again.
+3. **`f10_optimality_gap` was reading Week 4's own `results/optimality_gap.csv`/
+   `oracle_tiebreak_noise_floor.csv`** — the pre-Gate-4 grid's analysis,
+   11 algorithms, no MPC arms at all. This is the exact figure meant to
+   show this week's headline finding (`MPC_TrackingG2V` closing the
+   oracle gap) and was silently showing stale data. Fixed: repointed at
+   `results/week5_optimality_gap.csv` (written by
+   `scripts/analyze_week5_results.py`) and a newly-computed
+   `results/week5_oracle_tiebreak_noise_floor.csv` (reused the real
+   `analyze_oracle_noise_floor` function from `analyze_week4_results.py`
+   against the new grid, not a reimplementation). Regenerated figure
+   confirms the finding visually: `MPC_TrackingG2V`'s bar is barely
+   visible above zero on the tracking-error panel, decisively below every
+   other online algorithm including Round Robin.
+
+**Side effect, flagged rather than silently left:** reusing
+`analyze_oracle_noise_floor` overwrote Week 4's own
+`results/oracle_tiebreak_noise_floor.csv` in place (the function writes
+to a hardcoded path) with Week 5-grid values (tracking_error floor:
+mean 68.37/max 146.44, vs. Week 4's original 60.93/89.35). **Week 4's own
+chapter text (`04_oracle_and_pitd3.md` S4.9(4)) already quotes its
+specific numbers inline** — that historical claim is unaffected — but the
+underlying CSV file no longer matches what that prose cites. A copy of
+the current (Week 5) values is preserved at
+`results/week5_oracle_tiebreak_noise_floor.csv` for traceability going
+forward.
+
+**Remaining figure work, explicitly deferred, not silently dropped:** the
+full section 17.1 renaming table (fNN_<what>_<breakdown>_<scope> convention,
+approved in an earlier review round), the `FIGURE_SPECS` single-source-of-
+truth refactor, `git mv` + `.caption.md` sidecar renames, and the 3 new
+figures (f12 cross-family violin, f13 margin-vs-overload — data already
+computed in `results/week5_margin_vs_overload.csv`, not yet plotted — f14
+TD3 budget-control curve). Only the correctness fixes above were made this
+pass, on the EXISTING 11 figures, so nothing downstream cites broken data.
+
+## 2026-09-09 — Week 5 close: horizon sensitivity, TD3 budget curve, `test_week5.py` corrected for the Gate 4 grid shape
+
+**MPC horizon sensitivity (section 14), `MPC_TrackingG2V` only, 10-seed
+subset (seeds 0-9, both day types = 20 cells/horizon), horizons {5, 10,
+20}:** a real, monotonic difference, not the "no meaningful difference"
+case -- tracking error 10,643 (h=5) -> 8,427 (h=10) -> 6,673 (h=20), a
+21% reduction from h=10 to h=20, at roughly 2x the per-cell compute cost
+(2.84s -> 5.66s). Overload stays exactly 0.00 across all three (the
+transformer constraint is hard regardless of planning horizon). h=10
+remains the value actually used for every `MPC_TrackingG2V` row in the
+main grid (the shipped classes' own default, set before this sensitivity
+check ran) -- declared as an open, quantified opportunity (h=20 would
+tighten the already-decisive 44.6% oracle gap further, ~9.4 min for a
+full-grid rerun) rather than silently accepted or silently re-run this
+week. Full data: `results/week5_horizon_sensitivity.csv`.
+
+**TD3 training-budget control (section 15), `TD3_vanilla_ts100`,
+checkpoints 10k/20k/30k/40k/50k/60k (confirmed present, no retraining --
+the one hard gate in the Gate 4 brief, cleared), 10-seed subset:** no
+monotonic improvement with more training. Tracking error is flat/noisy
+across the whole range (27,512-31,164, no trend), and transformer overload
+gets WORSE at later checkpoints (0.34 kWh at 10k -> 6.75-10.97 kWh at
+50k-60k) rather than better. This is evidence AGAINST "the 60,000-timestep
+budget is binding and a longer run would close the gap" -- a genuinely
+undertrained model should show a noisy but improving trend across
+checkpoints; this one doesn't, and overload actively regresses at some
+later checkpoints. Consistent with, not contradicted by, the substantial
+cross-training-seed dispersion already documented in Weeks 3-4 (up to
+63.8% relative spread at this same budget). **Strengthens Week 4's
+RL-vs-Round-Robin conclusion rather than qualifying it** -- the gap does
+not look like an artifact of insufficient training compute. Full data:
+`results/week5_td3_budget_curve.csv`.
+
+Both results written into `05_algorithm_comparison.md` S5.9/S5.10.
+
+**`ev2gym_thesis/tests/test_week5.py`'s `TestRegistryGridCount` corrected
+for the Gate 4 grid shape** -- it asserted the pre-Gate-4 structure (550
+rows = 11 algorithms x 50 cells) and would have failed (confirmed: ran it
+before fixing, 2 failures, both exactly this class) against the
+regenerated registry. Corrected to assert the current
+`analysis_row=True` shape (1300 rows = 13 algorithms x 100 cells),
+`superseded`/`analysis_row` consistency across the whole registry, and
+that the 2 legacy Week 1 reference rows are preserved (not deleted) among
+the superseded set. Added 3 new test classes per the standing "every test
+calls the real production path" rule: `TestSetpointPriceIndependence`
+(the Gate 4 fix itself, on the real `env_factory`/`MPCEnergyMaxG2V`
+objects, not a reimplementation), `TestMPCInformationSet` (pins the
+Gate 1 causality declaration -- both MPC arms are G2V-only and both know
+the full EV population's departure times at construction, checked on the
+real resolved agent objects), and `TestENSComplianceKnownAnswer`
+(AFAP-vs-itself is a known-answer case for `ENS_rel`, exactly 0%, checked
+against the real `results/week5_ens_compliance.csv` production output).
+**20/20 tests passing.**
+
+## 2026-09-08/09 — Gate 4: `generate_power_setpoints` fixed, grid regenerated at 50 seeds x 2 days, Week 5 Part B analysis complete
+
+**Diagnostic (per the Gate 4 review) confirmed both halves before any fix
+was written:** `env.charge_prices` for `station_v0_bogota` is still the
+live Netherlands ENTSO-E series (verified: Jan-17 vs Feb-14 differ, e.g.
+-0.2019 vs -0.1601 at step 0) -- Part A's Colombian recompute
+(`ev2gym_thesis/economics_recompute.py`) only ever added a derived table,
+it never touched `ev2gym/utilities/loaders.py` or re-simulated anything.
+`generate_power_setpoints()` genuinely produced different setpoints for
+the same seed on different same-category dates as a direct consequence.
+All 953 pre-existing registry rows predate Part A by weeks (git commits
+from Weeks 1-4) -- confirmed by construction, not inference.
+
+**Fix 1 -- `ev2gym/utilities/utils.py::generate_power_setpoints`,** per
+the user's pre-committed decision: the `prices` array (previously
+`abs(env.charge_prices[0])` normalized) is now a constant array of 1s --
+exactly what the normalization collapses to under a flat price series
+(this project's actual Colombian economics). `loc = 1 - prices = 0`,
+`scale = min(prices) = 1` for every EV, so the remaining
+`np.random.normal` draw is governed purely by `np.random.seed(self.seed)`.
+Verified end to end, not just at the array level: `RoundRobin`'s
+`tracking_error` and `total_energy_charged` are now byte-identical across
+two weekday dates for the same seed (11467.148... on both, exactly).
+Isolated to this one array definition (CLAUDE.md rule 1's "real need"
+case), nothing downstream of it altered.
+
+**Fix 2 (found while building the grid runner, not anticipated at Gate 1/2)
+-- `MPC_EnergyMaxG2V` had the identical problem one level up:** `eMPC_G2V`'s
+objective reads `env.charge_prices` directly in the unmodified
+`MPC.__init__` (`ev2gym/baselines/mpc/mpc.py:200-207`), so this arm's
+schedule was still being shaped by genuine Dutch day-ahead prices, date to
+date, even after Fix 1. Verified before assuming it (ch_prices differed
+0.2019 vs a different value across two weekday dates). Fixed via a new
+wrapper, `ev2gym_thesis/mpc/energy_max_mpc.py:MPCEnergyMaxG2V` --
+subclasses the unmodified `eMPC_G2V`, overwrites `ch_prices`/`disch_prices`
+with a flat constant (1.0) after construction, mirroring
+`oracle/replay_utils.force_g2v`'s exact wrapper discipline. Verified end
+to end: `MPCEnergyMaxG2V` now byte-identical across same-category dates
+(tracking_error=44624.267..., energy=214.406... on both). Also refined
+this arm's own description while fixing it: because `eMPC_G2V`'s battery-
+capacity constraints already force every EV to reach desired capacity
+(confirmed: `average_user_satisfaction=1.0` at Gate 2's calibration), a
+flat price does not change WHETHER energy is delivered, only that the
+solver has no preference for WHEN -- "meet AFAP's own charging
+requirement without ever exceeding the transformer, tie-broken arbitrarily
+by the solver" is more precise than the Gate 1 shorthand
+("energy-maximizer"), corrected in `05_algorithm_comparison.md` S5.5.
+
+**Registry schema migration (`scripts/migrate_registry_schema_week5.py`):**
+added `day_type`/`scenario_id`/`analysis_row`/`superseded` to all 953
+pre-existing rows. All 953 marked `superseded=True`, `analysis_row=False`
+-- widened beyond the literal "552 station_v0_bogota rows" instruction to
+every config (the other ~401 rows were generated by the identical buggy
+function and are equally stale), flagged explicitly rather than applied
+silently. Backup at `results/master_results_prefix_week5_setpoint_fix.csv`.
+`ev2gym_thesis/eval_protocol.py` updated: `SEEDS=range(0,50)`,
+`EVAL_DAYS=[(2022,1,17), (2022,3,5)]`, old values kept in comments, new
+`day_type()` helper added (classifies by `datetime.weekday()`, matching
+EV2Gym's own branch exactly, not a separate hardcoded list).
+`ev2gym_thesis/registry_analysis.py::main_grid_rows` corrected to filter
+on `analysis_row=="True"` instead of the old notes-marker exclusion.
+
+**`stats_utils.paired_cluster_bootstrap_ci` added alongside the existing
+`paired_bootstrap_ci`, not replacing it.** Resamples the scenario SEED
+(not the row), carrying both of a seed's rows together -- per the user's
+"conservative regardless of what check 2 finds" directive. 5 new tests,
+including the discriminating one (duplicated-row-within-cluster data
+must produce a WIDER interval under the cluster version than the naive
+one on the identical data) -- all passing.
+
+**Grid regenerated in one homogeneous pass, not a backfill**
+(`scripts/run_week5_grid.py --execute`): all 13 arms (AFAP, RoundRobin,
+RandomPolicy, 6 TD3 checkpoints, both Gurobi oracle variants, both new
+MPC arms) x 50 seeds x 2 days = **1300/1300 rows, 0 errors, 0 skipped**.
+133.6 min actual (vs. ~81 min single-cell-calibration estimate -- Gurobi
+solve times ran heavier at full scale than the single reference cell
+suggested; nothing failed). New scripts: `scripts/evaluate_mpc.py`
+(standalone MPC evaluator, `--variant {tracking,energy_max}`),
+`scripts/run_week5_grid.py` (consolidated runner, reuses the REAL
+row-builders from `backfill_registry.py`/`evaluate_rl.py`/`evaluate_oracle.py`
+directly, not reimplementations -- adds the 4 new Week 5 fields uniformly).
+Dedup is `analysis_row`-aware (`scripts/evaluate_mpc.py::analysis_row_existing_keys`),
+since a stale superseded row sharing the same
+`(config, algorithm, seed, eval_day)` key would otherwise cause a false
+skip against the raw key-based `load_existing_keys()`.
+
+**Colombian economics recomputed to cover the new rows**
+(`scripts/recompute_economics_cop.py`, rerun): 2253 total rows in
+`results/economics_cop.csv`, implied-price check still 0 problems on
+every row including the new 1300.
+
+**Headline findings, full numbers in `05_algorithm_comparison.md` S5.6:**
+1. AFAP's transformer overload, now on 50 real independent seeds (not 5):
+   mean 14.22 kWh, median 10.32 kWh (no longer zero), **28/50 seeds (56%)
+   show real overload** -- a materially larger, better-characterized risk
+   than the 5-seed sample suggested (was: mean 5.33 kWh, only 1/5 seeds).
+2. Old-vs-new CI on RoundRobin-vs-AFAP overload: naive 5-seed interval
+   [-12.26, 0.00], cluster-corrected 50-seed interval [-19.25, -9.62] --
+   narrower in absolute width (9.64 vs 12.26) because n went from 5 to 50
+   clusters despite the correction, but the OLD interval's upper bound
+   touched zero (not significant) while the NEW one excludes zero
+   decisively -- the 5-seed sample was underpowered, not just uncorrected.
+3. **`MPC_TrackingG2V` closes the gap Week 4 called unclosed:** 44.6% gap
+   to `Optimal_Oracle_Tracking` on `tracking_error`, decisively beating
+   Round Robin's 128.8% (itself still far ahead of every RL arm,
+   420-514%, `RandomPolicy` 571%, `MPC_EnergyMaxG2V` 627%, AFAP worst at
+   848%). Framed in the chapter as a value-of-information upper bound
+   (the arm knows connected-EV departure times and near-term arrivals no
+   causal arm has), not a deployable recommendation -- Round Robin remains
+   the best CAUSAL arm on this evidence.
+4. Every one of 13 arms clears both quantitative targets by a wide margin
+   on the full 50-seed grid: `average_user_satisfaction` > 90% for all
+   (worst: `TD3_vanilla_ts100` at 97.98%), and `ENS_rel`'s 95%
+   cluster-bootstrap CI upper bound is under 15% for all (worst:
+   `TD3_vanilla_ts100`/`ts101` at ~12.1%/12.0%). `ENS_abs` diagnostic
+   (now computed properly from each cell's actual requested energy `R(s)`,
+   not a proxy) confirms the station is not fleet-level inadequate: AFAP's
+   own `ENS_abs` is 0.025%.
+
+**Not yet in this entry -- horizon sensitivity and the TD3 budget curve
+are running in the background as this entry is written; their numbers go
+into a follow-up entry once complete, per the report's own structure.**
+
+## 2026-09-08 (continued) — Part A acceptance review: AFAP margin headline formalized, Week 1 reference cell reconciled, CCS2 correction sharpened
+
+**Item 1 — the AFAP-highest-margin result was in Part A's report but not
+stated as the finding it is; corrected by writing it up properly, not by
+recomputing anything.** `05_algorithm_comparison.md` S5.1 now states the
+formal proposition (`margin_i = E_i x (p - c)`, flat `p`/`c` shared by
+every algorithm => margin ranking = energy-delivered ranking for any
+`p > c`, matching the already-measured +/-20% invariance from Part A) as a
+named result, explains why both oracle variants sit below AFAP/Round Robin
+on margin (they optimize tracking error, not energy delivered — expected,
+not a bug), states gross margin is retired as a ranking metric (reported
+for Objective 1, never used to rank strategies, with a standard caption
+note), and replaces the Objective 4 trade-off figure originally specified
+in section 17 of the brief (satisfaction vs. profit, which collapses to a
+line under the proposition above) with **margin foregone vs. transformer
+overload avoided, both relative to AFAP** — computed on the 550-row main
+grid: Round Robin eliminates 100% of AFAP's overload for 88.6 COP/day
+(16.6 COP/kWh avoided); both oracle variants also fully eliminate it at
+26-111 COP/kWh; every RL arm is 60x-670x more expensive per kWh avoided
+than Round Robin while NOT fully eliminating the overload and costing
+real satisfaction (97.6-99.2% vs. 100% for every heuristic/oracle). This
+table is now this chapter's actual Objective 4 evidence, not a robustness
+note attached to a different figure.
+
+**Item 2 — Week 1 reference cell reconciled: Part A's reported numbers
+(14 EVs, 240.93/240.81 kWh, 0.132/0.0 kWh overload) are correct and are
+the project's current standing facts; the "11 EVs/42.17 kWh, 13 EVs/0.00 kWh"
+figures quoted in the review are the abandoned pre-project reference, not
+a value any current project document asserts.** Checked directly, not
+from memory: `CLAUDE.md` (line 174-180), `01_baseline.md` §1.3, and
+`results/master_results.csv`'s own `seed=42, eval_day=2022-01-17` row all
+agree exactly at 14 EVs / 240.93 / 240.81 kWh / 0.132 / 0.0 kWh overload.
+The 11/13 figures trace to this file's own 2026-08-05 entry ("Week 1
+baseline reproduction attempt"): "previously reported reference values"
+of unknown, unrecorded origin, explicitly noted at the time as
+unreproducible from the config alone (no seed on record). That same
+session's first reproduction attempt (unedited 150-station config)
+produced 92 EVs — matching neither reference — and was diagnosed as the
+wrong config; once corrected to the 8-station scenario, the re-run
+produced the 14-EV figures, explicitly flagged then as NOT matching the
+11/13 reference, with only the qualitative pattern and rough order of
+magnitude used as validation. `CLAUDE.md`'s 2026-08-11 "CONFIRMED" entry
+is the user's own later ratification of the 14-EV figures — the 11/13
+figures were superseded five weeks before this session, not overwritten
+silently now. No project file currently states 11/42.17 or 13/0.00; full
+account in `05_algorithm_comparison.md` S5.2 so this doesn't need
+re-litigating in a future session.
+
+**Item 3 — CCS2 correction sharpened and propagated beyond `01_baseline.md`
+(the only file corrected in the first pass).** Res. 40223/2021 Art. 4 is a
+*minimum*, not an exclusive standard: it requires Tipo 1 (AC) and CCS
+Combo 1 (DC) to be present, and neither prohibits nor mentions CCS Combo
+2. Restated precisely per the review: "a DC station equipped only with
+CCS Combo 2 would not, by itself, satisfy Article 4's minimum" — not "the
+regulatory floor is weaker than the config," which implied the wrong
+comparison. Scope note added (Art. 4 Paragrafo 3: binds only stations
+installed from 12 months after entry into force). Propagated to every
+other location carrying the original wrong claim, found by a fresh
+repo-wide grep for "Combo 2"/"CCS2": `CLAUDE.md` line 65 (Project Identity
+boilerplate, corrected in place with a bracketed note, since this is
+exactly the standing-facts file the correction exists to protect),
+`02_model_validation.md`'s connector-and-rated-power table row (struck
+through, corrected in place), and `PROJECT_ROADMAP.md`'s Week 6
+infrastructure-guidelines checklist item (bracketed correction, so Week 6
+doesn't inherit the wrong citation). **Also checked the anteproyecto**
+(`Project_Proposal_EN_Santiago_Reyes.docx`, paragraphs 16 and 40): mentions
+CCS Combo 2 twice as a general interoperability preference, without citing
+Res. 40223/2021 by article in either instance — flagged in
+`05_algorithm_comparison.md` S5.3 for the record, not edited (an
+already-submitted document, out of scope for this project's
+chapter-correction convention, and it doesn't make the specific wrong
+citation the chapters made).
+
+**Minor — February 2026's CU row labeled with its differing provenance in
+the annex table**, not just in the fetch script's own comments:
+`05_algorithm_comparison.md` S5.4's annex table bolds the February row and
+states directly in the table that its values came from a 600dpi visual
+crop read, not text extraction, alongside a pointer to the saved audit
+image — passed both invariants, stays in the annex (not the base case)
+exactly as before.
+
+## 2026-09-08 — Week 5 Part A: Colombian price re-basing, `total_profits` corrected, Gate 0 done (branch `semana-5`)
+
+**Branch `semana-5` created from an up-to-date `main`.** Registry state
+confirmed before touching anything: 552 rows for `config_name ==
+station_v0_bogota`, not the expected 550 — resolved, not a real
+discrepancy: the extra 2 are AFAP's and Round Robin's original Week 1
+single-day reference cells (`seed=42`, `eval_day=2022-01-17`,
+`notes="week1_reference_day"`), predating the `SEEDS`(5)x`EVAL_DAYS`(10)
+protocol adopted from Week 2 onward. The `SEEDS x EVAL_DAYS` grid itself is
+exactly 550 rows = 11 algorithms x 50 cells. Pinned by
+`ev2gym_thesis/tests/test_week5.py`'s `TestRegistryGridCount` (3 tests: the
+550-row grid, exactly 2 legacy rows, both by the expected algorithms) so
+this can't silently shift.
+
+**Gate 0 audit — `total_profits` is a cost, not a profit or revenue, and
+Weeks 1-4 read it as the latter.** Traced to source
+(`ev2gym/models/ev_charger.py:178,194,207`,
+`ev2gym/utilities/loaders.py:392-461`): `charge_price` is the ENTSO-E
+Dutch day-ahead price, negated at load time; `total_profits` sums
+`abs(actual_energy) * charge_price` (always <=0, charging) plus
+`abs(actual_energy) * discharge_price` (>=0, discharging, never triggered
+since `v2g_enabled: False` in `station_v0_bogota.yaml`). Verified
+empirically, not just structurally: every one of the (then-)552
+`station_v0_bogota` registry rows has `total_profits < 0`. **Consequence:
+EV2Gym has no concept of a retail tariff charged to the driver at all** --
+`total_profits` under this project's G2V-only config is literally the
+negated cost of energy purchased, nothing else. Every "profit"/
+"profitability" mention describing this column in `01_baseline.md`,
+`02_model_validation.md`, `03_algorithms.md`, `03_rl_baseline.md`, and
+`04_oracle_and_pitd3.md` corrected forward with a dated blockquote note
+(not rewritten in place, per this project's standing correction
+convention) -- see each file's own 2026-09-08 note.
+`ev2gym_thesis/registry.py` gained a `total_profits_semantics` doc comment
+at `STATS_COLUMNS` as the canonical explanation; the registry column
+itself is left untouched (raw simulator output, EUR, ENTSO-E-priced) --
+documented, not mutated, so the audit trail survives.
+
+**Price-independence verified for every arm before trusting a post-hoc
+recompute, not assumed.** Read every reward/state/objective function from
+source: `ev2gym/baselines/heuristics.py` (AFAP, Round Robin) has zero
+`price`/`cost` references; `ev2gym/rl_agent/reward.py`'s
+`SquaredTrackingErrorReward` and `SqTrError_TrPenalty_UserIncentives`
+(TD3_TrackingOnly and TD3_vanilla respectively) reference only
+`power_setpoints`/`charge_power_potential`/`current_power_usage`/
+transformer-overload/user-satisfaction, no price term; `PublicPST`
+(`ev2gym/rl_agent/state.py`) carries no price observation either;
+`ev2gym/baselines/gurobi_models/tracking_error.py` (both oracle variants'
+base model) has zero `price`/`cost` references, consistent with S4.2's
+already-documented objective. RandomPolicy samples uniformly, trivially
+price-independent. **Every arm in the registry is price-independent** --
+no control decision anywhere in the 552 rows would change under a
+different price series, so all Colombian economics can be computed post
+hoc from each row's already-recorded `total_energy_charged`, with no
+re-simulation.
+
+**Colombian price constants approved and implemented
+(`ev2gym_thesis/prices/colombia.py`):**
+- `RETAIL_TARIFF_COP_PER_KWH = 1450.0` -- Enel Colombia, August 2025
+  article ("La recarga tendra un valor de 1.450 pesos por kilovatio, que
+  puede variar segun el costo de la energia."). **Recency search performed
+  2026-09-08, restricted to enelx.com and enel.com.co only, per the
+  brief's explicit instruction not to substitute a competitor's (Terpel
+  Voltex/Celsia/Primax) price: no more recent Enel X or Enel Colombia
+  public EV charging retail price was found -- a negative result, logged
+  here as instructed, not silently worked around.** One tangential,
+  unadopted finding from the same search: an older (~April 2023) Enel X
+  page describes public charging as free ("no cost, part of the promotion
+  of electric mobility") -- predates the August 2025 article and is not
+  used, flagged here only because it's a real, if outdated, conflicting
+  data point a future session should not rediscover and be confused by.
+  The August 2025 figure is carried forward paired with a 2026 cost, which
+  understates operator margin by construction -- every profitability
+  result this project reports from Week 5 onward is a **lower bound**, not
+  a central estimate.
+- `ENERGY_PURCHASE_COST_COP_PER_KWH = 865.7615` -- Enel Colombia's August
+  2026 regulated tariff sheet, SECTOR NO RESIDENCIAL, Nivel de Tension 2
+  (11.4 y 13.2 kV), INDUSTRIAL Y COMERCIAL CON CONTRIBUCION / SENCILLA
+  Monomia. Confirmed September 2026 is not yet published (checked the live
+  listing page directly, 2026-09-08 -- `scripts/fetch_enel_tariffs.py`'s
+  `check_listing_for_new_month()`), so August stands as the base case per
+  the brief.
+
+**`scripts/fetch_enel_tariffs.py` built and run: 8/8 months of 2026
+downloaded, extracted, and invariant-validated.** Stores PDFs in
+`thesis_docs/sources/enel_tariffs/`, retrieval date recorded per file.
+Both invariants (six CU components sum to the stated CU; with-contribution
+= 1.20x without-contribution, extracted from a *different* table on the
+same sheet, not merely computed) hold for all 8 months, matching both
+hand-verified reference points exactly: January (605.4596 / 726.5515) and
+August (721.4679 / 865.7615). **One month, February, has no extractable
+text layer for its CU table** (confirmed: `pdfplumber` finds 0 characters
+in that specific table region, though the rest of the page extracts fine
+-- the table appears to be rendered as vector paths/outlined fonts, not
+selectable text). Handled via a 600dpi crop of the rendered page, read
+visually and hard-coded as `FEBRUARY_MANUAL_READING` in the script, saved
+to `thesis_docs/sources/enel_tariffs/2026-febrero_cu_table_crop.png` for
+audit -- and still validated against both invariants like every other
+month (passed: 685.9857 sin contribucion, 823.1828 con contribucion,
+685.9857 x 1.20 = 823.18284). Full monthly series in
+`thesis_docs/sources/enel_tariffs/nivel2_cu_2026_monthly.csv`. **The
+series confirms the brief's own finding:** CU rose from 605.4596
+(January) to 721.4679 (August), +19.2%, driven by Generacion
+(247.1961 -> 374.9931, +51.7%) while Restricciones fell
+(17.7949 -> 6.0877) -- January is not representative and was correctly
+excluded as the base case.
+
+**Reconciliation replaced per the Gate 0 response -- the recompute-and-
+compare-to-itself check does not reconcile anything, an implied-price
+sanity check does.** For all 953 registry rows (all configs, not just
+`station_v0_bogota`), computed `|total_profits| / total_energy_charged`
+and checked it falls inside that row's simulated day's own ENTSO-E
+[min, max] hourly band (`ev2gym_thesis/economics_recompute.py`'s
+`implied_price_check`) -- catches a real problem if `total_profits` and
+`total_energy_charged` ever stopped describing the same quantity, unlike a
+tautological recompute-vs-recompute check. **Result: 953/953 rows pass, 0
+problems** (no zero-energy-nonzero-profit rows, no missing price days, no
+out-of-band implied price). Distribution, all rows:
+
+| | value |
+|---|---:|
+| count | 953 |
+| mean | 0.2252 EUR/kWh |
+| std | 0.1434 |
+| min | 0.0058 |
+| 25% | 0.1475 |
+| 50% (median) | 0.1955 |
+| 75% | 0.2229 |
+| max | 0.6761 |
+
+Restricted to the 552 `station_v0_bogota` rows: mean 0.2292, min 0.0444,
+max 0.6761 -- consistent, no surprises. Kept as an arithmetic-exactness
+regression test (`TestEconomicsRecompute.test_week1_reference_cell_afap_hand_computed`
+in `test_week5.py`) on the Week 1 AFAP reference cell, per the brief's
+item (c) -- this is a unit test guarding against a constant-swap refactor
+bug, explicitly not presented as the reconciliation.
+
+**Why the old (EUR, ENTSO-E) and new (COP, flat CU) costs will never
+numerically reconcile, documented so a future session doesn't "fix" a
+non-bug:** the old figure is Sigma_t(energy_t x price_t) with an
+hourly-varying price; the new figure is total_energy x flat_CU. These are
+structurally different integrals of different price series in different
+currencies -- not two estimates of the same number. Full statement in
+`thesis_docs/Week5_Parameter_Method_and_Implementation_Justification.md`.
+
+**Recompute run (`scripts/recompute_economics_cop.py`): 953 rows written
+to `results/economics_cop.csv`** (derived table, joined 1:1 on
+`(config_name, algorithm, seed, eval_day)`, no new registry columns, per
+the approved plan). Gross margin (COP), `station_v0_bogota` main grid, by
+algorithm (mean, n=50-51):
+
+| algorithm | mean gross margin (COP) |
+|---|---:|
+| ChargeAsFastAsPossible | 115,419 |
+| RoundRobin | 115,331 |
+| RandomPolicy | 114,854 |
+| Optimal_Oracle_Balanced | 114,774 |
+| Optimal_Oracle_Tracking | 114,320 |
+| TD3_TrackingOnly_ts100 | 110,127 |
+| TD3_vanilla_ts102 | 108,027 |
+| TD3_TrackingOnly_ts102 | 105,521 |
+| TD3_TrackingOnly_ts101 | 101,917 |
+| TD3_vanilla_ts101 | 101,740 |
+| TD3_vanilla_ts100 | 100,079 |
+
+**The two Week 1 reference cells specifically** (`seed=42`,
+`eval_day=2022-01-17`, `notes="week1_reference_day"` -- the cell
+`01_baseline.md`'s table quotes: 14 EVs served, 240.93/240.81 kWh charged,
+0.132/0.0 kWh overload, matching that chapter exactly, confirming this is
+the right row):
+
+| algorithm | energy charged (kWh) | retail revenue (COP) | purchase cost (COP) | gross margin (COP) |
+|---|---:|---:|---:|---:|
+| ChargeAsFastAsPossible | 240.9269 | 349,344 | 208,585 | **140,759** |
+| RoundRobin | 240.8065 | 349,169 | 208,481 | **140,688** |
+
+**+/-20% retail tariff sensitivity: the algorithm ranking by gross margin
+is invariant -- not only at +/-20%, but for any tariff above the purchase
+cost, which is a structural property, not an empirical coincidence.**
+Since `gross_margin_i = energy_i x (tariff - cost)` and `tariff` and
+`cost` are the same flat constant for every algorithm, the margin ranking
+is always identical to the ranking by `total_energy_charged` alone, for
+any `tariff > cost`. Verified computationally at 1,160 / 1,450 / 1,740
+COP/kWh (+/-20%): identical ordering all three times (AFAP >
+RandomPolicy > RoundRobin > Optimal_Oracle_Balanced > Optimal_Oracle_Tracking
+> TD3_TrackingOnly_ts100 > ... > TD3_vanilla_ts100). This is itself a
+finding for `05_algorithm_comparison.md`, not just a robustness check: it
+formally confirms section 7's "no intraday/no cross-tariff price signal"
+result -- under Colombia's flat-tariff structure, an operator-economics
+ranking is entirely a ranking of energy delivered, with no algorithm able
+to win on unit economics alone.
+
+**Station realism (user-directed, near-future single site): adopted as
+instructed**, 8 DC ports read as a plausible near-future upgrade of a
+single real site (CC Retiro, 8 ports AC-only today per the existing Enel X
+inventory in `01_baseline.md` S1.1), not an aggregate of several
+geographically separate zones. The two Enel inventories now in the project
+(67 chargers/21 sites, Enel X page, consulted 2026-08-11; 15 points/6
+zones, Enel Colombia article, August 2025) reconciled in one paragraph in
+`01_baseline.md` per the user's instruction -- see that chapter's own
+2026-09-08 update.
+
+**CCS2 citation check found a real error in the existing chapter, not just
+a missing citation -- corrected, not silently left.** Reading Articulo 4o
+of Res. 40223/2021 directly
+(`thesis_docs/references/regulatory/res_40223_2021.html`): the resolution
+mandates **Tipo 1 (SAE J1772) for AC and CCS Combo 1 for DC** as the
+minimum connector standard. **"CCS Combo 2" does not appear anywhere in
+the resolution's text** -- the chapter's prior claim that Res. 40223/2021
+sets "the DC charging floor" at CCS2 was wrong, not merely unsupported.
+Corrected in `01_baseline.md` per the user's explicit instruction ("weaken
+the claim rather than the citation"): the regulatory floor is CCS Combo 1
+(weaker than this project's config), and `station_v0_bogota`'s CCS2
+assumption is now justified on market-practice grounds instead (Enel
+Colombia's August 2025 network report confirms CCS1/CCS2/GBT all in
+active use) -- a declared simplification, not a regulatory-floor claim.
+Scope also added: Art. 4 Paragrafo 3 binds only stations installed after
+12 months from the resolution's entry into force, not all infrastructure
+regardless of install date.
+
+**Tests: `ev2gym_thesis/tests/test_week5.py`, 13/13 passing.** Covers the
+price constants against the approved values, the tariff parser's two
+invariants against the real stored PDFs (not fixtures) for all 8 months
+including February's manual-reading fallback, the registry grid-count
+assertions (550/552/2), the economics recompute against the hand-computed
+Week 1 AFAP cell, and the implied-price check against the real registry
+rows for both Week 1 reference cells.
+
+**Not yet done, carried into the Part A close-out report:** the
+`Week5_Parameter_Method_and_Implementation_Justification.md` write-up,
+the `05_algorithm_comparison.md` chapter content proper (the corrections
+above are dated blockquotes in the existing Weeks 1-4 chapters, not yet
+the new chapter itself), and `CLAUDE.md`'s stale "Current Phase" section.
+Per the brief: stopping to report Part A results now, before touching Part
+B (the MPC arm / consolidated comparison) at all.
+
 ## 2026-08-20 — Week 4 acceptance review: git rule correction, verdict revision, gitignore bug
 
 **Standing git rule corrected (`CLAUDE.md` rule 4, `PROJECT_ROADMAP.md`'s

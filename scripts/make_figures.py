@@ -24,7 +24,7 @@ from ev2gym_thesis.figures import (
 from ev2gym_thesis.stats_utils import mean_ci, paired_bootstrap_ci
 from ev2gym_thesis.registry_analysis import load_registry, main_grid_rows
 from ev2gym_thesis.config_utils import make_day_config
-from ev2gym_thesis.eval_protocol import REFERENCE_DAY
+from ev2gym_thesis.eval_protocol import REFERENCE_DAY, SEEDS, EVAL_DAYS
 
 REFERENCE_CONFIG = "station_v0_bogota"
 REFERENCE_CONFIG_PATH = "experiments/phase1_baseline/configs/station_v0_bogota.yaml"
@@ -37,14 +37,24 @@ REFERENCE_DAY_STR = f"{_ref_year:04d}-{_ref_month:02d}-{_ref_day:02d}"
 
 METRICS_FOR_BARS = [
     "total_ev_served", "total_energy_charged", "total_transformer_overload",
-    "average_user_satisfaction", "total_profits",
+    "average_user_satisfaction", "gross_margin_cop",
 ]
 METRIC_LABELS = {
     "total_ev_served": "EVs served",
     "total_energy_charged": "Energy charged (kWh)",
     "total_transformer_overload": "Transformer overload (kWh)",
     "average_user_satisfaction": "Avg. user satisfaction",
-    "total_profits": "Profits",
+    # CORRECTED 2026-09-09 (Week 5 Gate review): this panel used to plot
+    # EV2Gym's own `total_profits` labeled "Profits" -- that column is a
+    # negated ENTSO-E-priced purchase cost, not a profit/revenue figure
+    # (registry.py's total_profits_semantics doc comment). Replaced with
+    # the Colombian-peso gross margin (results/economics_cop.csv). Per
+    # 05_algorithm_comparison.md S5.1: gross margin is proportional to
+    # energy delivered under this project's flat Colombian tariff and does
+    # NOT discriminate between control strategies that respect the
+    # transformer's rating and those that don't -- reported here for
+    # Objective 1's revenue question, never used to rank algorithms.
+    "gross_margin_cop": "Gross margin (COP/day)*",
 }
 HEADLINE_METRIC = "total_transformer_overload"  # the Week 1 headline finding
 
@@ -188,19 +198,33 @@ def make_f02_metrics_bars(rows):
     # from the plot while `grid` kept every row. Fixed by counting only rows
     # for algorithms actually plotted.
     n_per_algo = sum(1 for r in grid if r["algorithm"] in algos) // max(len(algos), 1)
-    fig.suptitle(f"{REFERENCE_CONFIG}: metrics across the 5-seed x 10-day evaluation grid, "
+    # CORRECTED 2026-09-09 (Week 5 Gate 4): was a hardcoded "5-seed x
+    # 10-day" string, stale since the grid was rebuilt to
+    # len(SEEDS) seeds x len(EVAL_DAYS) day types -- computed from the
+    # actual eval_protocol constants so this can't drift again.
+    fig.suptitle(f"{REFERENCE_CONFIG}: metrics across the {len(SEEDS)}-seed x "
+                 f"{len(EVAL_DAYS)}-day-type evaluation grid, "
                  f"mean +/- 95% CI (n={n_per_algo} per algorithm)", fontsize=10)
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    fig.text(0.5, 0.01, "* Gross margin does not discriminate control quality under this "
+             "project's flat Colombian tariff -- reported for Objective 1's revenue "
+             "question only, never used to rank algorithms (05_algorithm_comparison.md S5.1).",
+             ha="center", fontsize=7, style="italic")
+    fig.tight_layout(rect=[0, 0.03, 1, 0.93])
     _save(fig, "f02_metrics_bars")
     write_caption(
         "f02_metrics_bars",
         what_it_shows=(
             "Grouped bars with 95% CI error bars across algorithms for total_ev_served, "
             "total_energy_charged, total_transformer_overload, average_user_satisfaction, "
-            "and total_profits. The energy-charged panel additionally shows the total "
-            "energy requested by arriving EVs as a dashed upper-bound reference line "
-            "(computed from ONE live reference-day run, seed=0 -- a proxy, not an "
-            "average over all 100 runs)."
+            "and gross_margin_cop (Colombian-peso economics, results/economics_cop.csv -- "
+            "NOT EV2Gym's own total_profits column, which is a negated ENTSO-E-priced "
+            "purchase cost, not a profit figure; see registry.py's total_profits_semantics "
+            "doc comment). Gross margin does not discriminate control quality under this "
+            "project's flat Colombian tariff (05_algorithm_comparison.md S5.1) -- reported "
+            "for Objective 1's revenue question, never used to rank algorithms. The "
+            "energy-charged panel additionally shows the total energy requested by "
+            "arriving EVs as a dashed upper-bound reference line (computed from ONE live "
+            "reference-day run, seed=0 -- a proxy, not an average over all runs)."
         ),
         n_runs=len(grid),
         configs=[REFERENCE_CONFIG],
@@ -302,15 +326,16 @@ def make_f04_distributions(rows):
     n_per_algo = sum(1 for r in grid if r["algorithm"] in algos) // max(len(algos), 1)
     ax.set_ylabel(METRIC_LABELS[HEADLINE_METRIC])
     ax.set_title(f"{REFERENCE_CONFIG}: {METRIC_LABELS[HEADLINE_METRIC]} distribution\n"
-                 f"across all {n_per_algo} runs per algorithm (5 seeds x 10 days)", fontsize=10)
+                 f"across all {n_per_algo} runs per algorithm "
+                 f"({len(SEEDS)} seeds x {len(EVAL_DAYS)} day types)", fontsize=10)
     fig.tight_layout()
     _save(fig, "f04_distributions")
     write_caption(
         "f04_distributions",
         what_it_shows=(
             f"Box plot of {METRIC_LABELS[HEADLINE_METRIC]} per algorithm over every run "
-            "in the 5-seed x 10-day grid, showing run-to-run variance directly instead "
-            "of hiding it behind a mean."
+            f"in the {len(SEEDS)}-seed x {len(EVAL_DAYS)}-day-type grid, showing "
+            "run-to-run variance directly instead of hiding it behind a mean."
         ),
         n_runs=len(grid),
         configs=[REFERENCE_CONFIG],
@@ -765,8 +790,16 @@ def make_f09_degradation_by_ambient():
 # scripts/analyze_week4_results.py -- NOT the main registry directly, same
 # "figure reads its own analysis output" pattern as f09.
 # ---------------------------------------------------------------------------
-OPTIMALITY_GAP_PATH = "results/optimality_gap.csv"
-NOISE_FLOOR_PATH = "results/oracle_tiebreak_noise_floor.csv"
+# CORRECTED 2026-09-09 (Week 5): was "results/optimality_gap.csv" /
+# "results/oracle_tiebreak_noise_floor.csv" -- Week 4's own analysis
+# output, computed on the pre-Gate-4 grid (11 algorithms, no MPC arms).
+# f10 now reads the Week 5 grid's analysis (13 algorithms, including both
+# MPC arms -- the arm this figure exists to show, per
+# 05_algorithm_comparison.md S5.6). Week 4's own historical CSV/cited
+# numbers in 04_oracle_and_pitd3.md are untouched -- this is a path
+# change for the FIGURE only, not a rewrite of Week 4's own record.
+OPTIMALITY_GAP_PATH = "results/week5_optimality_gap.csv"
+NOISE_FLOOR_PATH = "results/week5_oracle_tiebreak_noise_floor.csv"
 GAP_METRIC_LABELS = {
     "tracking_error": "Tracking error (gap vs. Optimal_Oracle_Tracking)",
     "average_user_satisfaction": "Avg. satisfaction (gap vs. Optimal_Oracle_Balanced)",
@@ -979,8 +1012,26 @@ def _save(fig, name):
     print(f"Wrote {FIGURES_DIR}/{name}.png, .pdf")
 
 
+def _merge_economics(rows):
+    """Week 5: joins results/economics_cop.csv's gross_margin_cop onto each
+    registry row (dedup key: config_name, algorithm, seed, eval_day) -- a
+    plain dict-merge, not a recompute, so figures read the exact same
+    Colombian-peso values 05_algorithm_comparison.md quotes."""
+    import csv as _csv
+    econ_by_key = {}
+    with open("results/economics_cop.csv", newline="") as f:
+        for r in _csv.DictReader(f):
+            key = (r["config_name"], r["algorithm"], r["seed"], r["eval_day"])
+            econ_by_key[key] = float(r["gross_margin_cop"])
+    for r in rows:
+        key = (r["config_name"], r["algorithm"], str(int(r["seed"])), r["eval_day"])
+        r["gross_margin_cop"] = econ_by_key.get(key)
+    return rows
+
+
 if __name__ == "__main__":
     rows = load_registry()
+    rows = _merge_economics(rows)
     print(f"Loaded {len(rows)} registry rows (smoke test excluded).")
 
     make_f01_power_profile(rows)

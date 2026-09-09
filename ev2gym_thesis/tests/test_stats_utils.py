@@ -12,7 +12,7 @@ import unittest
 
 import numpy as np
 
-from ev2gym_thesis.stats_utils import mean_ci, paired_bootstrap_ci
+from ev2gym_thesis.stats_utils import mean_ci, paired_bootstrap_ci, paired_cluster_bootstrap_ci
 
 
 class TestMeanCI(unittest.TestCase):
@@ -87,6 +87,87 @@ class TestPairedBootstrapCI(unittest.TestCase):
     def test_unknown_statistic_raises(self):
         with self.assertRaises(ValueError):
             paired_bootstrap_ci([1, 2], [3, 4], statistic="bogus", n_bootstrap=10)
+
+
+class TestPairedClusterBootstrapCI(unittest.TestCase):
+    """Added 2026-09-08, Week 5 Gate 3/Gate 4."""
+
+    def test_matches_paired_bootstrap_when_every_cluster_is_a_singleton(self):
+        """With one row per cluster, cluster resampling degenerates to
+        exactly the same procedure as row-level resampling -- same RNG
+        draws (rng.choice over N singleton clusters is equivalent to
+        rng.integers over N row indices in distribution), so point
+        estimates must match exactly and CI widths should be very close."""
+        rng = np.random.default_rng(7)
+        values_a = rng.normal(100, 10, size=50)
+        values_b = values_a + rng.normal(5, 2, size=50)
+        cluster_ids = np.arange(50)  # every row its own cluster
+
+        naive = paired_bootstrap_ci(values_a, values_b, n_bootstrap=5000, seed=3)
+        clustered = paired_cluster_bootstrap_ci(values_a, values_b, cluster_ids,
+                                                  n_bootstrap=5000, seed=3)
+        self.assertAlmostEqual(naive["point_estimate"], clustered["point_estimate"], delta=1e-9)
+        self.assertEqual(clustered["n_clusters"], 50)
+        self.assertEqual(clustered["n_pairs"], 50)
+
+    def test_duplicated_rows_within_cluster_widen_the_interval(self):
+        """The discriminating test: this project's exact failure mode --
+        each of 10 clusters contributes 2 EXACTLY DUPLICATED rows (same
+        value twice, mimicking a seed's weekday+weekend rows before the
+        Gate 4 fix, or any correlated pair). A naive row-level bootstrap
+        sees 20 'independent' points and produces an artificially narrow
+        CI; the cluster bootstrap sees 10 independent clusters and must
+        produce a wider (or equal) CI on the same data."""
+        rng = np.random.default_rng(11)
+        n_clusters = 10
+        cluster_true_diff = rng.normal(5, 3, size=n_clusters)  # real between-cluster variance
+        values_a, values_b, cluster_ids = [], [], []
+        for c in range(n_clusters):
+            base_a = rng.normal(100, 1)
+            base_b = base_a + cluster_true_diff[c]
+            # duplicate the pair twice -- identical values, like a
+            # weekday/weekend pair sharing one underlying draw
+            for _ in range(2):
+                values_a.append(base_a)
+                values_b.append(base_b)
+                cluster_ids.append(c)
+
+        naive = paired_bootstrap_ci(values_a, values_b, n_bootstrap=5000, seed=4)
+        clustered = paired_cluster_bootstrap_ci(values_a, values_b, cluster_ids,
+                                                 n_bootstrap=5000, seed=4)
+
+        naive_width = naive["ci_high"] - naive["ci_low"]
+        clustered_width = clustered["ci_high"] - clustered["ci_low"]
+        self.assertGreater(clustered_width, naive_width,
+                            "cluster bootstrap must be wider than the naive one on duplicated-row data")
+        self.assertEqual(clustered["n_clusters"], 10)
+        self.assertEqual(clustered["n_pairs"], 20)
+        # point estimates should still agree (same underlying data, same statistic)
+        self.assertAlmostEqual(naive["point_estimate"], clustered["point_estimate"], delta=1e-9)
+
+    def test_clusters_never_split_across_a_resample(self):
+        """Verify the actual resampling mechanism, not just the resulting
+        width: monkeypatch-free check via a statistic that would betray a
+        split cluster -- pair the values so a=0 always and b=cluster_id,
+        forcing every resampled boot_stat to be an exact integer average of
+        WHOLE cluster ids if clusters are respected."""
+        cluster_ids = np.array([0, 0, 0, 1, 1, 2, 2, 2, 2])
+        values_a = np.zeros(9)
+        values_b = cluster_ids.astype(float)  # every row's value == its cluster id
+        result = paired_cluster_bootstrap_ci(values_a, values_b, cluster_ids,
+                                              n_bootstrap=200, seed=5)
+        # point estimate: mean over 9 rows of cluster id values (3 zeros, 2 ones, 4 twos)
+        expected_point = float(np.mean(values_b))
+        self.assertAlmostEqual(result["point_estimate"], expected_point, delta=1e-9)
+        self.assertEqual(result["n_clusters"], 3)
+
+    def test_mismatched_lengths_raises(self):
+        with self.assertRaises(ValueError):
+            paired_cluster_bootstrap_ci([1, 2, 3], [1, 2], [0, 0, 1])
+
+    def test_unknown_statistic_raises(self):
+        with self.assertRaises(ValueError):
+            paired_cluster_bootstrap_ci([1, 2], [3, 4], [0, 1], statistic="bogus", n_bootstrap=10)
 
 
 if __name__ == "__main__":

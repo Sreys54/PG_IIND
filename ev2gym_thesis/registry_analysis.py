@@ -47,11 +47,25 @@ NON_GRID_NOTES_MARKERS = {"week1_reference_day", "pipeline_smoke_test_grid"}
 
 
 def main_grid_rows(rows: list, config_name: str = None) -> list:
-    """Rows from the balanced 5-seed x 10-day evaluation grid only (excludes
-    the Week 1 single-day historical rows and the grid smoke test, via
-    NON_GRID_NOTES_MARKERS -- NOT via "notes is non-empty", see that
-    constant's comment for why this changed in Week 3)."""
-    out = [r for r in rows if r["notes"] not in NON_GRID_NOTES_MARKERS]
+    """Rows from the current statistical grid only.
+
+    CORRECTED 2026-09-08 (Week 5, Gate 3/Gate 4 -- see
+    thesis_docs/chapters/00_lab_log.md's 2026-09-08 entries): filters on
+    `analysis_row == "True"` now, not the old NON_GRID_NOTES_MARKERS
+    exclusion. The old (SEEDS=[0..4] x 10 EVAL_DAYS) grid was produced by
+    a buggy `generate_power_setpoints` with a live ENTSO-E price
+    dependency inside the control layer; every one of those rows is
+    `superseded=True`, `analysis_row=False` after the Week 5 schema
+    migration, so the old filter would now silently include stale data.
+    `analysis_row` is the single, explicit source of truth for "belongs to
+    a current, valid statistic or figure" -- NON_GRID_NOTES_MARKERS is
+    kept below only for historical/debugging reference to the old rows,
+    not used by this function. Configs other than `station_v0_bogota`
+    (the sensitivity-sweep configs, the smoke test) have zero
+    analysis_row=True rows as of Week 5 -- they were not part of the Gate
+    4 regeneration and this function correctly returns nothing for them
+    rather than falling back to their stale rows."""
+    out = [r for r in rows if str(r.get("analysis_row")) == "True"]
     if config_name is not None:
         out = [r for r in out if r["config_name"] == config_name]
     return out

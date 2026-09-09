@@ -1,0 +1,9 @@
+year,month,generacion,transmision,distribucion,comercializacion,perdidas,restricciones,cu_sin_contribucion,cu_con_contribucion,extraction_method,source_pdf,retrieval_date
+2026,enero,247.1961,52.9743,191.7479,76.4615,19.2849,17.7949,605.4596,726.5515,regex_text_extraction,thesis_docs/sources/enel_tariffs/2026-enero.pdf,2026-09-08
+2026,febrero,332.9887,50.6152,185.2724,75.0193,23.8141,18.276,685.9857,823.1828,manual_visual_read_600dpi_crop,thesis_docs/sources/enel_tariffs/2026-febrero.pdf,2026-09-08
+2026,marzo,294.106,57.632,184.8592,83.649,23.2021,28.0551,671.5034,805.8041,regex_text_extraction,thesis_docs/sources/enel_tariffs/2026-marzo.pdf,2026-09-08
+2026,abril,306.12,55.9536,186.4289,81.8842,21.0877,25.8997,677.3741,812.8489,regex_text_extraction,thesis_docs/sources/enel_tariffs/2026-abril.pdf,2026-09-08
+2026,mayo,336.239,38.4612,191.3385,81.7983,22.1548,31.6946,701.6864,842.0237,regex_text_extraction,thesis_docs/sources/enel_tariffs/2026-mayo.pdf,2026-09-08
+2026,junio,357.3264,46.9108,187.8443,80.9159,22.6826,22.6959,718.3759,862.0511,regex_text_extraction,thesis_docs/sources/enel_tariffs/2026-junio.pdf,2026-09-08
+2026,julio,365.3973,60.4433,184.3191,81.1308,24.3755,22.6521,738.3181,885.9817,regex_text_extraction,thesis_docs/sources/enel_tariffs/2026-julio.pdf,2026-09-08
+2026,agosto,374.9931,49.3138,183.7335,83.3438,23.996,6.0877,721.4679,865.7615,regex_text_extraction,thesis_docs/sources/enel_tariffs/2026-agosto.pdf,2026-09-08

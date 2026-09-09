@@ -566,6 +566,22 @@ registry: **550 rows = 11 algorithms x 50 cells exactly**, confirmed by
 
 ## S4.9 Analysis
 
+> **Correction, 2026-09-08 (Week 5 Part A, see `00_lab_log.md`'s
+> 2026-09-08 entry and `05_algorithm_comparison.md`): every `total_profits`
+> mention in this section — including "operator profitability" as one of
+> "this thesis's three declared objective axes" in (1) and S4.10 item 3 —
+> reads EV2Gym's `total_profits` column as a profit/revenue figure. It is
+> not: it is the negated cost of energy purchased under ENTSO-E day-ahead
+> prices** (`registry.py`'s `total_profits_semantics` doc comment has the
+> full trace). The relative comparisons below (e.g. "+5.02% TrackingOnly
+> higher") remain internally valid as relative energy-cost comparisons
+> under a shared, fixed (if non-Colombian) price series — what changes is
+> only the label: read every "TrackingOnly higher on `total_profits`" as
+> "TrackingOnly has a smaller ENTSO-E-priced energy cost," not "is more
+> profitable." All values and CIs below are kept as originally computed;
+> the Colombian-peso operator-margin figures for these same arms are in
+> `results/economics_cop.csv` and `05_algorithm_comparison.md`.
+
 **(1) Reward ablation headline — pooled, n=150 matched cells, `TD3_TrackingOnly`
 vs. `TD3_vanilla`, paired bootstrap (`results/reward_ablation_bootstrap.csv`):**
 

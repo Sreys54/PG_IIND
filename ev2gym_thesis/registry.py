@@ -26,16 +26,59 @@ TIMESERIES_DIR = "results/timeseries"
 # doc:begin registry_schema
 ALGORITHM_FAMILIES = {"heuristic", "mpc", "rl", "optimal"}
 
+# doc:begin week5_schema_additions
+# Added 2026-09-08 (Week 5, Gate 3/Gate 4 -- see
+# thesis_docs/chapters/00_lab_log.md's 2026-09-08 entries):
+#   day_type      -- "weekday"/"weekend", ev2gym_thesis.eval_protocol.day_type
+#   scenario_id   -- f"{seed}_{day_type}", the actual independent-draw unit
+#                    (Gate 3 finding: the day axis within a category is
+#                    redundant, so (seed, day_type) -- not (seed, eval_day)
+#                    -- is the unit that matters).
+#   analysis_row  -- True only for rows produced by the corrected
+#                    generate_power_setpoints (Gate 4); every statistic and
+#                    figure from Week 5 onward reads ONLY analysis_row=True.
+#   superseded    -- True for every row produced before the Gate 4 fix
+#                    (ev2gym/utilities/utils.py::generate_power_setpoints
+#                    had a live ENTSO-E price dependency in the setpoint
+#                    target itself, not just in total_profits). Kept as
+#                    provenance, per the project's append-only convention
+#                    -- never deleted, never mixed into any statistic.
+# doc:end week5_schema_additions
 META_COLUMNS = [
     "run_id", "timestamp_utc", "git_commit", "config_name", "n_ports",
     "transformer_kw", "oversubscription_ratio", "algorithm",
     "algorithm_family", "seed", "eval_day", "sim_steps", "runtime_s",
-    "notes",
+    "notes", "day_type", "scenario_id", "analysis_row", "superseded",
 ]
 
 # Every scalar in env.step() stats (see CLAUDE.md's confirmed stats key
 # list). action_mask and voltage_violation_counter_per_step are excluded:
 # both are per-port/per-step arrays, not per-run scalars.
+#
+# doc:begin total_profits_semantics
+# CORRECTION, 2026-09-08 (Week 5 Gate 0 audit -- see
+# thesis_docs/chapters/00_lab_log.md's 2026-09-08 entry and
+# thesis_docs/chapters/05_algorithm_comparison.md): `total_profits` is NOT
+# a profit or revenue figure. Traced to source
+# (ev2gym/models/ev_charger.py:178,194,207 and
+# ev2gym/utilities/loaders.py:392-461): it is the NEGATED cost of energy
+# purchased by the operator, in EUR, priced against EV2Gym's default
+# Netherlands ENTSO-E day-ahead series -- not Colombian prices, and not a
+# revenue collected from any EV driver (EV2Gym has no concept of a retail
+# tariff charged to the user at all). Under this project's
+# `v2g_enabled: False` config, no row has ever recorded a discharge
+# action, so every value in this column is <= 0 by construction (verified
+# empirically across all 552 station_v0_bogota rows, not just argued
+# structurally). Superseded by results/economics_cop.csv
+# (ev2gym_thesis/economics_recompute.py) for ALL profitability/revenue/cost
+# reporting from Week 5 onward -- that table uses explicit, unambiguous
+# names (`retail_revenue_cop`, `energy_purchase_cost_cop`,
+# `gross_margin_cop`) precisely because "profit" was the word that let this
+# column be misread as a revenue figure in Weeks 1-4. This registry column
+# itself is left untouched (raw simulator output, EUR, ENTSO-E-priced) --
+# it is documented here, not mutated, per the Week 5 Gate 0 response's
+# explicit instruction to preserve the audit trail.
+# doc:end total_profits_semantics
 STATS_COLUMNS = [
     "total_ev_served", "total_profits", "total_energy_charged",
     "total_energy_discharged", "average_user_satisfaction",

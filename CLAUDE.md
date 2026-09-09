@@ -62,8 +62,21 @@ only the "already in repo" assumption was wrong):
   guidelines chapter (Objective 4), not for direct code implementation.
 - Colombian regulatory PDFs (Ley 1964/2019, RETIE Res. 40117/2024,
   Res. 40223/2021, Res. 40123/2024) — used to justify constraints
-  (±5% voltage band, OCPP + CCS Combo 2 interoperability, min. 5 public
-  stations per category-especial city).
+  (±5% voltage band, OCPP + CCS Combo 1 [CORRECTED 2026-09-08, Week 5 Part
+  A — Res. 40223/2021 Art. 4 mandates at least one Tipo 1 (AC) and at
+  least one CCS Combo 1 (DC) connector as the *minimum*; it does not
+  establish, mention, or exclude CCS Combo 2. The original text here said
+  "CCS Combo 2" and was wrong, not merely uncited — verified directly
+  against the resolution's stored text
+  (`thesis_docs/references/regulatory/res_40223_2021.html`), not
+  paraphrased from memory. This project's `station_v0_bogota` config still
+  assumes CCS2-only, on market-practice grounds (Enel Colombia's own
+  network uses CCS1/CCS2/GBT) — see `01_baseline.md` §1.1(a) — not on
+  regulatory-floor grounds; a DC station equipped with CCS2 only would NOT
+  by itself satisfy Art. 4's minimum, which requires Combo 1. The
+  requirement binds only stations installed from 12 months after the
+  resolution's entry into force, per Art. 4 Paragrafo 3.] interoperability,
+  min. 5 public stations per category-especial city).
 
 ## Language & Output Conventions
 
@@ -291,6 +304,60 @@ state:
   final comparison is written up.
 - Full session account in `thesis_docs/chapters/00_lab_log.md`'s
   2026-08-18/19/20 entries.
+
+**Correction, 2026-09-09: everything above this line is stale (still says
+"Active phase: Week 3") — kept for the historical record, not rewritten
+in place.** Real current state:
+- **Active phase: Week 5 — Colombian price re-basing (Part A) and full
+  algorithm comparison including the MPC arm (Part B). Both complete.**
+  Active branch: `semana-5`, branched from the corrected `semana-4`/`main`
+  tip. **Not merged to `main`, not tagged** — per standing git discipline,
+  the user tags `v0.3-algorithms-compared` and merges themselves once they
+  confirm the week's checklist is done.
+- **Colombian price constants (standing facts, so a future session cannot
+  silently reintroduce ENTSO-E prices):** retail tariff
+  `RETAIL_TARIFF_COP_PER_KWH = 1450.0` (Enel Colombia, August 2025, a
+  single published point — not a time series); energy purchase cost
+  `ENERGY_PURCHASE_COST_COP_PER_KWH = 865.7615` (Enel Colombia's regulated
+  tariff sheet, Nivel de Tension 2, with contribution, August 2026 — the
+  most recently published month at the time, not an average). Both in
+  `ev2gym_thesis/prices/colombia.py`. `results/economics_cop.csv` is the
+  source of truth for revenue/cost/margin from Week 5 onward —
+  EV2Gym's own `total_profits` registry column is NOT a profit/revenue
+  figure (it is a negated ENTSO-E-priced purchase cost; see
+  `ev2gym_thesis/registry.py`'s `total_profits_semantics` doc comment) and
+  must not be read as one.
+- **The evaluation grid was rebuilt.** The original 5-seed x 10-`EVAL_DAYS`
+  grid was found to be non-independent (EV2Gym's arrival distribution
+  depends on weekday-vs-weekend only, not the specific date) and, separately,
+  `ev2gym/utilities/utils.py::generate_power_setpoints` had a live ENTSO-E
+  price dependency inside the control layer (fixed at the source, isolated
+  change, see that function's own dated comment). Current grid:
+  `ev2gym_thesis/eval_protocol.py`'s `SEEDS = range(0, 50)`,
+  `EVAL_DAYS = [(2022,1,17), (2022,3,5)]` (one weekday, one weekend). The
+  registry (`results/master_results.csv`) now has an `analysis_row`
+  column — **only `analysis_row=True` rows are statistically valid**
+  (1,300 rows = 13 algorithms x 100 cells); every pre-existing row is
+  `superseded=True`, kept as provenance, never used in a current figure or
+  table. `ev2gym_thesis/stats_utils.py::paired_cluster_bootstrap_ci`
+  (resamples the scenario seed, not the row) is the current bootstrap for
+  any cross-cell comparison — the older `paired_bootstrap_ci` still exists
+  but understates uncertainty on this project's clustered evaluation
+  design.
+- **Two new algorithm arms:** `MPC_TrackingG2V` and `MPC_EnergyMaxG2V`
+  (`ev2gym_thesis/mpc/`), both wrapping unmodified `ev2gym/baselines/mpc/`
+  classes. Both are non-causal (know connected-EV departure times and
+  near-horizon arrivals no real operator has) — never described as
+  deployable without that caveat.
+- **Recommended strategy for Objective 4, on evidence through Week 5:
+  Round Robin** — the best fully causal, deployable arm on every declared
+  axis at this station's scale. `MPC_TrackingG2V`/`MPC_EnergyMaxG2V` and
+  both oracle variants outperform it but are not causal; their gap to
+  Round Robin is framed as a value-of-information bound (e.g. what a
+  declared-departure app feature could be worth), not a competing
+  recommendation.
+- Full session account in `thesis_docs/chapters/00_lab_log.md`'s
+  2026-09-08/09 entries and `thesis_docs/chapters/05_algorithm_comparison.md`.
 
 ## Useful Commands (reference, don't re-derive these each time)
 

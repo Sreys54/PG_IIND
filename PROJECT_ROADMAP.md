@@ -249,14 +249,60 @@ Copy `CLAUDE.md` (separate file) into the repo root.
       Not yet merged to `main`; the user tags/merges manually per `CLAUDE.md`
       rule 4.
 
-## Week 5 (revised) — Full Algorithm Comparison (Objective 3, part 3)
-- [ ] Run all algorithms accumulated so far (AFAP, Round Robin, TD3
+## [SUPERSEDED 2026-09-09, kept for the record] Week 5 (revised) — Full Algorithm Comparison (Objective 3, part 3)
+- [x] Run all algorithms accumulated so far (AFAP, Round Robin, TD3
       vanilla, `TD3_TrackingOnly`, optimal reference — not PI-TD3, see
       Week 4's amendment above) over the same 50-cell evaluation
       grid.
 - **Deliverable:** comparison table + plots in
   `experiments/phase2_algorithms/results/`.
 - **Milestone:** tag `v0.3-algorithms-compared`.
+
+> **Amendment 2026-09-09 (Week 5 actual scope, see
+> `thesis_docs/chapters/00_lab_log.md`'s 2026-09-08/09 entries and
+> `thesis_docs/chapters/05_algorithm_comparison.md`): Week 5 grew into two
+> parts, and the "50-cell evaluation grid" above is itself superseded.**
+>
+> **Part A (not in the original plan at all):** re-based this project's
+> economics from ENTSO-E (Netherlands) day-ahead prices to Colombian
+> tariffs (1,450 COP/kWh retail, Enel Colombia Aug. 2025; 865.7615
+> COP/kWh purchase cost, Enel Nivel 2 with-contribution, Aug. 2026),
+> applied retroactively across all prior weeks' results via a post-hoc
+> recompute (`results/economics_cop.csv`), not re-simulation — valid
+> because every algorithm family was verified to be price-independent.
+> Found and corrected: EV2Gym's own `total_profits` column is a purchase
+> cost, not a profit/revenue figure (Weeks 1-4 misread it). Also corrected
+> a wrong regulatory citation this project had carried since Week 1 (Res.
+> 40223/2021 mandates CCS Combo 1, not CCS Combo 2, as its DC minimum).
+>
+> **Part B added the MPC arm originally assigned to Week 3** (see that
+> week's own deviation note above) — two new arms,
+> `MPC_TrackingG2V` (new code, matches the oracle's tracking objective on
+> a receding horizon) and `MPC_EnergyMaxG2V` (the shipped `eMPC_G2V`,
+> price-neutralized, honestly renamed) — plus the full cross-algorithm
+> comparison this section originally asked for.
+>
+> **The "same 50-cell evaluation grid" this section references does not
+> exist as originally built.** A structural audit found the original grid
+> (5 seeds x 10 `EVAL_DAYS`) was not 50 independent scenarios: EV2Gym's
+> own arrival-distribution selection depends on weekday-vs-weekend only,
+> not the specific calendar date, so within a category the EV population
+> was byte-identical across dates. A second bug compounded this:
+> `generate_power_setpoints()` wove that day's real ENTSO-E price curve
+> into the operational tracking target itself, so even the
+> duplicated-population cells weren't fully redundant. Both fixed at the
+> source (`ev2gym/utilities/utils.py::generate_power_setpoints`,
+> `ev2gym_thesis/mpc/energy_max_mpc.py`), and the grid rebuilt around what
+> actually varies: **50 scenario seeds x 2 representative day types (one
+> weekday, one weekend) = 1,300 rows across all 13 arms**, run in one
+> homogeneous pass. All 953 pre-existing rows kept as provenance, marked
+> `superseded=True`, never statistically used again. A matching cluster
+> bootstrap (resampling the scenario seed, not the row) was added
+> alongside the project's existing bootstrap function.
+>
+> **Milestone `v0.3-algorithms-compared` not yet tagged** — per standing
+> git discipline, the user tags milestones; Part A and Part B are both
+> complete and reported, awaiting that confirmation.
 
 ## Week 6 — Infrastructure Guidelines (Objective 4)
 
@@ -278,7 +324,13 @@ Copy `CLAUDE.md` (separate file) into the repo root.
       the `load_multiplier` field in `network_info`) instead of the full
       0.5×–1.25× sweep from the paper — enough points to show a trend.
 - [ ] Draft concrete infrastructure lineamientos (chargers, capacity,
-      PV integration) tied to OCPP/CCS Combo 2 and Ley 1964.
+      PV integration) tied to OCPP/CCS Combo 2 [CORRECTED 2026-09-08, Week
+      5 Part A: Res. 40223/2021 Art. 4's actual minimum is CCS Combo 1
+      (DC) + Tipo 1 (AC), not Combo 2 — verified against the resolution's
+      stored text, see `CLAUDE.md` and `01_baseline.md` S1.1(a) for the
+      full correction. Week 6 must tie infrastructure guidance to the
+      correct connector citation, not the inherited Combo 2 assumption]
+      and Ley 1964.
 - **Milestone:** tag `v0.4-infra-guidelines`.
 
 ## Week 7 — Replicability (Objective 5) + Writing Catch-up

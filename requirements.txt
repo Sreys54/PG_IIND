@@ -10,3 +10,4 @@ multicopula
 python-docx
 torch>=2.8
 stable-baselines3>=2.9
+pdfplumber>=0.11  # Week 5: parses Enel Colombia's tariff-sheet PDFs (scripts/fetch_enel_tariffs.py)

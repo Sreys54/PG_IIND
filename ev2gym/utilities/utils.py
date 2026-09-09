@@ -674,9 +674,24 @@ def generate_power_setpoints(env) -> np.ndarray:
     '''
 
     power_setpoints = np.zeros(env.simulation_length)
-    # get normalized prices
-    prices = abs(env.charge_prices[0])
-    prices = prices / np.max(prices)
+    # CORRECTED 2026-09-08 (Week 5 Gate 4, ev2gym_thesis project -- see
+    # thesis_docs/chapters/00_lab_log.md's 2026-09-08 entry): this used to
+    # read `prices = abs(env.charge_prices[0]); prices = prices / np.max(prices)`
+    # and use that per-timestep price weighting to bias `loc`/`scale` below,
+    # making the power setpoint's SHAPE depend on that day's ENTSO-E Dutch
+    # day-ahead price curve -- a live price dependency inside the CONTROL
+    # layer (tracking_error's own target), not just the accounting layer.
+    # Fixed to a constant array of 1s -- exactly what this normalization
+    # collapses to under a flat price series (this project's actual
+    # Colombian economics: no intraday price signal, see
+    # ev2gym_thesis/prices/colombia.py) -- so `loc = 1 - prices = 0` and
+    # `scale = min(prices) = 1` for every EV, and the remaining
+    # `np.random.normal` draw is governed purely by `np.random.seed(self.seed)`,
+    # not by which calendar date is being simulated. This is an EV2Gym
+    # library file, changed only because a real need arose (per CLAUDE.md
+    # rule 1) -- isolated to this one array definition, nothing downstream
+    # of it altered.
+    prices = np.ones(env.simulation_length)
 
     required_energy_multiplier = 100 + \
         env.config["power_setpoint_flexiblity"]

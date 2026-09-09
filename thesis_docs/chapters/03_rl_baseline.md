@@ -84,6 +84,23 @@ this project has no direct profitability incentive. `total_profits` is still
 **measured and reported** in Entregable 6/7's evaluation (it's already a
 registry column), just not optimized during training. See §3.3.
 
+> **Correction, 2026-09-08 (Week 5 Part A, see `00_lab_log.md`'s
+> 2026-09-08 entry and `05_algorithm_comparison.md`): `total_profits` is
+> not a "profitability" term in the sense used above and throughout this
+> chapter — it is the negated cost of energy purchased under ENTSO-E
+> day-ahead prices, not a revenue or profit figure** (traced to source in
+> `registry.py`'s `total_profits_semantics` doc comment). Describing it as
+> this project's "third declared objective axis: profitability" is not
+> quite right either: EV2Gym has no revenue concept at all under
+> `v2g_enabled: False`, so no reward function *could* include a
+> profitability term regardless of scenario family — the gap this section
+> describes is real, but the axis it's a gap in should be read as "energy
+> purchase cost," not "profitability." Every "Profits"/"profit" table
+> value and percentage change below (§3.8-§3.9, S3.5's comparability rule)
+> is kept as originally reported; the Colombian-peso figures that answer
+> the actual revenue/margin question are in `results/economics_cop.csv`
+> and `05_algorithm_comparison.md`.
+
 ## 3.3 State function: `PublicPST`
 
 `PublicPST` is the environment's own default state function and the only

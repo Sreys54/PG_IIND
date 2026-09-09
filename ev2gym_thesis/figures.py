@@ -45,6 +45,16 @@ ALGORITHM_STYLE = {
     # without it default to a solid line via style_for's callers.
     "Optimal_Oracle_Tracking": {"color": "#000000", "marker": "*", "label": "Oracle (tracking-only)", "linestyle": "--"},
     "Optimal_Oracle_Balanced": {"color": "#525252", "marker": "P", "label": "Oracle (balanced)", "linestyle": "--"},
+    # Week 5 additions (append only). MPC: a new hue family (orange), since
+    # this is the first genuinely new algorithm family (not a TD3 variant)
+    # since Week 3 -- distinguished from every existing family (AFAP red,
+    # RoundRobin blue, TD3-vanilla green, TD3-TrackingOnly purple, oracle
+    # black/gray). MPC_TrackingG2V is the primary (information-advantaged,
+    # tracking-objective) arm; MPC_EnergyMaxG2V is the flat-price
+    # energy-delivery arm (05_algorithm_comparison.md S5.5) -- same hue
+    # family, different marker/shade, matching the seed-variant convention.
+    "MPC_TrackingG2V": {"color": "#ff7f0e", "marker": "^", "label": "MPC (tracking)"},
+    "MPC_EnergyMaxG2V": {"color": "#ffbb78", "marker": "v", "label": "MPC (energy-max)"},
     # Append new algorithms here as they're added -- never reassign an
     # existing entry's color/marker once a figure has used it.
 }

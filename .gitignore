@@ -189,6 +189,27 @@ eval_logs/
 !/results/reward_ablation_bootstrap.csv
 !/results/reward_ablation_vs_baselines.csv
 !/results/trackingonly_train_seed_dispersion.csv
+# Week 5 Part A (2026-09-08): added immediately, not discovered stale at
+# closeout this time -- checked with `git check-ignore -v` before assuming
+# "not tracked yet" meant "not generated yet", per this file's own standing
+# instruction above.
+!/results/economics_cop.csv
+# Week 5 Part B (2026-09-09): same check repeated, same bug found again --
+# all 12 new week5_*.csv outputs were silently swallowed by the blanket
+# rule above. Added before closeout this time, not at it.
+!/results/week5_master_comparison.csv
+!/results/week5_old_vs_new_ci.csv
+!/results/week5_seed_overload_distribution.csv
+!/results/week5_optimality_gap.csv
+!/results/week5_oracle_tiebreak_noise_floor.csv
+!/results/week5_ens_compliance.csv
+!/results/week5_requested_energy_by_cell.csv
+!/results/week5_margin_vs_overload.csv
+!/results/week5_horizon_sensitivity.csv
+!/results/week5_horizon_sensitivity_summary.csv
+!/results/week5_td3_budget_curve.csv
+!/results/week5_td3_budget_curve_summary.csv
+!/results/master_results_prefix_week5_setpoint_fix.csv
 models_RL/
 plots/
 plot_results_dict.pkl

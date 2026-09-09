@@ -5,7 +5,7 @@ Left: Design 1's weight sweep -- Pearson correlation with the vanilla reward fal
 - Runs behind this figure: 1
 - Configs: station_v0_bogota
 - Algorithms: ChargeAsFastAsPossible, RoundRobin
-- Git commit: b86e3b3def127c6fc52606036ca65ef84e9b5f5b
-- Generated: 2026-08-20T05:35:13.108602Z
+- Git commit: 07eb8a4fecac3a57be1571389199f4917c39ca03
+- Generated: 2026-09-09T16:12:12.365577Z
 
 Full numeric account in thesis_docs/chapters/00_lab_log.md's 2026-08-19 falsification entry.

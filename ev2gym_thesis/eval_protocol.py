@@ -35,7 +35,41 @@ paired bootstrap across scenario cells for exactly this reason.
 import datetime
 
 # doc:begin seeds
-SEEDS = [0, 1, 2, 3, 4]
+# CORRECTED 2026-09-08 (Week 5, Gate 3/Gate 4 -- see
+# thesis_docs/chapters/00_lab_log.md's 2026-09-08 entries).
+#
+# ORIGINAL Weeks 1-4 values, kept for the historical record, not deleted:
+#   SEEDS = [0, 1, 2, 3, 4]
+#   EVAL_DAYS = 10 fixed 2022 dates (6 weekday, 4 weekend) -- see git history
+#   of this file for the exact list.
+#
+# Found (Gate 3): for a fixed scenario_seed, EV2Gym's arrival-distribution
+# selection depends only on weekday-vs-weekend (ev2gym_env.py's
+# sim_date.weekday() branch, not the specific calendar date), and
+# np.random.seed(self.seed) is reset identically regardless of which date
+# in that category is simulated -- so the EV population was byte-identical
+# across all 6 weekday EVAL_DAYS, and across all 4 weekend EVAL_DAYS, for
+# every algorithm. The 10-day axis therefore added calendar bookkeeping,
+# not statistical power, on the EV-population side.
+#
+# A second, independent bug (Gate 4) initially complicated this: EV2Gym's
+# ev2gym/utilities/utils.py::generate_power_setpoints() weighted the power
+# setpoint's shape by that day's real ENTSO-E price curve, so
+# tracking_error (and, for setpoint-responsive algorithms, energy
+# delivered/degradation/satisfaction) genuinely DID vary across
+# same-category dates -- not noise, a live Dutch-price dependency inside
+# the control layer itself. Fixed at the source (see that function's own
+# 2026-09-08 correction comment) by making the setpoint's random
+# spread price-neutral, governed only by np.random.seed(self.seed). After
+# that fix, the day axis is genuinely fully redundant within a
+# (seed, weekday/weekend) pair, for every deterministic algorithm.
+#
+# New configuration: expand SEEDS (more independent scenario draws, cheap
+# -- evaluation only, no retraining) and collapse EVAL_DAYS to exactly one
+# weekday + one weekend representative (now provably lossless, not a lossy
+# compression). SEEDS = range(0, 50) supersedes [0..4]; the original 5 are
+# a strict subset, not discarded.
+SEEDS = list(range(0, 50))
 # doc:end seeds
 
 # doc:begin train_seeds
@@ -59,25 +93,33 @@ assert set(SEEDS).isdisjoint(set(TRAIN_SEEDS)), (
 # doc:end train_seeds_disjoint_assert
 
 # doc:begin eval_days
-# 10 fixed 2022 calendar dates, held out and never used for tuning or RL
-# training. Chosen to spread across the year (roughly one every 5-6 weeks,
-# avoiding December to sidestep end-of-year holiday effects on arrival
-# patterns) and to mix weekdays and weekends: 6 weekdays (Mon/Wed) and 4
-# weekend days (3x Saturday, 1x Sunday). Day-of-week for each date was
-# verified with datetime.date(...).strftime('%A'), not assumed.
+# CORRECTED 2026-09-08 (Week 5, Gate 3/Gate 4) -- see the SEEDS comment
+# block above for the full reasoning. Collapsed from the original 10 dates
+# (6 weekday, 4 weekend -- kept in git history, not reproduced here) to
+# exactly one representative per day-type category, now that both the
+# EV-population axis (Gate 3) and the power-setpoint axis (Gate 4) are
+# confirmed fully redundant within a category for a fixed scenario_seed.
+# 2022-01-17 (Monday) is the original Week 1 fixed reference day, kept for
+# continuity; 2022-03-05 (Saturday) is carried over unchanged from the
+# original weekend pool.
 EVAL_DAYS = [
-    (2022, 1, 17),   # Monday   -- also the Week 1 fixed reference day
-    (2022, 2, 14),   # Monday
-    (2022, 3, 5),    # Saturday
-    (2022, 4, 6),    # Wednesday
-    (2022, 5, 21),   # Saturday
-    (2022, 6, 15),   # Wednesday
-    (2022, 7, 10),   # Sunday
-    (2022, 8, 24),   # Wednesday
-    (2022, 9, 17),   # Saturday
-    (2022, 11, 9),   # Wednesday
+    (2022, 1, 17),   # Monday (weekday representative) -- Week 1 reference day
+    (2022, 3, 5),    # Saturday (weekend representative)
 ]
 # doc:end eval_days
+
+# doc:begin day_type
+WEEKDAY_LABEL = "weekday"
+WEEKEND_LABEL = "weekend"
+
+
+def day_type(day: tuple) -> str:
+    """Classify an (year, month, day) tuple as 'weekday' or 'weekend',
+    matching the exact branch EV2Gym's own arrival-distribution selection
+    uses (ev2gym_env.py: sim_date.weekday() < 5) -- not a separate
+    hardcoded date list that could silently drift from the real branch."""
+    return WEEKDAY_LABEL if day_to_date(day).weekday() < 5 else WEEKEND_LABEL
+# doc:end day_type
 
 # doc:begin reference_day
 # Single designated EVAL_DAYS element used for single-day figures (e.g. the

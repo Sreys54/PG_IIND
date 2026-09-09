@@ -99,6 +99,22 @@ frequency, which it does not fully (see Limitations).
   `02_model_validation.md`), not Colombian tariffs — usable only as a
   relative comparison against Round Robin under identical prices.
 
+> **Correction, 2026-09-08 (Week 5 Part A, see `00_lab_log.md`'s
+> 2026-09-08 entry and `05_algorithm_comparison.md`): every "Profits" row
+> in this chapter's tables (this section and RoundRobin's, below,
+> including the paired-comparison table's "Profits | -2.52%" line) is
+> EV2Gym's `total_profits`, which is not a profit or revenue figure — it
+> is the negated cost of energy purchased under ENTSO-E day-ahead prices**
+> (`ev2gym/models/ev_charger.py:178,194,207`; see `registry.py`'s
+> `total_profits_semantics` doc comment for the full trace). The
+> 2026-08-11 limitation note directly above was already correctly hedging
+> "not Colombian tariffs," but still used the word "profit" throughout,
+> which is the specific word this correction removes. Tables below are
+> kept as originally reported; the Colombian-peso figures that actually
+> answer the operator-revenue question (`retail_revenue_cop`,
+> `energy_purchase_cost_cop`, `gross_margin_cop`) are in
+> `results/economics_cop.csv` and `05_algorithm_comparison.md`.
+
 ---
 
 ## RoundRobin

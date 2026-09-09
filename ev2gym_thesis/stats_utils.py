@@ -87,3 +87,79 @@ def paired_bootstrap_ci(values_a, values_b, n_bootstrap: int = 10000,
         "n_pairs": n,
     }
 # doc:end paired_bootstrap
+
+
+# doc:begin paired_cluster_bootstrap
+def paired_cluster_bootstrap_ci(values_a, values_b, cluster_ids, n_bootstrap: int = 10000,
+                                 ci: float = 0.95, seed: int = None, statistic="diff"):
+    """Cluster bootstrap for paired data where rows are NOT independent
+    draws -- added 2026-09-08 (Week 5, Gate 3/Gate 4; see
+    thesis_docs/chapters/00_lab_log.md's 2026-09-08 entries), alongside
+    `paired_bootstrap_ci`, NOT replacing it -- both stay available, and the
+    difference between what each reports on the same data is itself part
+    of this project's Week 5 correction record.
+
+    Why this exists: `paired_bootstrap_ci` resamples individual rows as if
+    each were an independent draw. In this project's evaluation grid, the
+    independent unit is the scenario SEED, not the (seed, eval_day) row --
+    verified directly (not assumed): for a fixed seed, EV2Gym's arrival
+    distribution is selected by weekday/weekend category alone
+    (`ev2gym_env.py`'s `sim_date.weekday()` branch), not by the specific
+    calendar date, so multiple rows sharing a seed are correlated by
+    construction, not independent replicates. Resampling correlated rows
+    as if independent produces confidence intervals that are too narrow.
+
+    Usage: pass `cluster_ids[i]` = the scenario seed (or
+    `scenario_id`/`f"{seed}"`) for `values_a[i]`/`values_b[i]` -- rows
+    sharing a cluster id are always resampled together, as one indivisible
+    unit, never split across a bootstrap draw.
+
+    Returns a dict with the same keys as `paired_bootstrap_ci`, plus
+    `n_clusters` (the number of independent units actually driving this
+    interval's width -- report this next to `n_pairs` so a reader can see
+    the two numbers differ).
+    """
+    values_a = np.asarray(values_a, dtype=float)
+    values_b = np.asarray(values_b, dtype=float)
+    cluster_ids = np.asarray(cluster_ids)
+    if not (len(values_a) == len(values_b) == len(cluster_ids)):
+        raise ValueError("values_a, values_b, and cluster_ids must be the same length")
+    n = len(values_a)
+    if n == 0:
+        raise ValueError("No pairs to bootstrap")
+
+    unique_clusters = np.unique(cluster_ids)
+    n_clusters = len(unique_clusters)
+    if n_clusters == 0:
+        raise ValueError("No clusters to bootstrap")
+    cluster_to_indices = {c: np.where(cluster_ids == c)[0] for c in unique_clusters}
+
+    rng = np.random.default_rng(seed)
+
+    def _stat(a, b):
+        if statistic == "diff":
+            return np.mean(b - a)
+        elif statistic == "pct":
+            return np.mean((b - a) / a) * 100
+        else:
+            raise ValueError(f"Unknown statistic {statistic!r}")
+
+    point_estimate = float(_stat(values_a, values_b))
+
+    boot_stats = np.empty(n_bootstrap)
+    for i in range(n_bootstrap):
+        sampled_clusters = rng.choice(unique_clusters, size=n_clusters, replace=True)
+        idx = np.concatenate([cluster_to_indices[c] for c in sampled_clusters])
+        boot_stats[i] = _stat(values_a[idx], values_b[idx])
+
+    alpha = 1 - ci
+    lo, hi = np.percentile(boot_stats, [100 * alpha / 2, 100 * (1 - alpha / 2)])
+
+    return {
+        "point_estimate": point_estimate,
+        "ci_low": float(lo),
+        "ci_high": float(hi),
+        "n_pairs": n,
+        "n_clusters": n_clusters,
+    }
+# doc:end paired_cluster_bootstrap
