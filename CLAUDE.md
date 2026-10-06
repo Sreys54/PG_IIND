@@ -384,6 +384,44 @@ in place.** Real current state:
 - Full session account in `thesis_docs/chapters/00_lab_log.md`'s
   2026-09-08/09 entries and `thesis_docs/chapters/05_algorithm_comparison.md`.
 
+**Update, 2026-09-28: Week 6 Part 0 (extended RL training) — branch
+`semana-6`, from `main` at `23468f3`. Not merged, not tagged.**
+- **Single RL model for Weeks 6–7 (Objectives 4–5) — STATUS: PENDING THE
+  USER'S EXPLICIT DECISION on the Part B verdict. Do not treat either
+  candidate as adopted until this line says so.**
+  - Pre-registered rule output: **`TD3_vanilla_extended_ts102`**, checkpoint
+    at 850,000 steps,
+    `experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps.zip`
+    (+ `_vecnormalize.pkl` next to it). Pinned in
+    `results/week6_part0_final_model_selection.json` and
+    `ev2gym_thesis/tests/test_final_rl_model.py`.
+  - Verdict (S5.11): extended training **degraded** the pre-registered
+    criterion. Test-grid tracking error is +10,701 (+33%) against the
+    environment-matched new-run 60k checkpoints (`TD3_vanilla_new60k_ts*`;
+    cluster bootstrap, n_clusters = 50, CI excludes zero). Overload is
+    unchanged within the CI, and satisfaction and `ENS_rel` improved. RL was
+    not budget-limited, and **Round Robin remains the recommended strategy**.
+    Because the rule's checkpoint is worse on its own criterion than the 60k
+    checkpoints, the user chooses which RL model is carried forward.
+  - Whichever model the user adopts, **the Week 6 grid-enabled brief uses it
+    instead of the Week 5 `TD3_vanilla_ts*` checkpoints**, which were trained
+    before the `generate_power_setpoints` fix and evaluated after it (declared
+    limitation, S5.11).
+- New registry arms (900 rows, `analysis_row=True`; budget, step and rule in
+  `notes`): `TD3_vanilla_extended_ts*` (primary), `TD3_vanilla_extended_last_ts*`,
+  `TD3_vanilla_new60k_ts*`. Analysis-row total: 2,200.
+- Standing implementation facts:
+  - `ev2gym_thesis/rl/price_data_cache.py` is output-identical (pinned test)
+    and ~6× faster for training.
+  - Use one torch thread per process: the thread count changes the numerics.
+  - Parallel processes need per-process day-config dirs
+    (`extended_training.day_config_dirs_for`).
+  - This laptop idles to sleep after 300 s on AC, and
+    `scripts/train_td3_extended.py` requests keep-awake.
+  - `FIGURE_SPECS` and `scripts/make_week5_handback.py` do not exist: figures
+    are `make_figures.py` functions (`--only f12,f13`), and handbacks are
+    `.md` rendered by `scripts/render_docx.py`.
+
 ## Useful Commands (reference, don't re-derive these each time)
 
 ```bash

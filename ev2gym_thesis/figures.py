@@ -55,6 +55,21 @@ ALGORITHM_STYLE = {
     # family, different marker/shade, matching the seed-variant convention.
     "MPC_TrackingG2V": {"color": "#ff7f0e", "marker": "^", "label": "MPC (tracking)"},
     "MPC_EnergyMaxG2V": {"color": "#ffbb78", "marker": "v", "label": "MPC (energy-max)"},
+    # Week 6 Part 0 additions (append only): the extended TD3_vanilla run.
+    # One hue family per checkpoint kind, seed distinguished by shade/marker
+    # (same convention as the Week 3 TD3 entries): teal = primary checkpoint
+    # (best validation tracking_error at/after convergence), brown = last
+    # checkpoint (sensitivity), olive = the new run's own 60k checkpoint
+    # (environment-matched budget control).
+    "TD3_vanilla_extended_ts100": {"color": "#17becf", "marker": "^", "label": "TD3 extended, primary (seed 100)"},
+    "TD3_vanilla_extended_ts101": {"color": "#7fdbe6", "marker": "v", "label": "TD3 extended, primary (seed 101)"},
+    "TD3_vanilla_extended_ts102": {"color": "#0e7c86", "marker": "D", "label": "TD3 extended, primary (seed 102)"},
+    "TD3_vanilla_extended_last_ts100": {"color": "#8c564b", "marker": "^", "label": "TD3 extended, last (seed 100)"},
+    "TD3_vanilla_extended_last_ts101": {"color": "#c49c94", "marker": "v", "label": "TD3 extended, last (seed 101)"},
+    "TD3_vanilla_extended_last_ts102": {"color": "#5a3730", "marker": "D", "label": "TD3 extended, last (seed 102)"},
+    "TD3_vanilla_new60k_ts100": {"color": "#bcbd22", "marker": "^", "label": "TD3 new run @60k (seed 100)"},
+    "TD3_vanilla_new60k_ts101": {"color": "#dbdb8d", "marker": "v", "label": "TD3 new run @60k (seed 101)"},
+    "TD3_vanilla_new60k_ts102": {"color": "#7a7b16", "marker": "D", "label": "TD3 new run @60k (seed 102)"},
     # Append new algorithms here as they're added -- never reassign an
     # existing entry's color/marker once a figure has used it.
 }

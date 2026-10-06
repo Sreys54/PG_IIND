@@ -1,5 +1,281 @@
 # Lab Log
 
+## 2026-09-28 (UTC−5) — Week 6 Part 0: run completed, Part B analysis and Part C deliverables (branch `semana-6`) — verdict pending the user's decision
+
+**Run completion.** All three seeds stopped with
+`stop_reason = converged_plus_confirmation`, well before the 10:15 cap.
+
+| Seed | Converged at | Stopped at | Wall clock | Episodes | Primary checkpoint |
+|---|---:|---:|---:|---:|---:|
+| 100 | 380k | 480k | 2.19 h | 5,000 | 400k |
+| 101 | 560k | 660k | 2.88 h | 6,875 | 630k |
+| 102 | 810k | 910k | 3.69 h | 9,479 | 850k |
+
+There were no crashes and no resumes. The leakage guard rejected 0 draws
+(0 contaminated episodes in 21,354). Median throughput was 67.4–68.3
+steps/s per seed (minimum 59.0–60.4), so no material throttling occurred.
+The 65 steps/s reported at launch was the first 10k steps only. The
+convergence and primary steps recomputed from the versioned validation logs
+match each run's live `state.json` (asserted in
+`scripts/analyze_week6_part0.py`, pinned in `test_final_rl_model.py`).
+
+**Negative result, reported as such:** in every seed the best validation
+tracking error of the whole run occurred at 30k–70k steps (29,474–31,951).
+The rule then declared convergence on a plateau at 40k–49k. Convergence
+here means stability, not improvement.
+
+**Test evaluation.** 9 arms × 100 cells = 900 rows appended through
+`evaluate_rl.eval_td3` + `run_week5_grid._with_week5_fields`, with 0 errors:
+- `TD3_vanilla_extended_ts*` (primary checkpoints);
+- `TD3_vanilla_extended_last_ts*` (last checkpoints);
+- `TD3_vanilla_new60k_ts*` (the new run's own 60k checkpoints, the
+  environment-matched comparator).
+
+The first 2,253 registry lines were verified byte-identical to a pre-run
+backup. The price cache was enabled, which is output-identical by a pinned
+test.
+
+**Headline numbers** (full account in `05_algorithm_comparison.md` S5.11).
+Extended vs. new60k, 3-seed mean, cluster bootstrap with n_clusters = 50:
+- tracking error +10,701 [+9,042, +12,472];
+- overload +0.74 kWh [−1.98, +3.40];
+- average satisfaction +0.018 [+0.016, +0.021].
+
+Extended vs. Round Robin is worse on all three, with every CI excluding
+zero. `TD3_vanilla_new60k_ts101` fails the `ENS_rel` < 15% target (20.04%,
+CI upper bound 22.85%). It is the first arm in this project to fail a
+declared target. Relative across-seed spread went from 8.3% to 7.3% for
+tracking error and from 30.8% to 82.9% for overload. The pre-registered rule
+selects `TD3_vanilla_extended_ts102` @ 850k, **not adopted**: the choice is
+the user's.
+
+**Brief discrepancies, resolved from the repo (not silently):**
+- **`ENS_rel`.** The brief says "proposed, not yet adopted", but S5.7
+  records its formal adoption in Week 5. The S5.7 definition is used and
+  labelled as adopted.
+- **`FIGURE_SPECS` and `make_week5_handback.py`.** Neither exists. The
+  figures are new `make_figures.py` functions (f12, f13, `--only`), and the
+  handback is `.md` → `render_docx.py`, as Week 5 did.
+- **Figure folder.** Figures live in `figures/`, not `results/figures/`.
+
+**Code changes to existing files, all backward-compatible:**
+- **`scripts/analyze_week5_results.py`.** `master_comparison_table`,
+  `optimality_gap` and `ens_and_compliance` gained `algos` / `out_path`
+  arguments. The defaults reproduce Week 5 exactly, and reusing the
+  functions without this change would have overwritten Week 5's CSVs.
+- **`ev2gym_thesis/figures.py`.** 9 styles appended.
+- **`ev2gym_thesis/xlsx_export.py`.** `MIXED_UNIT_4DP_FORMAT` added.
+- **`scripts/extend_progress_log.py`.** Gained `--section`. The corrected
+  Progress Log's existing sections use Word Heading styles; the new "12."
+  section follows the standing no-Heading-styles rule instead.
+- **`ev2gym_thesis/tests/test_week5.py`.** `TestRegistryGridCount` is now
+  scoped to Week 5's 13 arms (still exactly 1,300 rows). The old "every
+  analysis row" pins failed only because 900 legitimate rows were
+  appended. A new test checks that every analysis arm has exactly 100
+  rows.
+
+**Pre-existing failure, not caused by this work:**
+`test_week4.TestRegistryCount.test_station_v0_bogota_has_550_main_grid_rows`
+already failed before today. Its `EXPECTED_ARMS` predates Week 5's MPC
+arms, and the pre-run backup already holds 200 MPC rows. Flagged, not
+changed.
+
+**Visual QA (f12/f13) found 3 issues, all fixed:** the raw reward was
+invisible in seed 101's light teal, the x-axis "1e3" offset was hard to
+read, and f13's legend had no entry for the convergence markers.
+
+## 2026-09-28 01:04 (UTC−5) — Week 6 Part 0: user decisions at Gate 1, extended training launched (branch `semana-6`)
+
+**User decisions (Gate 1 confirmation):** (1) extend **TD3_vanilla**, training
+seeds 100/101/102; convergence and checkpoint selection on validation-mean
+`tracking_error`, with `total_transformer_overload` and
+`energy_user_satisfaction` logged at every validation and reported alongside.
+No trained arm beat Round Robin in Week 5, so this run extends the best RL arm,
+not an overall winner. It answers whether RL was budget-limited, and the Round
+Robin recommendation stands unless the results change it. (2) Environment change
+accepted: the primary comparison is the new run's own 60k checkpoint against the
+extended checkpoint, both on the post-fix environment. The original registry
+TD3_vanilla rows are a secondary reference only, labelled "trained before the
+power-setpoint fix". **Declared limitation:** the Week 4–5 RL models
+(`TD3_vanilla_ts*`, `TD3_TrackingOnly_ts*`) were trained on the pre-fix
+`generate_power_setpoints` and evaluated on the post-fix one. (3) Price-data
+cache adopted; its bitwise-identity test is permanent. (4) One torch thread per
+process. (5) Evaluation-seed leakage guard adopted, implemented in
+`ev2gym_thesis/rl/extended_training.py::SeedLoggingTrainingEnv` without editing
+`ev2gym/`; every draw and every rejected draw is logged. (6) Only the last 2
+replay buffers are kept per seed; the user pauses OneDrive. (7) Deadline Mon
+2026-09-28 10:30 (UTC−5); each seed stops at 10:15. (8) A non-converging seed
+reports both its best and its last checkpoint; the user chooses. (9) VecNormalize
+saved with every checkpoint. Validation now **loads the saved checkpoint and its
+statistics frozen** (`load_frozen_checkpoint`: `training=False`,
+`norm_reward=False`) rather than reading the live training normaliser. A test
+confirms the training normaliser's count is exactly 1 + training steps (no
+validation step reached it) and that validation leaves the frozen statistics
+unchanged. `TD3.load` calls `set_random_seed`, so the load runs inside the same
+RNG snapshot as the validation episodes. (10) Per-seed training steps/s is logged
+at every validation (`train_steps_per_s_since_last_eval`). (11) Part C mirrors
+Week 5's `.md` → `.docx` mechanism and extends
+`Progress_Log_Thesis_Project_corrected_2026-09-09.docx`.
+
+18/18 tests in `ev2gym_thesis/tests/test_final_rl_model.py` passed before launch.
+
+**Launch.** Command per seed (detached via WMI `Win32_Process.Create`, not a
+child of the Claude Code session):
+`cmd.exe /c ""<repo>\scripts\run_extended_seed.cmd" <seed> 2026-09-28T10:30:00-05:00"`,
+which runs `python scripts\train_td3_extended.py --seed <seed> --reward vanilla
+--deadline 2026-09-28T10:30:00-05:00 --price-cache --torch-threads 1`. Python PIDs
+21536 (ts100), 25184 (ts101), 26348 (ts102). First validation at 10k steps (all
+three seeds healthy): tracking error 34,186.53 / 33,169.53 / 33,616.07; overload
+3.537 / 2.999 / 4.788 kWh; energy user satisfaction 99.53 / 98.51 / 99.40; no
+evaluation-seed draws in the first ~107 episodes per seed. **Measured throughput
+in the first 10k steps: 65.1–65.4 steps/s per seed, below the 85–86 steps/s of
+the 5k-step calibration.** At the measured rate plus ~15 s of validation per 10k
+steps, the linear estimate is ~1.9M steps per seed by 10:15. This is an
+estimate, not a result.
+
+## 2026-09-28 — Week 6 Part 0, Gate 1: extended-training design, disjointness proof, timing (branch `semana-6`) — AWAITING USER CONFIRMATION, nothing launched
+
+**Code built (not yet used for a real run):** `ev2gym_thesis/rl/extended_training.py`
+(validation set, disjointness proof, convergence rule, checkpoint-selection
+rule, `SeedLoggingTrainingEnv`, `ExtendedTrainingCallback`),
+`ev2gym_thesis/rl/price_data_cache.py` (opt-in), `scripts/train_td3_extended.py`
+(one seed per process, `--resume`), `scripts/calibrate_extended_timing.py`,
+`ev2gym_thesis/tests/test_final_rl_model.py` (16/16 passing, `unittest`, the
+project's existing runner — pytest is not installed). `train_td3.py::build_model`
+is called unchanged; only the env it wraps is swapped for a logging subclass
+with identical reset/step.
+
+**Validation set (labelled assumption):** seeds 1,000,000–1,000,009 × {2022-01-31
+Monday, 2022-03-12 Saturday} = 20 cells. Disjointness proof (printed by
+`disjointness_proof()` at every launch): validation ∩ `SEEDS` = ∅, validation ∩
+`TRAIN_SEEDS` = ∅, validation days ∩ `EVAL_DAYS` = ∅ and ∩ `TRAIN_DAYS` = ∅; and
+min(validation) = 1,000,000 ≥ the exclusive upper bound of EV2Gym's unseeded
+training draw `np.random.randint(0, 1000000)` (`ev2gym_env.py` reset, pinned by a
+test against the source), so no training episode can ever run on a validation
+scenario. The first training episode runs on the training seed itself
+(100/101/102), confirmed in the episode logs.
+
+**Real bugs found while building it (all fixed, each covered by a test or a run):**
+1. EV2Gym reseeds the global `np.random`/`random` generators on every construction
+   and reset; a naive validation monitor would therefore change the training
+   scenario chain, exploration noise and replay sampling. `run_validation`
+   snapshots and restores all three generators; a test confirms identical training
+   episode seeds/days with and without the monitor.
+2. `TD3.load` re-queues the training seed on the VecEnv, so the first episode
+   after a resume silently re-ran scenario seed 100 and reset the restored RNG
+   (caught by the resume smoke test). Fixed with `DummyVecEnv._reset_seeds()`.
+3. Three parallel processes sharing `_tmp_train_day_configs/` crashed one seed
+   (`yaml.load` returned `None` on a half-written file). Fixed with per-process
+   day-config dirs (`day_config_dirs_for`), gitignored.
+4. Windows MAX_PATH: the session scratchpad path is too long for checkpoint paths;
+   calibration output goes to `%TEMP%/ev6t`.
+5. The active power plan idles to sleep after 300 s on AC; training now requests
+   `SetThreadExecutionState(ES_CONTINUOUS|ES_SYSTEM_REQUIRED)` per process.
+
+**Throughput finding.** ~90% of a training episode's wall-clock is
+`load_electricity_prices` re-parsing the ENTSO-E CSV (4.64 s construction vs.
+0.02 s for 96 steps, cProfile). `price_data_cache.py` reuses the parsed table
+across env instances; the test and the calibration both show it is
+output-identical (same prices, setpoints, power trajectory, stats and
+post-episode RNG state; same 5k-step validation values 34,138.03 / 32,024.79 /
+30,218.29 with and without it). Also found: torch thread count changes the
+numerics (1 and 2 threads agree with each other, not with the default 8).
+
+**Timing (5,000 steps/seed + one 20-cell validation, `results/week6_part0/timing_calibration.csv`):**
+
+| Configuration | steps/s per seed (training) | validation per eval |
+|---|---:|---:|
+| 3 parallel, no cache, default threads (brief's spec) | 13.8 | 116.7 s |
+| 3 parallel, cache, default threads | 53.7 | 10.7 s |
+| 3 parallel, cache, 2 threads | 80.3–81.0 | 11.4 s |
+| **3 parallel, cache, 1 thread** | **85.3–86.1** | 11.5–11.9 s |
+| 2 parallel, cache, 2 threads | 86.6–86.9 | 10.1 s |
+| 1 process, cache, 2 threads | 112.4 | 8.4 s |
+| 1 process, cache, default threads | 90.6 | 8.3 s |
+| 1 process, no cache, default threads | 18.4 | 90.6 s |
+
+The last row reproduces Week 3's 18.09 steps/s calibration. Peak RSS ~0.5 GB per
+process; replay buffer 22.7 MB per save (pre-allocated, constant size);
+checkpoint 349 KB. Steps per seed within T hours: 3 parallel ≈ 86·3600·T;
+sequential ≈ 112·3600·T/3; two at a time ≈ 87·3600·T/1.5, so running all three
+in parallel is best. Including 11.7 s of validation per 10k steps: ~78 steps/s ≈
+281k steps/h/seed with the cache vs. ~11.9 steps/s ≈ 43k steps/h/seed without.
+The rule's earliest possible stop is 220k steps (convergence declared at
+evaluation 12 = 120k, plus 100k confirmation): ~47 min with the cache, ~5.1 h
+without. These are linear projections from a 5k-step run; sustained thermal
+throttling over hours is not measured.
+
+**Objections and open decisions sent to the user before launch:** the Gate 0
+findings below (no trained winner in S5.8; the training environment differs from
+the original one), plus the criterion choice, the price cache, the thread count,
+an eval-seed collision guard, replay-buffer rotation under OneDrive, the
+"morning after launch" deadline reading, and the unconverged-seed fallback.
+
+## 2026-09-28 — Week 6 Part 0, Gate 0: identifying the model to extend (branch `semana-6`, from `main` at `23468f3`)
+
+`semana-5` confirmed merged into `main` (`git merge-base --is-ancestor`);
+`semana-6` created from `main`.
+
+**S5.8 names no winning trained arm.** It recommends Round Robin and states that
+"every trained RL arm loses to Round Robin on every axis measured this week";
+no document in the repo ranks the trained arms against each other or names a
+selection criterion for them. The chapter and the registry do not disagree (the
+registry's `analysis_row=True` means reproduce the S5.6 table exactly); there is
+simply no winner to agree on. Registry means over 100 cells (50 seeds × 2 day
+types): TD3_vanilla arm (3 seeds) tracking error 33,447, overload 4.72 kWh, avg.
+satisfaction 98.1%; TD3_TrackingOnly arm tracking error 34,596, overload
+8.26 kWh, avg. satisfaction 98.7%. Best single checkpoint on S5.6's
+optimality-gap ranking (tracking error): `TD3_vanilla_ts100` (30,888; 420.3%).
+Proposed (labelled assumption, pending user confirmation): extend the
+**TD3_vanilla** arm (`SqTrError_TrPenalty_UserIncentives`) with selection
+criterion = validation-mean `tracking_error` (strictly positive, ~3×10⁴, so the
+relative thresholds are meaningful without normalisation).
+
+**Training configuration** (all from `ev2gym_thesis/rl/config_rl.py` unless noted):
+TD3 (`train_td3.py:70`), `MlpPolicy` (l.64), net [64, 64] (l.65), lr 1e-3 (l.66),
+gamma 0.99 (l.67), tau 0.005 (l.68), train_freq 1 / gradient_steps 1 (l.69–70),
+policy_delay 2 (l.71), target policy noise 0.2 / clip 0.5 (l.72–73), batch 256
+(l.74), buffer 50,000 (l.75), learning_starts 500 (l.76), exploration
+`NormalActionNoise` σ = 0.1 (l.77, 80–81), VecNormalize obs+reward, clip 10
+(l.101–104), 60,000 timesteps (l.124); reward `SqTrError_TrPenalty_UserIncentives`
+(`env_factory.py:33`), state `PublicPST` (l.34), config
+`experiments/phase1_baseline/configs/station_v0_bogota.yaml` (`train_td3.py:46`),
+training seeds [100, 101, 102] (`eval_protocol.py:84`), 20 `TRAIN_DAYS` in
+round-robin order (`eval_protocol.py:139–145`, `train_td3.py:60`). Wall clock per
+seed (manifests): 57.62 / 54.91 / 55.06 min at commit `2190ce39`.
+
+**Scenario draws.** Each training episode builds a fresh EV2Gym on the next
+`TRAIN_DAYS` date. The first episode is seeded with the training seed; every later
+one with `np.random.randint(0, 1000000)` from the global generator, which EV2Gym
+itself reseeds each episode. That is a deterministic but unlogged pseudo-random
+chain, not a fixed set, and the original runs did not log these draws. Final
+evaluation grid: `SEEDS = range(0, 50)` (`eval_protocol.py:72`) × `EVAL_DAYS` =
+2022-01-17 (weekday) and 2022-03-05 (weekend) (l.105–108).
+
+**What the existing learning curves plot.** `f08_learning_curves` plots
+`LearningCurveCallback`'s rolling mean (SB3 `ep_info_buffer`, last ≤100 episodes)
+of the raw training-episode reward, with exploration noise, over the round-robin
+days and random scenario seeds; there is no deterministic evaluation of any kind.
+In all three vanilla seeds the highest logged value is the very first point
+(step 500, still inside the 500-step uniform-random warm-up). From ~6.5k steps on,
+the curve wanders within a band (30k–60k mean/std: −21,938/1,188, −24,327/736,
+−23,827/1,242). This curve cannot distinguish a converged policy from an
+unconverged one, which is why the extended run adds the deterministic validation
+monitor.
+
+**Environment identity (objection).** The original checkpoints were trained at
+`2190ce39` (TD3_vanilla) and `ced83c58`/`b86e3b3d` (TD3_TrackingOnly), before the
+Week 5 `generate_power_setpoints` fix, and evaluated after it. A from-scratch run
+today trains on the post-fix environment, the one all Week 5 evaluation uses, so
+it cannot be identical to both. Consequence: the "first 60k steps reproduce the
+original run" check can only be a comparison against a different setpoint
+generator, not a like-for-like reproduction.
+
+**Hardware.** AMD Ryzen 7 5700U (8 physical / 16 logical cores, 1.8 GHz base),
+15.3 GB RAM (3.8 GB free at the time of the check), 74.8 GB free on C:, integrated
+Radeon graphics only; torch 2.9.0+cpu, `cuda.is_available() = False`, 8 intra-op
+threads by default. On AC power; "Balanced" plan with 300 s idle sleep on AC.
+
 ## 2026-09-09 (continued) — Figures regenerated against the Gate 4 grid: 3 real bugs found by visual QA
 
 **All 11 existing figures regenerated (`scripts/make_figures.py`) against

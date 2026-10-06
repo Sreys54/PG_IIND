@@ -37,6 +37,7 @@ PCT_FRACTION_FORMAT = "0.00%"          # underlying value is 0-1; Excel multipli
 PCT_ALREADY_SCALED_FORMAT = '#,##0.00"%"'  # underlying value is already on a 0-100 (or similar) scale
 SECONDS_FORMAT = "#,##0.000"
 DIMENSIONLESS_4DP_FORMAT = "#,##0.000000"  # for very small values (e.g. battery_degradation)
+MIXED_UNIT_4DP_FORMAT = "#,##0.0000"  # Week 6 Part 0: long-format tables whose rows carry different metrics (unit named in a Metric column)
 
 
 def export_formatted_xlsx(csv_path: str, xlsx_path: str, column_labels: dict,

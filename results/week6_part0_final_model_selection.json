@@ -1,0 +1,9 @@
+{
+  "rule": "primary checkpoint of the seed with the best validation tracking_error",
+  "algorithm_name": "TD3_vanilla_extended_ts102",
+  "train_seed": 102,
+  "checkpoint_step": 850000,
+  "checkpoint_path": "experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps.zip",
+  "val_te": 40377.9087957935,
+  "status": "rule output -- adoption is the user's decision (Part B verdict)"
+}

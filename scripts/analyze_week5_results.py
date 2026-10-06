@@ -79,10 +79,12 @@ def load_economics_df():
 
 
 # doc:begin master_comparison
-def master_comparison_table(df):
+def master_comparison_table(df, algos=None, out_path="results/week5_master_comparison.csv"):
+    # algos/out_path added Week 6 Part 0 so the extended-training analysis
+    # reuses this exact function; defaults reproduce Week 5 unchanged.
     print("=== (1) Master comparison table, cluster bootstrap (cluster=seed) ===")
     rows = []
-    for algo in ALL_ALGOS:
+    for algo in (ALL_ALGOS if algos is None else algos):
         sub = df[df["algorithm"] == algo]
         row = {"algorithm": algo, "n_rows": len(sub), "n_seeds": sub["seed"].nunique()}
         for metric in HEADLINE_METRICS:
@@ -93,10 +95,10 @@ def master_comparison_table(df):
             row[f"{metric}_ci_high"] = hi
         rows.append(row)
     out = pd.DataFrame(rows)
-    out.to_csv("results/week5_master_comparison.csv", index=False)
+    out.to_csv(out_path, index=False)
     print(out[["algorithm", "n_rows", "n_seeds", "total_transformer_overload_mean",
                "tracking_error_mean", "average_user_satisfaction_mean"]].to_string(index=False))
-    print("Wrote results/week5_master_comparison.csv\n")
+    print(f"Wrote {out_path}\n")
     return out
 # doc:end master_comparison
 
@@ -173,12 +175,12 @@ def seed_overload_distribution(df):
     return out
 
 
-def optimality_gap(df):
+def optimality_gap(df, algos=None, out_path="results/week5_optimality_gap.csv"):
     print("=== (4) Optimality gap vs. oracle, cluster bootstrap ===")
     rows = []
     for metric, oracle_algo in GAP_METRICS.items():
         oracle = df[df["algorithm"] == oracle_algo].sort_values(["seed", "day_type"])
-        for algo in ONLINE_ALGOS:
+        for algo in (ONLINE_ALGOS if algos is None else algos):
             sub = df[df["algorithm"] == algo].sort_values(["seed", "day_type"])
             merged = pd.merge(oracle[["seed", "day_type", metric]], sub[["seed", "day_type", metric]],
                                on=["seed", "day_type"], suffixes=("_oracle", "_algo"))
@@ -190,9 +192,9 @@ def optimality_gap(df):
             rows.append({"algorithm": algo, "metric": metric, "oracle_variant": oracle_algo,
                          "mean_abs_gap": abs_gap, "pct_of_oracle_value": pct_gap, "n_cells": len(merged)})
     out = pd.DataFrame(rows)
-    out.to_csv("results/week5_optimality_gap.csv", index=False)
+    out.to_csv(out_path, index=False)
     print(out[out["metric"] == "tracking_error"].sort_values("mean_abs_gap").to_string(index=False))
-    print("Wrote results/week5_optimality_gap.csv\n")
+    print(f"Wrote {out_path}\n")
     return out
 
 
@@ -230,7 +232,8 @@ def requested_energy_by_cell():
     return result
 
 
-def ens_and_compliance(df):
+def ens_and_compliance(df, algos=None, out_path="results/week5_ens_compliance.csv",
+                       requested_energy_out_path="results/week5_requested_energy_by_cell.csv"):
     print("=== (5) Energy-not-served (ENS_rel/ENS_abs) + target compliance ===")
     df = df.copy()
     df["net_delivered"] = df["total_energy_charged"].astype(float) - df["total_energy_discharged"].astype(float)
@@ -238,7 +241,7 @@ def ens_and_compliance(df):
     print("  Computing R(s) (requested energy of EVs departing within horizon) per cell...")
     r_by_cell = requested_energy_by_cell()
     r_df = pd.DataFrame([{"seed": s, "eval_day": d, **v} for (s, d), v in r_by_cell.items()])
-    r_df.to_csv("results/week5_requested_energy_by_cell.csv", index=False)
+    r_df.to_csv(requested_energy_out_path, index=False)
     total_still_connected = r_df["n_still_connected"].sum()
     print(f"  EVs still connected at horizon end (excluded from R, all cells): {total_still_connected} "
           f"(diagnostic, energy={r_df['still_connected_energy'].sum():.2f} kWh)")
@@ -252,7 +255,7 @@ def ens_and_compliance(df):
     ens_abs_per_seed_algo = df.groupby(["algorithm", "seed"])["ENS_abs_cell"].mean().reset_index()
 
     rows = []
-    for algo in ALL_ALGOS:
+    for algo in (ALL_ALGOS if algos is None else algos):
         algo_per_seed = per_seed[per_seed["algorithm"] == algo].set_index("seed")["net_delivered"]
         common_seeds = sorted(set(afap_per_seed.index) & set(algo_per_seed.index))
         e_afap = afap_per_seed.loc[common_seeds].values
@@ -285,9 +288,9 @@ def ens_and_compliance(df):
             "n_seeds": len(common_seeds),
         })
     out = pd.DataFrame(rows)
-    out.to_csv("results/week5_ens_compliance.csv", index=False)
+    out.to_csv(out_path, index=False)
     print(out.to_string(index=False))
-    print("Wrote results/week5_ens_compliance.csv\n")
+    print(f"Wrote {out_path}\n")
     return out
 
 

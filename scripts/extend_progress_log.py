@@ -558,23 +558,131 @@ def build_week4_correction_section(doc):
         "proposal, not to define one from scratch.")
 
 
+# doc:begin week6_part0_progress_log
+# Week 6 Part 0: appended to the in-repo corrected Progress Log
+# (thesis_docs/Progress_Log_Thesis_Project_corrected_2026-09-09.docx), per
+# the user's instruction -- that file's week sections are numbered as
+# top-level sections ("9. Week 4", "10. Week 5", "11. Standing Corrections"),
+# so this is "12.". Extend, never rewrite; plain black text, bold titles, no
+# Word Heading styles (the existing sections do use Heading styles -- this
+# addition follows the user's standing rule instead, declared here).
+CORRECTED_PROGRESS_LOG_PATH = "thesis_docs/Progress_Log_Thesis_Project_corrected_2026-09-09.docx"
+WEEK6_PART0_TITLE = "12. Week 6, Part 0 -- Extended Training of the Selected RL Policy"
+
+
+def build_week6_part0_section(doc):
+    add_heading(doc, WEEK6_PART0_TITLE)
+
+    add_heading(doc, "12.1. Objective")
+    add_body(doc,
+        "At the advisor's request, the best already-trained RL arm was trained until its learning curve "
+        "stabilised, so that a single RL model can be carried into Objectives 4 and 5. No trained arm beat "
+        "Round Robin in Week 5 (S5.8). TD3_vanilla (reward SqTrError_TrPenalty_UserIncentives) was extended "
+        "because it is the best RL arm on the Week 5 tracking-error ranking, not because it is an overall "
+        "winner. The experiment answers one question: was the RL result limited by its 60,000-step training "
+        "budget?")
+
+    add_heading(doc, "12.2. Design")
+    add_bullet(doc, "Identical algorithm, hyperparameters, reward, state, station configuration and training seeds "
+                    "(100, 101, 102) as the original runs. Trained from scratch, three seeds in parallel, one torch "
+                    "thread per process, simulate_grid = False.")
+    add_bullet(doc, "Deterministic validation every 10,000 steps on 20 fixed cells (seeds 1,000,000-1,000,009 on "
+                    "one weekday and one weekend day), disjoint by construction from every training scenario and "
+                    "from the evaluation grid. Each saved checkpoint is reloaded with frozen normalisation "
+                    "statistics before it is scored.")
+    add_bullet(doc, "Selection criterion: validation-mean tracking error. Transformer overload and energy user "
+                    "satisfaction were logged as secondary metrics.")
+    add_bullet(doc, "Convergence rule (labelled assumption, fixed before launch): over windows of W = 5 evaluations, "
+                    "the relative change of the window mean is below 2% and the relative standard deviation is "
+                    "below 5%, on 3 consecutive evaluations. Then 100,000 confirmation steps, or a hard stop at "
+                    "10:15 (UTC-5).")
+    add_bullet(doc, "Primary checkpoint: the best criterion value at or after convergence; the last checkpoint is "
+                    "kept as a sensitivity case. The primary comparator is the new run's own 60,000-step "
+                    "checkpoint, because the Week 3-5 models were trained before the Week 5 power-setpoint fix "
+                    "and evaluated after it.")
+    add_bullet(doc, "Implementation safeguards, each covered by a test:")
+    add_bullet(doc, "  the monitor restores the random generators EV2Gym reseeds, so it does not change training;")
+    add_bullet(doc, "  an output-identical cache of EV2Gym's price table raised throughput from 13.8 to 86 steps/s "
+                    "per seed;")
+    add_bullet(doc, "  a leakage guard redraws any training scenario that lands on an evaluation seed "
+                    "(0 hits in 21,354 episodes).")
+
+    add_heading(doc, "12.3. Convergence")
+    add_table(doc, ["Seed", "Converged at", "Stopped at", "Wall clock", "Validation TE at 60k",
+                    "Validation TE, last 5 evaluations", "Primary checkpoint"],
+              [["100", "380,000", "480,000", "2.19 h", "33,070", "45,476 +/- 2,093", "400,000"],
+               ["101", "560,000", "660,000", "2.88 h", "33,650", "47,569 +/- 1,109", "630,000"],
+               ["102", "810,000", "910,000", "3.69 h", "30,798", "45,978 +/- 1,064", "850,000"]])
+    add_body(doc,
+        "All three seeds met the convergence rule and stopped on their own well before the deadline. There "
+        "were no crashes or resumes. The curves stabilised at a worse level than the policy had at 30k-70k "
+        "steps, which is where every seed reached its best validation tracking error. The first 60,000 steps "
+        "fall within the original run-to-run noise band. This is a comparison, not a reproduction: the "
+        "setpoint generator and the thread count differ from the original runs.")
+
+    add_heading(doc, "12.4. Test-Grid Results (50 seeds x 2 day types, n_clusters = 50)")
+    add_table(doc, ["Checkpoint family (3-seed mean)", "Tracking error", "Overload (kWh)", "Avg. satisfaction",
+                    "ENS_rel range"],
+              [["Original 60k (pre-fix, reference)", "33,447", "4.72", "98.13%", "8.56-9.98%"],
+               ["New run 60k (primary comparator)", "32,509", "6.08", "97.82%", "3.91-20.04%"],
+               ["Extended, primary checkpoint", "43,211", "6.82", "99.64%", "1.61-2.20%"],
+               ["Extended, last checkpoint", "46,243", "7.95", "99.81%", "0.92-1.70%"],
+               ["Round Robin", "13,581", "0.00", "99.91%", "0.47%"]])
+    add_body(doc,
+        "Extended primary vs. new-run 60k (paired cluster bootstrap, 95% CI):")
+    add_bullet(doc, "tracking error +10,701 [+9,042, +12,472];")
+    add_bullet(doc, "overload +0.74 kWh [-1.98, +3.40];")
+    add_bullet(doc, "average satisfaction +0.018 [+0.016, +0.021].")
+    add_body(doc,
+        "Extended primary vs. Round Robin: tracking error +29,629, overload +6.82 kWh, satisfaction -0.0027, "
+        "with every CI excluding zero. One new-run 60k checkpoint (seed 101) fails the <15% energy-not-served "
+        "target (20.04%, CI upper bound 22.85%). Across training seeds, the spread of tracking error went from "
+        "8.3% to 7.3% and the spread of overload from 30.8% to 82.9%.")
+
+    add_heading(doc, "12.5. Verdict")
+    add_body(doc,
+        "Extended training degraded the model on its pre-registered criterion. Tracking error rose 33% "
+        "against the environment-matched 60k checkpoints, overload is statistically unchanged, and user "
+        "satisfaction and energy-not-served improved: the policy settled at an operating point that delivers "
+        "more energy and tracks the setpoint less closely. RL was not budget-limited at 60,000 steps, and the "
+        "Round Robin recommendation stands. The pre-registered rule selects TD3_vanilla_extended_ts102 at "
+        "850,000 steps. Because that checkpoint is worse on the criterion than the 60k checkpoints, the choice "
+        "of the RL model carried into Weeks 6-7 is left to the author.")
+
+    add_heading(doc, "12.6. Limitations")
+    add_bullet(doc, "The Week 3-5 RL models were trained before the power-setpoint fix and evaluated after it. "
+                    "The new-run 60k checkpoints are statistically indistinguishable from them on tracking error "
+                    "(-937, CI [-2,125, +236]).")
+    add_bullet(doc, "Training ran on a laptop CPU for 2.2-3.7 h per seed (480k-910k steps). The reference papers "
+                    "trained for 5-48 h on HPC, so no equivalence is claimed.")
+    add_bullet(doc, "Convergence means the validation criterion stopped changing, not that the policy improved. "
+                    "The thresholds are empirically set.")
+
+
 if __name__ == "__main__":
-    if not os.path.exists(PROGRESS_LOG_PATH):
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--section", choices=["week5", "week6_part0"], required=True,
+                    help="which section to append (each runs once; nothing already in the file is modified)")
+    args = ap.parse_args()
+    path = CORRECTED_PROGRESS_LOG_PATH if args.section == "week6_part0" else PROGRESS_LOG_PATH
+    if not os.path.exists(path):
         raise FileNotFoundError(
-            f"{PROGRESS_LOG_PATH!r} not found relative to the current working "
-            f"directory. Run this script with PYTHONPATH=. from the repo root "
-            f"(PG_IIND/), so the relative path resolves to the parent 'PG "
-            f"Industrial' folder where this file actually lives."
+            f"{path!r} not found relative to the current working directory. Run this script with "
+            f"PYTHONPATH=. from the repo root (PG_IIND/)."
         )
-    doc = Document(PROGRESS_LOG_PATH)
+    doc = Document(path)
     n_paragraphs_before = len(doc.paragraphs)
-    # Week 3, Week 4, and the Week 4 correction were already appended in
-    # earlier sessions -- the file already contains "2.2. Week 3", "2.3.
-    # Week 4" (and its correction subsection). Only Week 5's new section
-    # runs now, as "2.4. Week 5" -- continuing the document's own
-    # established "2.<n>. Week <n>" numbering.
-    build_week5_section(doc)
-    doc.save(PROGRESS_LOG_PATH)
-    print(f"Appended Week 5 section to {PROGRESS_LOG_PATH} "
+    if args.section == "week5":
+        # Week 3, Week 4, and the Week 4 correction were already appended in
+        # earlier sessions; Week 5 was appended as "2.4. Week 5".
+        build_week5_section(doc)
+    else:
+        if any(p.text.strip() == WEEK6_PART0_TITLE for p in doc.paragraphs):
+            raise SystemExit(f"{WEEK6_PART0_TITLE!r} already present in {path} -- not appending twice.")
+        build_week6_part0_section(doc)
+    doc.save(path)
+    print(f"Appended {args.section} section to {path} "
           f"({n_paragraphs_before} paragraphs before -> {len(doc.paragraphs)} after). "
           f"Nothing before paragraph {n_paragraphs_before} was modified.")
+# doc:end week6_part0_progress_log

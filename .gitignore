@@ -226,6 +226,12 @@ eval_logs/
 !/results/week5_td3_budget_curve.xlsx
 !/results/week5_td3_budget_curve_summary.xlsx
 !/results/master_results_prefix_week5_setpoint_fix.csv
+# Week 6 Part 0 (2026-10-05): the same bug a third time -- all 16
+# results/week6_part0_* outputs (CSVs, .xlsx twins, and the rule's
+# final_model_selection.json) were swallowed by the blanket /results/*
+# rule; caught by `git check-ignore -v` while preparing the commit.
+# results/timeseries/ stays ignored (regenerable per-run .npz arrays).
+!/results/week6_part0_*
 models_RL/
 plots/
 plot_results_dict.pkl
@@ -237,6 +243,8 @@ results_grouped.csv
 experiments/phase1_baseline/configs/_tmp_day_configs/
 experiments/phase2_algorithms/configs/_tmp_eval_day_configs/
 experiments/phase2_algorithms/configs/_tmp_train_day_configs/
+experiments/phase2_algorithms/configs/_tmp_train_day_configs_ts*/
+experiments/phase2_algorithms/configs/_tmp_validation_day_configs*/
 
 # Week 3+ RL artifacts (models, VecNormalize stats, learning curves,
 # manifests) -- regenerable from a config + training seed + git commit, per

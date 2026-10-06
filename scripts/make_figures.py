@@ -622,6 +622,21 @@ def _load_learning_curve(algo):
     }
 
 
+def _load_extended_learning_curves():
+    """{train_seed: {"timesteps", "mean_episode_reward"}} for the Week 6
+    Part 0 extended run: rolling mean of the raw episode reward over the
+    last <=100 completed episodes -- LearningCurveCallback's statistic."""
+    import pandas as pd
+    out = {}
+    for s in (100, 101, 102):
+        path = f"experiments/phase2_algorithms/results/week6_part0/TD3_vanilla_extended_ts{s}_episodes.csv"
+        if os.path.exists(path):
+            e = pd.read_csv(path)
+            out[s] = {"timesteps": e.timesteps_at_end.to_numpy(),
+                      "mean_episode_reward": e.episode_reward_raw.rolling(100, min_periods=1).mean().to_numpy()}
+    return out
+
+
 def make_f08_learning_curves(rows):
     rl_rows = [r for r in rows if r["algorithm_family"] == "rl"]
     if not rl_rows:
@@ -641,7 +656,14 @@ def make_f08_learning_curves(rows):
         print("f08: no learning_curve.csv files found for any arm, skipping.")
         return
 
-    fig, axes = plt.subplots(1, len(arm_curves), figsize=(6.5 * len(arm_curves), 5), squeeze=False)
+    # Week 6 Part 0: third panel for the extended TD3_vanilla run, same
+    # statistic (mean raw episode reward over the last <=100 completed
+    # episodes), computed from the run's per-episode log. It shares the
+    # y-axis with the original vanilla panel (same reward function); the
+    # TrackingOnly panel keeps its own scale (different reward function).
+    extended = _load_extended_learning_curves()
+    n_panels = len(arm_curves) + (1 if extended else 0)
+    fig, axes = plt.subplots(1, n_panels, figsize=(6.5 * n_panels, 5.2), squeeze=False)
     axes = axes[0]
     for ax, (arm_label, curves) in zip(axes, arm_curves.items()):
         for algo, data in curves.items():
@@ -649,15 +671,40 @@ def make_f08_learning_curves(rows):
             ax.plot(data["timesteps"], data["mean_episode_reward"], color=sty["color"],
                     label=sty["label"], linewidth=1.3)
         ax.set_xlabel("Training timesteps")
-        ax.set_title(arm_label, fontsize=10)
+        ax.set_title(f"{arm_label} (original runs, 60k steps)", fontsize=10)
         ax.legend(fontsize=8)
-    axes[0].set_ylabel("Mean episode reward\n(SB3 rolling window, last <=100 episodes)")
-    fig.suptitle("Learning curves by arm -- separate panels: different reward\n"
-                 "functions, NOT a common scale (station_v0_bogota, TRAIN_DAYS round-robin)", fontsize=10)
-    fig.tight_layout(rect=[0, 0, 1, 0.90])
+        _w6p0_kfmt(ax)
+    if extended:
+        ax = axes[-1]
+        conv = _w6p0_convergence() if os.path.exists("results/week6_part0_convergence.csv") else {}
+        for s, data in extended.items():
+            sty = style_for(f"TD3_vanilla_extended_ts{s}")
+            ax.plot(data["timesteps"], data["mean_episode_reward"], color=sty["color"], linewidth=1.3,
+                    label=f"TD3 extended run (seed {s})")
+            if s in conv and conv[s]["convergence_step"] != "not converged":
+                ax.axvline(float(conv[s]["convergence_step"]), color=sty["color"], linestyle=":", linewidth=1.4)
+        ax.axvline(W6P0_ORIGINAL_BUDGET, color="0.35", linestyle="--", linewidth=1, label="original 60k budget")
+        from matplotlib.lines import Line2D
+        h, l = ax.get_legend_handles_labels()
+        h.append(Line2D([], [], color="0.3", linestyle=":", linewidth=1.4))
+        l.append("convergence declared (seed colour)")
+        ax.legend(h, l, fontsize=8)
+        ax.set_xlabel("Training timesteps")
+        ax.set_title("TD3 vanilla -- extended run (Week 6 Part 0, trained post-setpoint-fix)", fontsize=10)
+        _w6p0_kfmt(ax)
+        lo = min(axes[0].get_ylim()[0], ax.get_ylim()[0])
+        hi = max(axes[0].get_ylim()[1], ax.get_ylim()[1])
+        axes[0].set_ylim(lo, hi)
+        ax.set_ylim(lo, hi)
+    axes[0].set_ylabel("Mean episode reward\n(rolling window, last <=100 episodes)")
+    fig.suptitle("Learning curves by arm -- TD3 vanilla panels share one y-axis (same reward); "
+                 "TD3-TrackingOnly uses a different reward,\nNOT a common scale "
+                 "(station_v0_bogota, TRAIN_DAYS round-robin)", fontsize=10)
+    fig.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, "f08_learning_curves")
 
     all_algos = [a for _, curves in arm_curves.items() for a in curves]
+    all_algos += [f"TD3_vanilla_extended_ts{s}" for s in extended]
     write_caption(
         "f08_learning_curves",
         what_it_shows=(
@@ -672,7 +719,13 @@ def make_f08_learning_curves(rows):
             "registry -- the registry has no reward-vs-timesteps time series column. "
             "Reward values use each arm's OWN training reward function, not any of "
             "metrics -- see thesis_docs/chapters/03_rl_baseline.md S3.4 for why those "
-            "are not the same thing."
+            "are not the same thing. Week 6 Part 0 adds a third panel: the extended "
+            "TD3_vanilla run (480k/660k/910k steps), same statistic computed from its "
+            "per-episode log (experiments/phase2_algorithms/results/week6_part0/*_episodes.csv), "
+            "sharing the y-axis with the original vanilla panel because the reward "
+            "function is identical. Dashed: original 60k budget; dotted: convergence "
+            "declared by the validation rule. The extended run trained on the "
+            "post-setpoint-fix environment, the original runs before it."
         ),
         n_runs=len(all_algos),
         configs=[REFERENCE_CONFIG],
@@ -1004,6 +1057,270 @@ def make_f11_physics_term_falsification():
     )
 
 
+# ---------------------------------------------------------------------------
+# f12/f13: Week 6 Part 0 extended training of TD3_vanilla. Like f08, these
+# read the run's own logs (experiments/phase2_algorithms/results/week6_part0/,
+# versioned) and results/week6_part0_convergence.csv, not the registry.
+# ---------------------------------------------------------------------------
+W6P0_LOG_DIR = "experiments/phase2_algorithms/results/week6_part0"
+W6P0_SEEDS = [100, 101, 102]
+W6P0_ORIGINAL_BUDGET = 60_000
+W6P0_ROLLING = 100
+
+
+def _w6p0_convergence():
+    with open("results/week6_part0_convergence.csv", newline="") as f:
+        return {int(r["train_seed"]): r for r in csv.DictReader(f)}
+
+
+def _w6p0_kfmt(ax):
+    # Visual QA fix: matplotlib's "1e3" offset label was easy to misread.
+    from matplotlib.ticker import FuncFormatter
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x/1000:.0f}k"))
+
+
+def _w6p0_mark(ax, conv_row, color):
+    ax.axvline(W6P0_ORIGINAL_BUDGET, color="0.35", linestyle="--", linewidth=1)
+    if conv_row["convergence_step"] != "not converged":
+        ax.axvline(float(conv_row["convergence_step"]), color=color, linestyle=":", linewidth=1.4)
+
+
+def make_f12_extended_training_reward():
+    import pandas as pd
+    conv = _w6p0_convergence()
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.8), sharey=True)
+    for ax, s in zip(axes, W6P0_SEEDS):
+        e = pd.read_csv(f"{W6P0_LOG_DIR}/TD3_vanilla_extended_ts{s}_episodes.csv")
+        sty = style_for(f"TD3_vanilla_extended_ts{s}")
+        # Visual QA fix: raw values in neutral grey (the light seed-101 teal
+        # at alpha 0.12 was invisible, and the legend already said grey).
+        ax.plot(e.timesteps_at_end, e.episode_reward_raw, color="0.55", alpha=0.25, linewidth=0.5,
+                label="raw episode reward")
+        roll = e.episode_reward_raw.rolling(W6P0_ROLLING, min_periods=1).mean()
+        ax.plot(e.timesteps_at_end, roll, color="black", linewidth=1.4, label=f"rolling mean ({W6P0_ROLLING} episodes)")
+        _w6p0_mark(ax, conv[s], "black")
+        ax.set_title(f"Training seed {s} (stopped at {int(conv[s]['total_steps']):,} steps)", fontsize=10)
+        ax.set_xlabel("Training timesteps")
+        _w6p0_kfmt(ax)
+    axes[0].set_ylabel("Training-episode reward\n(SqTrError_TrPenalty_UserIncentives, with exploration noise)")
+    from matplotlib.lines import Line2D
+    handles = [Line2D([], [], color="0.5", alpha=0.5, label="raw episode reward (faint)"),
+               Line2D([], [], color="black", label=f"rolling mean, {W6P0_ROLLING} episodes"),
+               Line2D([], [], color="0.35", linestyle="--", label="original 60k budget"),
+               Line2D([], [], color="0.2", linestyle=":", label="convergence declared (validation rule)")]
+    fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=9, frameon=False)
+    fig.suptitle("Extended TD3_vanilla training: training-episode reward (noisy episodes over random scenarios --\n"
+                 "NOT a convergence signal on its own; see f13 for the deterministic validation curve)", fontsize=10)
+    fig.tight_layout(rect=[0, 0.07, 1, 0.9])
+    _save(fig, "f12_extended_training_reward")
+    write_caption(
+        "f12_extended_training_reward",
+        what_it_shows=(
+            "Raw training-episode reward (faint) and its rolling mean over the last 100 episodes (black) "
+            "for the three extended TD3_vanilla training seeds, one panel per seed; same reward function "
+            "throughout, so a shared y-axis is valid. Dashed grey: the original 60,000-step budget. Dotted: "
+            "the step at which the pre-registered validation rule declared convergence. Episodes use "
+            "exploration noise and a different random scenario each, so this curve oscillates even for a "
+            "stable policy. Source: experiments/phase2_algorithms/results/week6_part0/*_episodes.csv."
+        ),
+        n_runs=3, configs=[REFERENCE_CONFIG],
+        algorithms=[style_for(f"TD3_vanilla_extended_ts{s}")["label"] for s in W6P0_SEEDS],
+    )
+
+
+def make_f13_extended_validation():
+    import pandas as pd
+    conv = _w6p0_convergence()
+    val = {s: pd.read_csv(f"{W6P0_LOG_DIR}/TD3_vanilla_extended_ts{s}_validation.csv") for s in W6P0_SEEDS}
+    panels = [("criterion_value", "Validation tracking error\n(selection criterion; lower is better)"),
+              ("total_transformer_overload", "Validation transformer overload\n(kWh per simulated day)"),
+              ("energy_user_satisfaction", "Validation energy user satisfaction\n(0-100 scale)")]
+    fig, axes = plt.subplots(1, 3, figsize=(17, 5))
+    common_max = min(v.timesteps.max() for v in val.values())
+    for ax, (col, ylab) in zip(axes, panels):
+        wide = pd.concat([v.set_index("timesteps")[col].rename(s) for s, v in val.items()], axis=1)
+        both = wide[wide.index <= common_max]
+        ax.fill_between(both.index, both.min(axis=1), both.max(axis=1), color="0.75", alpha=0.6,
+                        label="min-max across 3 seeds")
+        ax.plot(both.index, both.mean(axis=1), color="black", linewidth=1.6, label="mean across 3 seeds")
+        for s, v in val.items():
+            sty = style_for(f"TD3_vanilla_extended_ts{s}")
+            tail = v[v.timesteps >= common_max]
+            if len(tail) > 1:
+                ax.plot(tail.timesteps, tail[col], color=sty["color"], linewidth=1.4,
+                        label=f"seed {s} after {common_max:,} steps")
+            c = conv[s]
+            if c["convergence_step"] != "not converged":
+                ax.axvline(float(c["convergence_step"]), color=sty["color"], linestyle=":", linewidth=1.4)
+            if c["primary_step"]:
+                p = v[v.timesteps == int(float(c["primary_step"]))]
+                ax.plot(p.timesteps, p[col], marker=sty["marker"], color=sty["color"], markersize=8,
+                        markeredgecolor="black", linestyle="none", label=f"primary checkpoint, seed {s}")
+        ax.axvline(W6P0_ORIGINAL_BUDGET, color="0.35", linestyle="--", linewidth=1, label="original 60k budget")
+        ax.set_xlabel("Training timesteps")
+        ax.set_ylabel(ylab)
+        _w6p0_kfmt(ax)
+    h, l = axes[0].get_legend_handles_labels()
+    from matplotlib.lines import Line2D
+    h.append(Line2D([], [], color="0.3", linestyle=":", linewidth=1.4))
+    l.append("convergence declared (seed colour)")
+    fig.legend(h, l, loc="lower center", ncol=5, fontsize=8, frameon=False)
+    fig.suptitle("Extended TD3_vanilla training: deterministic validation every 10,000 steps "
+                 "(20 held-out cells: 10 seeds x weekday/weekend; dotted = convergence declared per seed)", fontsize=10)
+    fig.tight_layout(rect=[0, 0.12, 1, 0.94])
+    _save(fig, "f13_extended_validation")
+    write_caption(
+        "f13_extended_validation",
+        what_it_shows=(
+            "Deterministic (no exploration noise) validation of each saved checkpoint every 10,000 steps on "
+            "20 fixed validation cells disjoint from the training draws and from the evaluation grid. Grey band "
+            "and black line: min-max and mean across the three training seeds, over the range all three seeds "
+            "reached; coloured lines continue the seeds that trained longer. Left: tracking error, the "
+            "pre-registered selection criterion; middle/right: secondary metrics. Dashed grey: original 60k "
+            "budget; dotted: convergence declared per seed; large markers: selected (primary) checkpoint. "
+            "Source: experiments/phase2_algorithms/results/week6_part0/*_validation.csv and "
+            "results/week6_part0_convergence.csv."
+        ),
+        n_runs=sum(len(v) for v in val.values()) * 20, configs=[REFERENCE_CONFIG],
+        algorithms=[style_for(f"TD3_vanilla_extended_ts{s}")["label"] for s in W6P0_SEEDS],
+        extra="n_runs counts validation episodes (validation evaluations x 20 cells).",
+    )
+
+
+# ---------------------------------------------------------------------------
+# f14_all_models_comparison (Week 6 Part 0): every arm evaluated on the
+# current 50-seed x 2-day grid, Week 1 through the extended TD3 run, one
+# small-multiple panel per metric (never a shared/dual axis across metrics).
+# ---------------------------------------------------------------------------
+F14_GROUPS = [
+    ("Heuristics and control", ["ChargeAsFastAsPossible", "RoundRobin", "RandomPolicy"]),
+    ("Information-advantaged (non-causal)", ["MPC_TrackingG2V", "MPC_EnergyMaxG2V",
+                                             "Optimal_Oracle_Tracking", "Optimal_Oracle_Balanced"]),
+    ("TD3 original, 60k (trained pre-setpoint-fix)", ["TD3_vanilla_ts100", "TD3_vanilla_ts101", "TD3_vanilla_ts102",
+                                                     "TD3_TrackingOnly_ts100", "TD3_TrackingOnly_ts101",
+                                                     "TD3_TrackingOnly_ts102"]),
+    ("TD3 vanilla, new run @60k", ["TD3_vanilla_new60k_ts100", "TD3_vanilla_new60k_ts101", "TD3_vanilla_new60k_ts102"]),
+    ("TD3 vanilla, extended (primary)", ["TD3_vanilla_extended_ts100", "TD3_vanilla_extended_ts101",
+                                         "TD3_vanilla_extended_ts102"]),
+    ("TD3 vanilla, extended (last)", ["TD3_vanilla_extended_last_ts100", "TD3_vanilla_extended_last_ts101",
+                                      "TD3_vanilla_extended_last_ts102"]),
+]
+
+
+def _seed_level_mean_ci(df, algo, metric):
+    """Mean over the 100 cells and a 95% normal CI over the 50 SEED-level
+    means (both day types averaged within a seed first) -- the seed, not
+    the row, is the independent unit (Week 5 Gate 3)."""
+    per_seed = df[df.algorithm == algo].groupby("seed")[metric].mean()
+    m = float(per_seed.mean())
+    half = 1.96 * float(per_seed.std(ddof=1)) / np.sqrt(len(per_seed))
+    return m, m - half, m + half, len(per_seed)
+
+
+def make_f14_all_models_comparison():
+    import pandas as pd
+    from ev2gym_thesis.registry import REGISTRY_PATH
+    reg = pd.read_csv(REGISTRY_PATH, low_memory=False)
+    df = reg[(reg.config_name == REFERENCE_CONFIG) & (reg.analysis_row.astype(str) == "True")].copy()
+    ens = pd.concat([pd.read_csv("results/week5_ens_compliance.csv"),
+                     pd.read_csv("results/week6_part0_ens_compliance.csv")]).drop_duplicates("algorithm", keep="last")
+    ens = ens.set_index("algorithm")
+
+    order = [a for _, arms in F14_GROUPS for a in arms]
+    missing = [a for a in order if (df.algorithm == a).sum() != 100 or a not in ens.index]
+    assert not missing, f"f14: arms missing from the 100-cell grid or the ENS tables: {missing}"
+    extra = sorted(set(df.algorithm) - set(order))
+    assert not extra, f"f14: analysis arms not placed in any group (add them to F14_GROUPS): {extra}"
+
+    # y positions with a gap between groups
+    ypos, y, group_spans = {}, 0.0, []
+    for label, arms in F14_GROUPS:
+        start = y
+        for a in arms:
+            ypos[a] = y
+            y += 1
+        group_spans.append((label, start, y - 1))
+        y += 1.5  # room for the next group's bold header row
+    df["avg_sat_pct"] = df["average_user_satisfaction"].astype(float) * 100
+
+    panels = [
+        ("tracking_error", "Tracking error\n(sum of squared kW deviations; lower is better)", None),
+        ("total_transformer_overload", "Transformer overload\n(kWh per simulated day; lower is better)", None),
+        ("avg_sat_pct", "Average user satisfaction\n(%; higher is better; target > 90%)", None),
+        ("ENS_rel", "Energy not served vs. AFAP, ENS_rel\n(%; target: 95% CI upper bound < 15%)", 15.0),
+    ]
+    fig, axes = plt.subplots(1, 4, figsize=(19, 11), sharey=True)
+    for ax, (metric, xlabel, target) in zip(axes, panels):
+        for a in order:
+            sty = style_for(a)
+            if metric == "ENS_rel":
+                m, lo, hi = (ens.loc[a, "ENS_rel_point_pct"], ens.loc[a, "ENS_rel_ci_low_pct"],
+                             ens.loc[a, "ENS_rel_ci_high_pct"])
+            else:
+                m, lo, hi, _ = _seed_level_mean_ci(df, a, metric)
+            ax.errorbar(m, ypos[a], xerr=[[m - lo], [hi - m]], fmt=sty["marker"], color=sty["color"],
+                        markersize=8, markeredgecolor="black", markeredgewidth=0.6, ecolor=sty["color"],
+                        elinewidth=2, capsize=3)
+        if metric == "ENS_rel":
+            rr = ens.loc["RoundRobin", "ENS_rel_point_pct"]
+        else:
+            rr = _seed_level_mean_ci(df, "RoundRobin", metric)[0]
+        ax.axvline(rr, color=style_for("RoundRobin")["color"], linestyle="--", linewidth=1, alpha=0.8)
+        if target is not None:
+            ax.axvline(target, color="0.2", linestyle=":", linewidth=1.4)
+            ax.text(target, -1.4, " 15% target", fontsize=8, color="0.2", va="center")
+        for _, s0, s1 in group_spans[1::2]:
+            ax.axhspan(s0 - 0.5, s1 + 0.5, color="0.94", zorder=0)
+        ax.set_xlabel(xlabel, fontsize=9)
+        if metric == "tracking_error":
+            from matplotlib.ticker import FuncFormatter
+            ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:,.0f}"))
+        ax.grid(axis="x", color="0.88", linewidth=0.6)
+        ax.set_axisbelow(True)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+    axes[0].set_yticks([ypos[a] for a in order])
+    axes[0].set_yticklabels([style_for(a)["label"] for a in order], fontsize=8.5)
+    # (y inverted via set_ylim below)
+    # Visual QA fix: group names as bold header rows directly above each
+    # group, in the tick-label column (the first version placed them far to
+    # the left and left a large empty margin).
+    import matplotlib.transforms as mtransforms
+    trans = mtransforms.blended_transform_factory(axes[0].transAxes, axes[0].transData)
+    for label, s0, s1 in group_spans:
+        axes[0].text(-0.02, s0 - 0.95, label, transform=trans, fontsize=9, fontweight="bold",
+                     ha="right", va="center")
+    from matplotlib.lines import Line2D
+    fig.legend(handles=[Line2D([], [], color=style_for("RoundRobin")["color"], linestyle="--",
+                               label="Round Robin (recommended strategy, S5.8) -- reference line"),
+                        Line2D([], [], color="0.2", linestyle=":", label="Declared target")],
+               loc="lower center", ncol=2, fontsize=9, frameon=False)
+    fig.suptitle("All models on the final evaluation grid (station_v0_bogota, 50 scenario seeds x weekday/weekend "
+                 "= 100 cells per model)\nPoint = mean; bar = 95% CI over the 50 seed-level means "
+                 "(ENS_rel: cluster-bootstrap CI, S5.7)", fontsize=10)
+    axes[0].set_ylim(max(ypos.values()) + 0.8, -1.8)
+    fig.tight_layout(rect=[0, 0.04, 1, 0.94])
+    _save(fig, "f14_all_models_comparison")
+    write_caption(
+        "f14_all_models_comparison",
+        what_it_shows=(
+            "Every arm evaluated on the current statistical grid (analysis_row=True, 50 scenario seeds x "
+            "2 day types = 100 cells per arm), from the Week 1 heuristics through the Week 6 Part 0 extended "
+            "TD3_vanilla run, in four small-multiple panels (one metric per panel, never a shared axis). "
+            "Points are 100-cell means; bars are 95% normal CIs over the 50 seed-level means (the seed is "
+            "the independent unit), except ENS_rel, which uses the S5.7 definition and its cluster-bootstrap "
+            "CI from results/week5_ens_compliance.csv and results/week6_part0_ens_compliance.csv. Dashed blue: "
+            "Round Robin, the recommended strategy (S5.8). Dotted: the 15% ENS_rel target. Groups are "
+            "shaded alternately. MPC and oracle arms are non-causal (know departure times) and are "
+            "value-of-information bounds, not deployable candidates. The original TD3 rows were trained "
+            "before the Week 5 power-setpoint fix and evaluated after it; the new-run and extended rows "
+            "were trained and evaluated on the fixed environment."
+        ),
+        n_runs=100 * len(order), configs=[REFERENCE_CONFIG],
+        algorithms=[style_for(a)["label"] for a in order],
+    )
+
+
 def _save(fig, name):
     os.makedirs(FIGURES_DIR, exist_ok=True)
     fig.savefig(f"{FIGURES_DIR}/{name}.png", dpi=300)
@@ -1030,6 +1347,20 @@ def _merge_economics(rows):
 
 
 if __name__ == "__main__":
+    import argparse
+    _p = argparse.ArgumentParser()
+    _p.add_argument("--only", default=None,
+                    help="comma-separated figure ids to regenerate (e.g. f12,f13); default: all")
+    _only = _p.parse_args().only
+    if _only:
+        # Week 6 Part 0: regenerate only the named figures, leaving the rest
+        # (and their captions' git commit/timestamp) untouched.
+        _fns = {"f08": lambda: make_f08_learning_curves(load_registry()),
+                "f12": make_f12_extended_training_reward, "f13": make_f13_extended_validation,
+                "f14": make_f14_all_models_comparison}
+        for _fid in _only.split(","):
+            _fns[_fid.strip()]()
+        raise SystemExit(0)
     rows = load_registry()
     rows = _merge_economics(rows)
     print(f"Loaded {len(rows)} registry rows (smoke test excluded).")
@@ -1045,5 +1376,8 @@ if __name__ == "__main__":
     make_f09_degradation_by_ambient()
     make_f10_optimality_gap()
     make_f11_physics_term_falsification()
+    make_f12_extended_training_reward()
+    make_f13_extended_validation()
+    make_f14_all_models_comparison()
 
     print("\nAll figures regenerated.")

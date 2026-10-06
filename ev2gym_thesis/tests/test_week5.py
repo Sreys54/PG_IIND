@@ -104,11 +104,30 @@ class TestRegistryGridCount(unittest.TestCase):
     code. If either number moves later, this test fails instead of a
     table silently shifting."""
 
+    # Scoped 2026-09-28 (Week 6 Part 0): Week 6 Part 0 appended 900 more
+    # analysis_row=True rows (9 extended-training arms x 100 cells, pinned in
+    # test_final_rl_model.py). These pins now check WEEK 5'S 13 arms -- still
+    # exactly 1300 rows, unchanged -- rather than "every analysis row", which
+    # grows legitimately as later weeks append arms.
+    WEEK5_ARMS = [
+        "ChargeAsFastAsPossible", "RoundRobin", "RandomPolicy",
+        "Optimal_Oracle_Tracking", "Optimal_Oracle_Balanced",
+        "MPC_TrackingG2V", "MPC_EnergyMaxG2V",
+        "TD3_vanilla_ts100", "TD3_vanilla_ts101", "TD3_vanilla_ts102",
+        "TD3_TrackingOnly_ts100", "TD3_TrackingOnly_ts101", "TD3_TrackingOnly_ts102",
+    ]
+
     @classmethod
     def setUpClass(cls):
-        cls.registry = pd.read_csv(REGISTRY_PATH)
+        cls.registry = pd.read_csv(REGISTRY_PATH, low_memory=False)
         cls.main = cls.registry[cls.registry["config_name"] == "station_v0_bogota"]
-        cls.analysis = cls.main[cls.main["analysis_row"] == True]
+        cls.all_analysis = cls.main[cls.main["analysis_row"] == True]
+        cls.analysis = cls.all_analysis[cls.all_analysis["algorithm"].isin(cls.WEEK5_ARMS)]
+
+    def test_later_weeks_only_add_complete_100_cell_arms(self):
+        counts = self.all_analysis.groupby("algorithm").size()
+        self.assertTrue((counts == 100).all(), counts[counts != 100].to_dict())
+        self.assertTrue(set(self.WEEK5_ARMS) <= set(counts.index))
 
     def test_analysis_grid_is_1300_rows_13_algorithms(self):
         eval_day_strs = {str(day_to_date(d)) for d in EVAL_DAYS}

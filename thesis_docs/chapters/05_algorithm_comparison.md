@@ -810,3 +810,228 @@ actually increasing at some later checkpoints. **This strengthens Week
 does not look like an artifact of an undertrained model that a longer
 run would fix; it looks like a property of this training setup at this
 problem scale. Full per-cell data: `results/week5_td3_budget_curve.csv`.
+
+## S5.11 Extended training of the selected RL policy
+
+**Why this section exists.** After Week 5, the thesis advisor asked for
+the best already-trained RL model to be trained until its learning curve
+stabilised, and for only that model to be carried into Objectives 4 and 5.
+It must be stated plainly that **no trained arm beat Round Robin in Week 5**
+(S5.8). The arm extended here, `TD3_vanilla`
+(`SqTrError_TrPenalty_UserIncentives` reward), is the best RL arm on S5.6's
+tracking-error ranking (arm mean 33,447 against 34,596 for
+`TD3_TrackingOnly`, and 4.72 against 8.26 kWh of overload), not an overall
+winner. The experiment answers one question: was the RL result
+budget-limited? The Round Robin recommendation of S5.8 stands unless the
+results below change it, and they do not.
+
+### Design
+
+The algorithm, every hyperparameter, the reward, the state, the station
+configuration and the training seeds (100, 101, 102) are identical to the
+original 60,000-step runs. Each seed was retrained from scratch, as one
+process per seed running in parallel, with one torch thread per process.
+Only the budget and the monitoring changed:
+
+- **Deterministic validation monitor.** Every 10,000 steps the checkpoint
+  just saved is reloaded with frozen observation-normalisation statistics
+  and evaluated without exploration noise on 20 fixed validation cells:
+  scenario seeds 1,000,000–1,000,009 on one weekday (2022-01-31) and one
+  weekend day (2022-03-12). These cells are disjoint by construction from
+  the final evaluation grid, whose seeds are 0–49 on 2022-01-17 and
+  2022-03-05. They are also disjoint from every scenario a training episode
+  can draw, because EV2Gym's unseeded draw is bounded by
+  `np.random.randint(0, 1000000)`. The evaluation grid was never used for
+  monitoring, stopping or checkpoint selection.
+- **Selection criterion.** The validation-mean `tracking_error`. It is
+  strictly positive (about 3×10⁴), so relative thresholds are meaningful.
+  Transformer overload and energy user satisfaction were logged at every
+  validation as secondary metrics.
+- **Convergence rule (labelled assumption, fixed before launch).** Let
+  *m_k* be the criterion at evaluation *k* and W = 5 evaluations (50,000
+  steps). A seed is declared converged on the third consecutive evaluation
+  at which two conditions both hold:
+  |mean(last W) − mean(previous W)| / |mean(previous W)| < 2%, and
+  std(last W) / |mean(last W)| < 5%. The rule is implemented and
+  unit-tested as `extended_training.convergence_index`.
+- **Stopping.** Each seed stops at convergence plus a 100,000-step
+  confirmation margin, or at 10:15 (UTC−5) against a hard 10:30 deadline,
+  whichever comes first.
+- **Checkpoint selection (fixed in advance).** The primary checkpoint is
+  the best criterion value at or after the convergence point. The last
+  checkpoint is kept as a sensitivity case. The single model carried
+  forward by the rule is the primary checkpoint of the seed with the best
+  validation criterion.
+- **Leakage guard.** A training draw that lands on an evaluation seed is
+  redrawn for the same day. Every draw was logged.
+
+Three implementation measures leave the training trajectory unchanged, and
+each is pinned by a test in `ev2gym_thesis/tests/test_final_rl_model.py`:
+
+- The validation monitor snapshots and restores the global random
+  generators that EV2Gym reseeds.
+- A process-wide cache of EV2Gym's parsed price table is output-identical.
+  It raised training throughput from 13.8 to 86 steps/s per seed in
+  calibration.
+- The training normaliser never sees a validation step.
+
+### Convergence
+
+| Training seed | Convergence declared at | Stopped at | Wall clock | Validation TE, mean ± std over the last W | Validation TE at 60k | Best validation TE in the run | Primary checkpoint (validation TE) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 380,000 | 480,000 | 2.19 h | 45,476 ± 2,093 | 33,070 | 30,854 (70k) | 400,000 (42,531) |
+| 101 | 560,000 | 660,000 | 2.88 h | 47,569 ± 1,109 | 33,650 | 31,951 (30k) | 630,000 (46,554) |
+| 102 | 810,000 | 910,000 | 3.69 h | 45,978 ± 1,064 | 30,798 | 29,474 (30k) | 850,000 (40,378) |
+
+All three seeds met the convergence rule and stopped on convergence plus
+confirmation, well before the deadline. There were no crashes or resumes,
+and no training episode ran on an evaluation seed (0 draws rejected).
+Median training throughput was 67–68 steps/s per seed, with a minimum of
+59–60, so no material throttling occurred overnight.
+
+**The curve stabilised, but at a worse level than 60,000 steps.** In every
+seed the best validation tracking error of the whole run occurred between
+30k and 70k steps. It then rose over the next ~200k–300k steps and
+plateaued between 40k and 49k (`figures/f13_extended_validation.png`). The
+training-episode reward (`figures/f12_extended_training_reward.png`) shows
+no corresponding change. This is consistent with Gate 0's diagnosis: that
+curve averages noisy episodes over random scenarios and cannot, on its
+own, reveal whether the policy has converged or what it has converged to.
+
+**First 60k steps against the original run.** The 30k–60k rolling mean of
+the training reward was −22,717, −24,141 and −22,285 for seeds 100, 101 and
+102. The original runs gave −21,938, −24,327 and −23,827. All three fall
+within the original run-to-run noise band (labelled rule: the range of the
+three original seeds' means, widened by the largest within-segment standard
+deviation). This is a comparison, not a reproduction. The original runs
+trained on the pre-fix power-setpoint generator, and a thread-count change
+alone alters floating-point results, so a bitwise match was neither
+expected nor possible.
+
+### Test-grid results (50 scenario seeds × 2 day types, 100 cells per arm)
+
+Nine new arms were evaluated through the Week 5 evaluation path
+(`scripts/evaluate_rl.py::eval_td3`) and appended to the registry as 900
+rows: `TD3_vanilla_extended_ts*` (primary checkpoints),
+`TD3_vanilla_extended_last_ts*` (last checkpoints), and
+`TD3_vanilla_new60k_ts*`, the new run's own 60,000-step checkpoints. The
+new-run 60k checkpoints are the **primary, environment-matched
+comparator**: same seed, same post-fix environment. The original
+`TD3_vanilla_ts*` rows are a secondary reference only, because they were
+trained before the setpoint fix. The training budget, selected step and
+selection rule are recorded in the existing `notes` field.
+
+| Checkpoint family (3-seed mean) | Tracking error | Overload (kWh) | Avg. satisfaction | Min. energy satisfaction (0–100) | `ENS_rel` range across seeds |
+|---|---:|---:|---:|---:|---|
+| `TD3_vanilla` original 60k (pre-fix, reference) | 33,447 | 4.72 | 98.13% | 83.38 | 8.56–9.98% |
+| `TD3_vanilla_new60k` (primary comparator) | 32,509 | 6.08 | 97.82% | 83.49 | 3.91–20.04% |
+| `TD3_vanilla_extended` (primary) | 43,211 | 6.82 | 99.64% | 95.31 | 1.61–2.20% |
+| `TD3_vanilla_extended_last` | 46,243 | 7.95 | 99.81% | 97.15 | 0.92–1.70% |
+| Round Robin | 13,581 | 0.00 | 99.91% | 98.80 | 0.47% |
+
+Paired cluster bootstrap (B − A, resampling the scenario seed,
+n_clusters = 50, 10,000 resamples), on the per-cell mean across the three
+training seeds:
+
+| Comparison (B vs. A) | Tracking error | Overload (kWh) | Avg. satisfaction (fraction) |
+|---|---|---|---|
+| extended vs. new60k (primary) | +10,701 [+9,042, +12,472] | +0.74 [−1.98, +3.40] | +0.0182 [+0.0155, +0.0209] |
+| extended_last vs. new60k | +13,734 [+12,158, +15,446] | +1.87 [−0.98, +4.97] | +0.0199 [+0.0173, +0.0226] |
+| new60k vs. original 60k (secondary) | −937 [−2,125, +236] | +1.35 [−0.65, +3.51] | −0.0032 [−0.0061, −0.00004] |
+| extended vs. Round Robin | +29,629 [+27,494, +31,881] | +6.82 [+4.67, +9.13] | −0.0027 [−0.0042, −0.0014] |
+
+`figures/f14_all_models_comparison.png` places all 22 arms evaluated on
+the current grid side by side, grouped by family, from the Week 1
+heuristics through the extended run, with Round Robin as a reference line.
+It uses four small-multiple panels: tracking error, overload, average
+satisfaction and `ENS_rel`. `figures/f08_learning_curves.png` now carries
+a third panel with the extended run's training curve, on the same y-axis
+as the original vanilla runs.
+
+The per-seed comparisons, and the comparisons against AFAP,
+`MPC_TrackingG2V` and both oracles, are in
+`results/week6_part0_bootstrap_comparisons.csv` (and `.xlsx`). The
+tracking-error optimality gap to the oracle rose from 424–470% for the new
+60k checkpoints to 594–647% for the extended primary checkpoints
+(`results/week6_part0_optimality_gap.csv`).
+
+**Target compliance.** `ENS_rel` uses the S5.7 definition, which was
+formally adopted in Week 5 (S5.7), not merely proposed. Every extended
+checkpoint passes the <15% `ENS_rel` target, with CI upper bounds of
+1.50–3.32%, and the >90% average-satisfaction target. One new-run 60k
+checkpoint, `TD3_vanilla_new60k_ts101`, **fails** the `ENS_rel` target: its
+point estimate is 20.04% and its CI upper bound 22.85%. It is the only
+arm in this project to date to fail a declared target
+(`results/week6_part0_ens_compliance.csv`).
+
+**Spread across training seeds** (range of the three per-seed means,
+relative to their mean): tracking error 8.3% (new60k) → 7.3% (extended);
+transformer overload 30.8% → 82.9% (`results/week6_part0_train_seed_dispersion.csv`).
+The spread did not shrink in any meaningful sense. Tracking error is
+marginally tighter around a worse value, and overload is far more
+seed-dependent after extended training.
+
+### Verdict
+
+**Extended training did not improve the model on the pre-registered
+criterion; it degraded it.**
+
+- **Tracking error.** Against the environment-matched 60k checkpoints, the
+  extended primary checkpoints have 33% higher tracking error on the test
+  grid (+10,701; the 95% CI excludes zero).
+- **Transformer overload.** The difference is not statistically
+  distinguishable from zero (+0.74 kWh, CI [−1.98, +3.40]).
+- **User outcomes.** These improved significantly: average satisfaction
+  +1.8 points, minimum energy satisfaction 83 → 95, and `ENS_rel` from
+  4–20% down to 2%.
+
+The extended policy therefore settled at a different operating point,
+delivering more energy and tracking the setpoint less closely. This is
+consistent with the composite reward's per-EV user-incentive term
+(−1000 × (1 − satisfaction)) weighing more as training continues. The
+experiment does not isolate that mechanism, so it is stated as an
+interpretation, not a finding. On the axes S5.8 used to recommend Round
+Robin (tracking, overload, satisfaction), the extended model remains worse
+than Round Robin on all three, with every CI excluding zero. **RL was not
+budget-limited at 60,000 steps.** Roughly 8–15× more training stabilised
+the policy without closing, or even narrowing, the gap to Round Robin, and
+**the Round Robin recommendation of S5.8 stands**.
+
+The pre-registered rule selects `TD3_vanilla_extended_ts102` at 850,000
+steps
+(`experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps.zip`)
+as the single RL model for Weeks 6–7. Because that checkpoint is worse on
+the criterion than the new run's own 60k checkpoints, **which RL model is
+carried forward is left to the author's explicit decision** and is not
+adopted by this section.
+
+### Limitations
+
+- **Environment mismatch in earlier weeks.** The Week 3–5 RL models
+  (`TD3_vanilla_ts*`, `TD3_TrackingOnly_ts*`) were trained with EV2Gym's
+  original, ENTSO-E-price-weighted `generate_power_setpoints` and evaluated
+  after the Week 5 fix to that function. Their Week 5 results therefore
+  measure a policy under a setpoint distribution that differs from the one
+  it was trained on. This is why this section's primary comparator is the
+  new run's own 60k checkpoint, trained and evaluated on the fixed
+  environment. On that comparator, new60k against the original 60k,
+  tracking error is statistically indistinguishable (−937, CI
+  [−2,125, +236]), which suggests the Week 5 RL conclusions are not an
+  artifact of the mismatch.
+- **Compute.** Training ran on a laptop CPU (AMD Ryzen 7 5700U, no GPU).
+  The seeds stopped at 480,000, 660,000 and 910,000 steps after 2.2, 2.9
+  and 3.7 hours respectively. The reference papers report TD3/PI-TD3
+  training budgets of 5–48 hours on an HPC cluster. This run does not claim
+  equivalence with those budgets: it shows that on this problem, at this
+  network size and replay-buffer size (both unchanged from the original
+  configuration), longer training converges to a stable but not better
+  policy.
+- **Scope of the rule.** Convergence here means that the validation
+  criterion stopped changing. It does not mean the policy became better.
+  The rule is a pre-registered assumption whose thresholds (2%, 5%, W = 5,
+  3 consecutive evaluations) are empirically set, not drawn from the
+  literature.
+- **Validation-set size.** Validation uses 20 cells. Test-grid values of
+  the primary checkpoints (41,195–44,365) are consistent with their
+  validation values (40,378–46,554), so no selection overfitting to the
+  validation set is evident.
