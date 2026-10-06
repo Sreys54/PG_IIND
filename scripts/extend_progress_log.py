@@ -640,16 +640,33 @@ def build_week6_part0_section(doc):
         "8.3% to 7.3% and the spread of overload from 30.8% to 82.9%.")
 
     add_heading(doc, "12.5. Verdict")
+    add_bullet(doc, "Extended training did not improve the selection criterion. Test tracking error is worse "
+                    "than the same seed's new-run 60k checkpoint for all three seeds: +13,241 / +10,243 / +8,620, "
+                    "every 95% cluster-bootstrap CI excluding zero, n_clusters = 50. The convergence rule "
+                    "detected a plateau, not an improvement.")
+    add_bullet(doc, "User outcomes improved and their across-seed spread shrank. Average satisfaction +0.018 "
+                    "[+0.016, +0.021]. ENS_rel fell from 3.9-20.0% to 1.6-2.2%, with its range across seeds "
+                    "going from 16.1 to 0.6 pp. Overload did not change significantly (+0.74 kWh "
+                    "[-1.98, +3.40]).")
+    add_bullet(doc, "Interpretation, verified against the data: the extended policies deliver more energy "
+                    "(+18.6 kWh/day [+15.9, +21.2]) and achieve a BETTER total training reward (+3,997 "
+                    "[+2,340, +5,790]). Extended training optimised its own reward better, and that reward "
+                    "values satisfaction over setpoint tracking. The proposed wording 'rather than reaching "
+                    "a better reward' was not supported by the data and was dropped.")
+    add_bullet(doc, "Round Robin has lower tracking error and overload than every implementable arm (all CIs "
+                    "exclude zero). The gap is not a budget artefact for the one arm that was extended "
+                    "(about 14x its original budget). The Round Robin recommendation stands.")
+    add_heading(doc, "12.6. Final RL Model (Author's Decision)")
     add_body(doc,
-        "Extended training degraded the model on its pre-registered criterion. Tracking error rose 33% "
-        "against the environment-matched 60k checkpoints, overload is statistically unchanged, and user "
-        "satisfaction and energy-not-served improved: the policy settled at an operating point that delivers "
-        "more energy and tracks the setpoint less closely. RL was not budget-limited at 60,000 steps, and the "
-        "Round Robin recommendation stands. The pre-registered rule selects TD3_vanilla_extended_ts102 at "
-        "850,000 steps. Because that checkpoint is worse on the criterion than the 60k checkpoints, the choice "
-        "of the RL model carried into Weeks 6-7 is left to the author.")
+        "The single RL model for the rest of the thesis is TD3_vanilla extended, training seed 102, primary "
+        "checkpoint at 850,000 steps (validation tracking error 40,378, against 42,531 for seed 100 and "
+        "46,554 for seed 101). It is kept for four reasons: the advisor's request for one stabilised model; "
+        "the lowest overload of all 15 TD3 checkpoints (3.58 kWh/day); its ENS_rel of 2.20% and "
+        "average satisfaction of 99.59%; and being the longest-trained seed. Its worse tracking than its own "
+        "60k checkpoint (41,195 against 32,575, +8,620 [+6,877, +10,419]) is declared as the accepted "
+        "trade-off.")
 
-    add_heading(doc, "12.6. Limitations")
+    add_heading(doc, "12.7. Limitations")
     add_bullet(doc, "The Week 3-5 RL models were trained before the power-setpoint fix and evaluated after it. "
                     "The new-run 60k checkpoints are statistically indistinguishable from them on tracking error "
                     "(-937, CI [-2,125, +236]).")
@@ -659,13 +676,127 @@ def build_week6_part0_section(doc):
                     "The thresholds are empirically set.")
 
 
+# doc:begin week7_progress_log
+# Week 7 (final practical phase): sections "13." (Objective 4) and "14."
+# (Objective 5), continuing section "12." (Week 6 Part 0). Numbers are read
+# from the results CSVs at render time, never typed in.
+WEEK7_O4_TITLE = "13. Week 7 -- Objective 4: Infrastructure Guidelines on the Grid-Enabled Model"
+WEEK7_O5_TITLE = "14. Week 7 -- Objective 5: Replicability in Medellin"
+
+
+def _f(x, nd=2):
+    return f"{x:,.{nd}f}"
+
+
+def build_week7_o4_section(doc):
+    import pandas as pd
+    eq = pd.read_csv("results/week7_grid_base_equivalence_all_arms.csv")
+    mc = pd.read_csv("results/week7_grid_master_comparison.csv")
+    sz = pd.read_csv("results/week7_transformer_sizing.csv")
+    va = pd.read_csv("results/week7_voltage_attribution.csv")
+    tc = pd.read_csv("results/week7_target_compliance.csv")
+    mg = pd.read_csv("results/week7_grid_margin_bogota.csv")
+    probe = pd.read_csv("results/week7_voltage_probe.csv")
+    add_heading(doc, WEEK7_O4_TITLE)
+    add_heading(doc, "13.1. Objective and Model")
+    add_body(doc,
+        "The reference station (8 ports, 100 kW transformer) was placed on bus 27, the electrically farthest bus, "
+        "of EV2Gym's 34-node feeder (RL-ADN network, not validated against the IEEE data). Five arms were run on five "
+        "growth settings, 50 scenario seeds x 2 day types each: AFAP, Round Robin, MPC_TrackingG2V, the final RL "
+        "model (TD3 extended, seed 102) and the tracking oracle. Axis 1 raises the station demand (spawn multiplier "
+        "1.0/1.3/1.6x); Axis 2 raises the feeder's background load (1.0/1.3/1.6). Statistics use the paired cluster "
+        "bootstrap over scenario seeds (n_clusters = 50).")
+    add_heading(doc, "13.2. Validation of the Grid-Enabled Model")
+    add_body(doc,
+        f"At the base setting, every grid row equals the non-grid row of the same arm, seed and day on every station "
+        f"metric (maximum absolute difference {eq.max_abs_diff.max():g} over {int(eq.n_cells.iloc[0])} cells and "
+        f"{int(eq.n_arms.iloc[0])} arms). The grid adds voltage and changes nothing else. The final RL model sees "
+        f"bit-identical observations under the grid. EV2Gym has no key to place a station on a bus; a wrapper "
+        f"outside the library was needed, because otherwise the 8 stations would be spread over 8 buses with "
+        f"800 kW of transformers.")
+    lo = probe.groupby("load_multiplier").n_bus_steps_outside.apply(lambda s: (s > 0).any())
+    add_body(doc,
+        f"Voltage band: EV2Gym measures 0.95-1.05 p.u. (+/-5%). The metric first trips at load multiplier "
+        f"{min(lo[lo].index):g}. At the nominal load, the feeder is already outside the band at bus 27 with the "
+        f"station idle, so voltage is reported only as the station's increment over the idle station of the same "
+        f"cell. No absolute RETIE compliance claim is made.")
+    add_heading(doc, "13.3. Results by Guideline")
+    for st in ["base", "spawn1.3", "spawn1.6", "load1.3", "load1.6"]:
+        rr = mc[(mc.setting == st) & (mc.algorithm == "RoundRobin")].iloc[0]
+        af = sz[(sz.setting == st) & (sz.algorithm == "ChargeAsFastAsPossible")].iloc[0]
+        rl = mc[(mc.setting == st) & (mc.algorithm == "TD3_vanilla_extended_ts102")].iloc[0]
+        vrr = va[(va.setting == st) & (va.algorithm == "RoundRobin")].iloc[0]
+        vaf = va[(va.setting == st) & (va.algorithm == "ChargeAsFastAsPossible")].iloc[0]
+        mrr = mg[(mg.setting == st) & (mg.algorithm == "RoundRobin")].iloc[0]
+        add_bullet(doc,
+            f"{st}: Round Robin satisfaction {rr.average_user_satisfaction_mean*100:.2f}% "
+            f"[{rr.average_user_satisfaction_ci_low*100:.2f}, {rr.average_user_satisfaction_ci_high*100:.2f}], "
+            f"overload {_f(rr.total_transformer_overload_mean)} kWh/day; AFAP overloads in "
+            f"{int(af.seeds_with_overload)}/50 seeds, 95th-percentile peak {_f(af.peak_kw_p95, 1)} kW (next standard "
+            f"size {af.next_standard_kva_unity_pf:g} kVA); final RL tracking error {_f(rl.tracking_error_mean, 0)} vs "
+            f"Round Robin {_f(rr.tracking_error_mean, 0)}; station-attributable out-of-band samples: AFAP "
+            f"{_f(vaf.delta_bus_steps_outside_mean)} [{_f(vaf.delta_bus_steps_outside_ci_low)}, "
+            f"{_f(vaf.delta_bus_steps_outside_ci_high)}], Round Robin {_f(vrr.delta_bus_steps_outside_mean)} "
+            f"[{_f(vrr.delta_bus_steps_outside_ci_low)}, {_f(vrr.delta_bus_steps_outside_ci_high)}]; feeder out of band "
+            f"with the station idle in {int(vrr.cells_idle_feeder_outside_band)}/100 cells; Round Robin concedes "
+            f"{_f(mrr.margin_conceded_vs_afap_cop_per_day, 0)} COP/day vs AFAP "
+            f"[{_f(mrr.conceded_ci_low, 0)}, {_f(mrr.conceded_ci_high, 0)}].")
+    add_heading(doc, "13.4. Target Compliance")
+    for st in ["base", "spawn1.3", "spawn1.6", "load1.3", "load1.6"]:
+        g = tc[tc.setting == st]
+        parts = [f"{a}: sat {'Y' if r.satisfaction_target_met_ci_lower_gt_90pct else 'N'}, "
+                 f"ENS {'Y' if r.ens_target_met_ci_upper_lt_15pct else 'N'}, "
+                 f"voltage-increment {int(r.voltage_cells_station_adds_outside_samples)}/{int(r.voltage_cells_total)} cells"
+                 for a, r in zip(g.algorithm, g.itertuples())]
+        add_bullet(doc, f"{st}: " + "; ".join(parts) + ".")
+    add_body(doc, "Full argument, tables and figures (f15-f17): thesis_docs/chapters/06_infrastructure.md.")
+
+
+def build_week7_o5_section(doc):
+    import pandas as pd
+    from ev2gym_thesis.prices import medellin as med
+    rep = pd.read_csv("results/week7_replicability_margin.csv")
+    inv = pd.read_csv("results/week7_ranking_invariance.csv")
+    add_heading(doc, WEEK7_O5_TITLE)
+    add_heading(doc, "14.1. City, Data and Invariants")
+    add_body(doc,
+        f"Medellin (EPM). Source: EPM regulated-market tariff sheet, September 2026, accessed 2026-10-05. "
+        f"Nivel II commercial with contribution: Punta {med.EPM_NIVEL2_PUNTA_CON_CONTRIBUCION} and Fuera de Punta "
+        f"{med.EPM_NIVEL2_FUERA_PUNTA_CON_CONTRIBUCION} COP/kWh. Without contribution: "
+        f"{med.EPM_NIVEL2_PUNTA_SIN_CONTRIBUCION} / {med.EPM_NIVEL2_FUERA_PUNTA_SIN_CONTRIBUCION}. Both Week 5 "
+        f"invariants hold (component sum; 1.20x contribution). EPM publishes no EV charging price, so Bogota's 1,450 "
+        f"COP/kWh is used only as a labelled sensitivity. The intraday spread is "
+        f"{med.INTRADAY_SPREAD_MEDELLIN*100:.2f}%, against 1.57% in Bogota.")
+    add_heading(doc, "14.2. Tariff Transfer")
+    ng = rep[(rep.dataset == "nongrid") & (rep.algorithm == "RoundRobin")].set_index("price_scenario")
+    add_body(doc,
+        f"Round Robin's cost of respecting the 100 kW limit (margin conceded vs AFAP, non-grid rows): Bogota "
+        f"{_f(ng.loc['bogota_base','margin_conceded_vs_afap_cop_per_day'],1)} COP/day "
+        f"[{_f(ng.loc['bogota_base','conceded_ci_low'],1)}, {_f(ng.loc['bogota_base','conceded_ci_high'],1)}], Medellin "
+        f"{_f(ng.loc['medellin_base','margin_conceded_vs_afap_cop_per_day'],1)} COP/day "
+        f"[{_f(ng.loc['medellin_base','conceded_ci_low'],1)}, {_f(ng.loc['medellin_base','conceded_ci_high'],1)}], "
+        f"n_clusters = 50. The ranking of the arms by margin equals their ranking by energy in all "
+        f"{inv.price_scenario.nunique()} price scenarios and all {inv.dataset.nunique()} datasets: "
+        f"{bool(inv.same_as_energy_ranking.all() and inv.ranking_identical_across_all_price_scenarios.all())}.")
+    add_heading(doc, "14.3. What Transfers")
+    add_bullet(doc, "Transfers fully: the strategy ranking and recommendation (tariff-invariant under a flat price) "
+                    "and the relative cost of the transformer limit.")
+    add_bullet(doc, "Replaced: energy purchase cost and intraday spread. Unavailable, so kept and declared: the retail "
+                    "price, arrival data (Dutch in both cities), per-station demand, the feeder and the climate.")
+    add_bullet(doc, "Demand: city EV registrations (Medellin/Bogota = 0.40, Jan-Aug 2025) do not give per-station "
+                    "demand. Guidelines are conditional on the demand level, and the 0.4-0.9x runs are proposed, "
+                    "not run.")
+    add_body(doc, "Full argument: thesis_docs/chapters/07_replicability.md.")
+# doc:end week7_progress_log
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--section", choices=["week5", "week6_part0"], required=True,
+    ap.add_argument("--section", choices=["week5", "week6_part0", "week7"], required=True,
                     help="which section to append (each runs once; nothing already in the file is modified)")
     args = ap.parse_args()
-    path = CORRECTED_PROGRESS_LOG_PATH if args.section == "week6_part0" else PROGRESS_LOG_PATH
+    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7") else PROGRESS_LOG_PATH
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"{path!r} not found relative to the current working directory. Run this script with "
@@ -677,6 +808,11 @@ if __name__ == "__main__":
         # Week 3, Week 4, and the Week 4 correction were already appended in
         # earlier sessions; Week 5 was appended as "2.4. Week 5".
         build_week5_section(doc)
+    elif args.section == "week7":
+        if any(p.text.strip() in (WEEK7_O4_TITLE, WEEK7_O5_TITLE) for p in doc.paragraphs):
+            raise SystemExit(f"Week 7 sections already present in {path} -- not appending twice.")
+        build_week7_o4_section(doc)
+        build_week7_o5_section(doc)
     else:
         if any(p.text.strip() == WEEK6_PART0_TITLE for p in doc.paragraphs):
             raise SystemExit(f"{WEEK6_PART0_TITLE!r} already present in {path} -- not appending twice.")

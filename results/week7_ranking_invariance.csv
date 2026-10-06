@@ -1,0 +1,49 @@
+dataset,price_scenario,unit_margin_cop_per_kwh,ranking_by_margin,same_as_energy_ranking,ranking_identical_across_all_price_scenarios
+grid_base,bogota_base,584.2385,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_base,bogota_retail_minus20,294.23850000000004,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_base,bogota_retail_plus20,874.2385,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_base,medellin_base,526.08,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_base,medellin_cost_fuera_de_punta,532.42,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_base,medellin_cost_monomio_x1.20,529.24,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_base,medellin_retail_minus20,236.08000000000004,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_base,medellin_retail_plus20,816.08,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.3,bogota_base,584.2385,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.3,bogota_retail_minus20,294.23850000000004,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.3,bogota_retail_plus20,874.2385,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.3,medellin_base,526.08,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.3,medellin_cost_fuera_de_punta,532.42,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.3,medellin_cost_monomio_x1.20,529.24,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.3,medellin_retail_minus20,236.08000000000004,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.3,medellin_retail_plus20,816.08,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.6,bogota_base,584.2385,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.6,bogota_retail_minus20,294.23850000000004,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.6,bogota_retail_plus20,874.2385,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.6,medellin_base,526.08,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.6,medellin_cost_fuera_de_punta,532.42,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.6,medellin_cost_monomio_x1.20,529.24,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.6,medellin_retail_minus20,236.08000000000004,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_load1.6,medellin_retail_plus20,816.08,ChargeAsFastAsPossible > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.3,bogota_base,584.2385,ChargeAsFastAsPossible > Optimal_Oracle_Tracking > MPC_TrackingG2V > RoundRobin > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.3,bogota_retail_minus20,294.23850000000004,ChargeAsFastAsPossible > Optimal_Oracle_Tracking > MPC_TrackingG2V > RoundRobin > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.3,bogota_retail_plus20,874.2385,ChargeAsFastAsPossible > Optimal_Oracle_Tracking > MPC_TrackingG2V > RoundRobin > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.3,medellin_base,526.08,ChargeAsFastAsPossible > Optimal_Oracle_Tracking > MPC_TrackingG2V > RoundRobin > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.3,medellin_cost_fuera_de_punta,532.42,ChargeAsFastAsPossible > Optimal_Oracle_Tracking > MPC_TrackingG2V > RoundRobin > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.3,medellin_cost_monomio_x1.20,529.24,ChargeAsFastAsPossible > Optimal_Oracle_Tracking > MPC_TrackingG2V > RoundRobin > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.3,medellin_retail_minus20,236.08000000000004,ChargeAsFastAsPossible > Optimal_Oracle_Tracking > MPC_TrackingG2V > RoundRobin > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.3,medellin_retail_plus20,816.08,ChargeAsFastAsPossible > Optimal_Oracle_Tracking > MPC_TrackingG2V > RoundRobin > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.6,bogota_base,584.2385,ChargeAsFastAsPossible > RoundRobin > Optimal_Oracle_Tracking > MPC_TrackingG2V > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.6,bogota_retail_minus20,294.23850000000004,ChargeAsFastAsPossible > RoundRobin > Optimal_Oracle_Tracking > MPC_TrackingG2V > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.6,bogota_retail_plus20,874.2385,ChargeAsFastAsPossible > RoundRobin > Optimal_Oracle_Tracking > MPC_TrackingG2V > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.6,medellin_base,526.08,ChargeAsFastAsPossible > RoundRobin > Optimal_Oracle_Tracking > MPC_TrackingG2V > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.6,medellin_cost_fuera_de_punta,532.42,ChargeAsFastAsPossible > RoundRobin > Optimal_Oracle_Tracking > MPC_TrackingG2V > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.6,medellin_cost_monomio_x1.20,529.24,ChargeAsFastAsPossible > RoundRobin > Optimal_Oracle_Tracking > MPC_TrackingG2V > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.6,medellin_retail_minus20,236.08000000000004,ChargeAsFastAsPossible > RoundRobin > Optimal_Oracle_Tracking > MPC_TrackingG2V > TD3_vanilla_extended_ts102,True,True
+grid_spawn1.6,medellin_retail_plus20,816.08,ChargeAsFastAsPossible > RoundRobin > Optimal_Oracle_Tracking > MPC_TrackingG2V > TD3_vanilla_extended_ts102,True,True
+nongrid,bogota_base,584.2385,MPC_EnergyMaxG2V > ChargeAsFastAsPossible > RandomPolicy > Optimal_Oracle_Balanced > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102 > TD3_TrackingOnly_ts100 > TD3_TrackingOnly_ts102 > TD3_vanilla_ts102 > TD3_TrackingOnly_ts101 > TD3_vanilla_ts101 > TD3_vanilla_ts100,True,True
+nongrid,bogota_retail_minus20,294.23850000000004,MPC_EnergyMaxG2V > ChargeAsFastAsPossible > RandomPolicy > Optimal_Oracle_Balanced > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102 > TD3_TrackingOnly_ts100 > TD3_TrackingOnly_ts102 > TD3_vanilla_ts102 > TD3_TrackingOnly_ts101 > TD3_vanilla_ts101 > TD3_vanilla_ts100,True,True
+nongrid,bogota_retail_plus20,874.2385,MPC_EnergyMaxG2V > ChargeAsFastAsPossible > RandomPolicy > Optimal_Oracle_Balanced > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102 > TD3_TrackingOnly_ts100 > TD3_TrackingOnly_ts102 > TD3_vanilla_ts102 > TD3_TrackingOnly_ts101 > TD3_vanilla_ts101 > TD3_vanilla_ts100,True,True
+nongrid,medellin_base,526.08,MPC_EnergyMaxG2V > ChargeAsFastAsPossible > RandomPolicy > Optimal_Oracle_Balanced > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102 > TD3_TrackingOnly_ts100 > TD3_TrackingOnly_ts102 > TD3_vanilla_ts102 > TD3_TrackingOnly_ts101 > TD3_vanilla_ts101 > TD3_vanilla_ts100,True,True
+nongrid,medellin_cost_fuera_de_punta,532.42,MPC_EnergyMaxG2V > ChargeAsFastAsPossible > RandomPolicy > Optimal_Oracle_Balanced > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102 > TD3_TrackingOnly_ts100 > TD3_TrackingOnly_ts102 > TD3_vanilla_ts102 > TD3_TrackingOnly_ts101 > TD3_vanilla_ts101 > TD3_vanilla_ts100,True,True
+nongrid,medellin_cost_monomio_x1.20,529.24,MPC_EnergyMaxG2V > ChargeAsFastAsPossible > RandomPolicy > Optimal_Oracle_Balanced > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102 > TD3_TrackingOnly_ts100 > TD3_TrackingOnly_ts102 > TD3_vanilla_ts102 > TD3_TrackingOnly_ts101 > TD3_vanilla_ts101 > TD3_vanilla_ts100,True,True
+nongrid,medellin_retail_minus20,236.08000000000004,MPC_EnergyMaxG2V > ChargeAsFastAsPossible > RandomPolicy > Optimal_Oracle_Balanced > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102 > TD3_TrackingOnly_ts100 > TD3_TrackingOnly_ts102 > TD3_vanilla_ts102 > TD3_TrackingOnly_ts101 > TD3_vanilla_ts101 > TD3_vanilla_ts100,True,True
+nongrid,medellin_retail_plus20,816.08,MPC_EnergyMaxG2V > ChargeAsFastAsPossible > RandomPolicy > Optimal_Oracle_Balanced > RoundRobin > MPC_TrackingG2V > Optimal_Oracle_Tracking > TD3_vanilla_extended_ts102 > TD3_TrackingOnly_ts100 > TD3_TrackingOnly_ts102 > TD3_vanilla_ts102 > TD3_TrackingOnly_ts101 > TD3_vanilla_ts101 > TD3_vanilla_ts100,True,True

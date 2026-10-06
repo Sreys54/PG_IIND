@@ -1321,6 +1321,260 @@ def make_f14_all_models_comparison():
     )
 
 
+# ---------------------------------------------------------------------------
+# f15-f18 (Week 7, Objectives 4-5). Same presentation conventions as f13/f14:
+# point = mean, bar = 95% cluster-bootstrap CI (scenario seed resampled),
+# Round Robin as the dashed reference, declared targets drawn. Sources are
+# the results/week7_*.csv tables written by scripts/analyze_week7_infra.py
+# and scripts/analyze_week7_replicability.py.
+# ---------------------------------------------------------------------------
+W7_ARMS = ["ChargeAsFastAsPossible", "RoundRobin", "MPC_TrackingG2V", "TD3_vanilla_extended_ts102",
+           "Optimal_Oracle_Tracking"]
+W7_AXES = {"Axis 1 -- station demand (spawn multiplier x base)": [("base", 1.0), ("spawn1.3", 1.3), ("spawn1.6", 1.6)],
+           "Axis 2 -- feeder background load (load multiplier)": [("base", 1.0), ("load1.3", 1.3), ("load1.6", 1.6)]}
+W7_LABEL = {"TD3_vanilla_extended_ts102": "TD3 extended seed 102 (final RL)"}
+
+
+def _w7_label(a):
+    return W7_LABEL.get(a, style_for(a)["label"])
+
+
+def _w7_errpoint(ax, x, m, lo, hi, arm, dashed=False):
+    sty = style_for(arm)
+    ax.errorbar(x, m, yerr=[[m - lo], [hi - m]], fmt=sty["marker"], color=sty["color"], markersize=7,
+                markeredgecolor="black", markeredgewidth=0.6, elinewidth=1.8, capsize=3, zorder=3)
+
+
+def make_f15_grid_growth():
+    import pandas as pd
+    mc = pd.read_csv("results/week7_grid_master_comparison.csv")
+    en = pd.read_csv("results/week7_grid_ens_compliance.csv")
+    mc = mc.merge(en[["setting", "algorithm", "ENS_rel_point_pct", "ENS_rel_ci_low_pct", "ENS_rel_ci_high_pct"]],
+                  on=["setting", "algorithm"])
+    panels = [("tracking_error", "Tracking error\n(lower is better)", None, 1),
+              ("total_transformer_overload", "Transformer overload\n(kWh/day; lower is better)", None, 1),
+              ("average_user_satisfaction", "Average user satisfaction (%)\n(target > 90%)", 90.0, 100),
+              ("ENS_rel", "Energy not served vs. AFAP, ENS_rel (%)\n(target: CI upper < 15%)", 15.0, 1)]
+    fig, axes = plt.subplots(2, 4, figsize=(19, 9.5))
+    dodge = {a: (i - 2) * 0.035 for i, a in enumerate(W7_ARMS)}
+    for r, (axis_label, levels) in enumerate(W7_AXES.items()):
+        for c, (metric, ylabel, target, scale) in enumerate(panels):
+            ax = axes[r, c]
+            for arm in W7_ARMS:
+                xs, ms = [], []
+                for st, lvl in levels:
+                    row = mc[(mc.setting == st) & (mc.algorithm == arm)]
+                    if row.empty:
+                        continue
+                    row = row.iloc[0]
+                    if metric == "ENS_rel":
+                        m, lo, hi = row.ENS_rel_point_pct, row.ENS_rel_ci_low_pct, row.ENS_rel_ci_high_pct
+                    else:
+                        m, lo, hi = (row[f"{metric}_mean"] * scale, row[f"{metric}_ci_low"] * scale,
+                                     row[f"{metric}_ci_high"] * scale)
+                    _w7_errpoint(ax, lvl + dodge[arm], m, lo, hi, arm)
+                    xs.append(lvl + dodge[arm])
+                    ms.append(m)
+                sty = style_for(arm)
+                ax.plot(xs, ms, color=sty["color"], linewidth=1.6 if arm == "RoundRobin" else 0.9,
+                        linestyle="--" if arm == "RoundRobin" else "-", alpha=0.9, zorder=2)
+            if target is not None:
+                ax.axhline(target, color="0.2", linestyle=":", linewidth=1.4)
+            ax.set_xticks([1.0, 1.3, 1.6])
+            ax.set_xticklabels(["1.0x", "1.3x", "1.6x"])
+            ax.grid(axis="y", color="0.9", linewidth=0.6)
+            for side in ("top", "right"):
+                ax.spines[side].set_visible(False)
+            if r == 0:
+                ax.set_title(ylabel, fontsize=10)
+            if c == 0:
+                ax.set_ylabel(axis_label, fontsize=9, fontweight="bold")
+            if metric == "tracking_error":
+                from matplotlib.ticker import FuncFormatter
+                ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    from matplotlib.lines import Line2D
+    handles = [Line2D([], [], marker=style_for(a)["marker"], color=style_for(a)["color"], markeredgecolor="black",
+                      linestyle="--" if a == "RoundRobin" else "-", label=_w7_label(a)) for a in W7_ARMS]
+    handles.append(Line2D([], [], color="0.2", linestyle=":", label="Declared target"))
+    fig.legend(handles=handles, loc="lower center", ncol=6, fontsize=9, frameon=False)
+    # Visual QA fix: the flat Axis 2 row is a result, not a plotting error -- say so on the figure.
+    axes[1, 0].text(0.03, 0.52, "Feeder load does not feed back on the station:\nstation metrics are identical along Axis 2\n(its only effect is on voltage, see f17)",
+                    transform=axes[1, 0].transAxes, fontsize=7.5, va="top", color="0.25")
+    fig.suptitle("Grid-enabled station under growth (station on bus 27 of EV2Gym's 34-node feeder, 100 kW transformer)\n"
+                 "Point = mean over 50 seeds x 2 day types; bar = 95% cluster-bootstrap CI; Round Robin dashed (reference)",
+                 fontsize=10)
+    fig.tight_layout(rect=[0, 0.05, 1, 0.93])
+    _save(fig, "f15_grid_growth")
+    write_caption(
+        "f15_grid_growth",
+        what_it_shows=(
+            "The five fixed Objective 4 arms on the grid-enabled station, along two one-at-a-time growth axes "
+            "(top: station demand, spawn_multiplier 30/39/48; bottom: feeder background load, load_multiplier "
+            "1.0/1.3/1.6). Point = mean over 100 cells (50 scenario seeds x weekday/weekend); bar = 95% "
+            "cluster-bootstrap CI resampling the seed (ENS_rel: S5.7 definition and its seed bootstrap). Round "
+            "Robin is drawn dashed as the reference; dotted lines are the anteproyecto targets. Source: "
+            "results/week7_grid_master_comparison.csv, results/week7_grid_ens_compliance.csv."),
+        n_runs=int(mc.n_rows.sum()), configs=sorted({f"station_v0_bogota_grid[{s}]" for s in mc.setting}),
+        algorithms=[_w7_label(a) for a in W7_ARMS],
+        extra="MPC_TrackingG2V and the oracle are non-causal (know departure times); they bound, not compete.")
+
+
+def make_f16_transformer_sizing():
+    import pandas as pd
+    ps = pd.read_csv("results/week7_transformer_per_seed.csv")
+    sz = pd.read_csv("results/week7_transformer_sizing.csv")
+    settings = [s for s in ["base", "spawn1.3", "spawn1.6", "load1.3", "load1.6"] if s in set(ps.setting)]
+    fig, axes = plt.subplots(1, len(settings), figsize=(4.0 * len(settings), 5.6), sharey=True)
+    axes = np.atleast_1d(axes)
+    rng = np.random.default_rng(0)
+    for ax, st in zip(axes, settings):
+        for i, arm in enumerate(W7_ARMS):
+            g = ps[(ps.setting == st) & (ps.algorithm == arm)]
+            sty = style_for(arm)
+            ax.scatter(i + rng.uniform(-0.18, 0.18, len(g)), g.peak_kw, s=10, color=sty["color"], alpha=0.35,
+                       edgecolor="none", zorder=2)
+            p95 = sz[(sz.setting == st) & (sz.algorithm == arm)].peak_kw_p95.iloc[0]
+            ax.hlines(p95, i - 0.3, i + 0.3, color="black", linewidth=2.2, zorder=3)
+        ax.axhline(100, color="0.2", linestyle=":", linewidth=1.4)
+        ax.set_xticks(range(len(W7_ARMS)))
+        ax.set_xticklabels([_w7_label(a) for a in W7_ARMS], rotation=40, ha="right", fontsize=8)
+        ax.set_title(st, fontsize=10)
+        ax.grid(axis="y", color="0.9", linewidth=0.6)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+    axes[0].set_ylabel("Per-seed peak station power (kW)\n(max over weekday and weekend)")
+    from matplotlib.lines import Line2D
+    fig.legend(handles=[Line2D([], [], color="black", linewidth=2.2, label="95th percentile over 50 seeds"),
+                        Line2D([], [], color="0.2", linestyle=":", label="Installed transformer rating (100 kW)")],
+               loc="lower center", ncol=2, fontsize=9, frameon=False)
+    fig.suptitle("Transformer sizing: per-seed peak station power by arm and growth setting (dots = one scenario seed)",
+                 fontsize=10)
+    fig.tight_layout(rect=[0, 0.06, 1, 0.94])
+    _save(fig, "f16_transformer_sizing")
+    write_caption(
+        "f16_transformer_sizing",
+        what_it_shows=(
+            "Per scenario seed, the peak power drawn by the station (max over the two day types, from each run's "
+            "saved timeseries); black bar = 95th percentile over the 50 seeds, i.e. the transformer rating at "
+            "which the 95th-percentile seed would stop overloading. Dotted = the installed 100 kW. For AFAP the "
+            "peak does not respond to the rating, so the bar is a valid sizing number; limit-aware arms stay at "
+            "or below 100 kW by construction. With n = 50 the 95th percentile rests on ~2-3 tail seeds: "
+            "directional, not a tail estimate. Source: results/week7_transformer_per_seed.csv, "
+            "results/week7_transformer_sizing.csv."),
+        n_runs=int(len(ps) * 2), configs=sorted({f"station_v0_bogota_grid[{s}]" for s in settings}),
+        algorithms=[_w7_label(a) for a in W7_ARMS])
+
+
+def make_f17_voltage_attribution():
+    import pandas as pd
+    va = pd.read_csv("results/week7_voltage_attribution.csv")
+    settings = [s for s in ["base", "spawn1.3", "spawn1.6", "load1.3", "load1.6"] if s in set(va.setting)]
+    panels = [("delta_bus_steps_outside", "Station-attributable out-of-band\n(bus, step) samples per day\n(arm minus idle station, same cell)"),
+              ("delta_min_voltage_pu", "Station-attributable change in the\nfeeder's minimum voltage (p.u.)")]
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5.6))
+    width = 0.15
+    for ax, (col, ylabel) in zip(axes, panels):
+        for i, arm in enumerate(W7_ARMS):
+            for j, st in enumerate(settings):
+                r = va[(va.setting == st) & (va.algorithm == arm)]
+                if r.empty:
+                    continue
+                r = r.iloc[0]
+                _w7_errpoint(ax, j + (i - 2) * width, r[f"{col}_mean"], r[f"{col}_ci_low"], r[f"{col}_ci_high"], arm)
+        for j, st in enumerate(settings):
+            r = va[(va.setting == st) & (va.algorithm == "RoundRobin")].iloc[0]
+            ax.hlines(r[f"{col}_mean"], j - 0.4, j + 0.4, color=style_for("RoundRobin")["color"], linestyle="--",
+                      linewidth=1.2, zorder=1)
+        ax.axhline(0, color="0.2", linestyle=":", linewidth=1.4)
+        labels = []
+        for st in settings:
+            idle = va[(va.setting == st) & (va.algorithm == "RoundRobin")].iloc[0]
+            # Visual QA fix: shorter labels (the first version overlapped its neighbours).
+            labels.append(f"{st}\n(idle: {int(idle.cells_idle_feeder_outside_band)}/{int(idle.n_runs)}\nout of band)")
+        ax.set_xticks(range(len(settings)))
+        ax.set_xticklabels(labels, fontsize=8)
+        ax.set_ylabel(ylabel, fontsize=9)
+        ax.grid(axis="y", color="0.9", linewidth=0.6)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+    from matplotlib.lines import Line2D
+    handles = [Line2D([], [], marker=style_for(a)["marker"], color=style_for(a)["color"], markeredgecolor="black",
+                      linestyle="none", label=_w7_label(a)) for a in W7_ARMS]
+    handles += [Line2D([], [], color=style_for("RoundRobin")["color"], linestyle="--", label="Round Robin (reference)"),
+                Line2D([], [], color="0.2", linestyle=":", label="Target: station adds no out-of-band sample")]
+    fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=8.5, frameon=False)
+    fig.suptitle("Voltage (+/-5% band, 0.95-1.05 p.u.): what the station adds to the feeder, by arm and setting\n"
+                 "Point = mean over 100 cells; bar = 95% cluster-bootstrap CI", fontsize=10)
+    fig.tight_layout(rect=[0, 0.1, 1, 0.92])
+    _save(fig, "f17_voltage_attribution")
+    write_caption(
+        "f17_voltage_attribution",
+        what_it_shows=(
+            "Station-attributable voltage effect: each arm's run minus the idle-station (zero-charging) run of the "
+            "same setting, seed and day (the feeder's background load and PV are identical between the two). Left: "
+            "extra (bus, step) samples outside 0.95-1.05 p.u.; right: change in the minimum bus voltage. The x "
+            "labels give how many of the 100 cells already leave the band with the station idle -- the feeder "
+            "itself is out of band at bus 27, so no absolute compliance claim is made. Source: "
+            "results/week7_voltage_attribution.csv."),
+        n_runs=int(va.n_runs.sum()), configs=sorted({f"station_v0_bogota_grid[{s}]" for s in settings}),
+        algorithms=[_w7_label(a) for a in W7_ARMS])
+
+
+def make_f18_two_city_margin():
+    import pandas as pd
+    t = pd.read_csv("results/week7_replicability_margin.csv")
+    t = t[(t.dataset == "nongrid") & t.price_scenario.isin(["bogota_base", "medellin_base"])]
+    arms = ["RoundRobin", "MPC_TrackingG2V", "Optimal_Oracle_Tracking", "TD3_vanilla_extended_ts102", "RandomPolicy",
+            "MPC_EnergyMaxG2V", "Optimal_Oracle_Balanced"]
+    arms = [a for a in arms if a in set(t.algorithm)]
+    fig, ax = plt.subplots(figsize=(11, 6))
+    for k, (scen, city, off, mk) in enumerate([("bogota_base", "Bogota (Enel CU 865.76)", -0.17, "o"),
+                                                ("medellin_base", "Medellin (EPM CU 923.92; retail 1,450 = sensitivity)", 0.17, "s")]):
+        for i, arm in enumerate(arms):
+            r = t[(t.price_scenario == scen) & (t.algorithm == arm)].iloc[0]
+            sty = style_for(arm)
+            ax.errorbar(r.margin_conceded_vs_afap_cop_per_day, i + off,
+                        xerr=[[r.margin_conceded_vs_afap_cop_per_day - r.conceded_ci_low],
+                              [r.conceded_ci_high - r.margin_conceded_vs_afap_cop_per_day]],
+                        fmt=mk, color=sty["color"], markeredgecolor="black", markerfacecolor=sty["color"] if k == 0 else "white",
+                        markersize=7, elinewidth=1.6, capsize=3, label=city if i == 0 else None)
+    rr = t[(t.price_scenario == "bogota_base") & (t.algorithm == "RoundRobin")].iloc[0].margin_conceded_vs_afap_cop_per_day
+    ax.axvline(rr, color=style_for("RoundRobin")["color"], linestyle="--", linewidth=1.2, label="Round Robin, Bogota (reference)")
+    ax.axvline(0, color="0.2", linestyle=":", linewidth=1.2)
+    ax.set_yticks(range(len(arms)))
+    ax.set_yticklabels([_w7_label(a) for a in arms], fontsize=9)
+    ax.invert_yaxis()
+    ax.set_xlabel("Gross margin conceded vs. AFAP (COP per simulated day; negative = earns more than AFAP)")
+    from matplotlib.ticker import FuncFormatter
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    ax.grid(axis="x", color="0.9", linewidth=0.6)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    from matplotlib.lines import Line2D
+    # Visual QA fix: neutral legend markers (the first version showed the
+    # Round Robin colour next to "Bogota").
+    ax.legend(handles=[Line2D([], [], marker="o", color="0.4", markerfacecolor="0.4", markeredgecolor="black",
+                              linestyle="none", label="Bogota (Enel CU 865.76; retail 1,450)"),
+                       Line2D([], [], marker="s", color="0.4", markerfacecolor="white", markeredgecolor="black",
+                              linestyle="none", label="Medellin (EPM CU 923.92; retail 1,450 = sensitivity)"),
+                       Line2D([], [], color=style_for("RoundRobin")["color"], linestyle="--",
+                              label="Round Robin, Bogota (reference)")],
+              fontsize=8.5, loc="lower right", frameon=False)
+    ax.set_title("Cost of each strategy against AFAP, Bogota vs. Medellin (non-grid evaluation set, 50 seeds x 2 day types)\n"
+                 "filled = Bogota, open = Medellin; bar = 95% cluster-bootstrap CI; n_clusters = 50", fontsize=10)
+    fig.tight_layout()
+    _save(fig, "f18_two_city_margin")
+    write_caption(
+        "f18_two_city_margin",
+        what_it_shows=(
+            "Gross margin each arm concedes against AFAP (COP/day), recomputed from the registry's energy with "
+            "Bogota's Week 5 constants (retail 1,450; CU 865.7615) and Medellin's EPM September 2026 Nivel II CU "
+            "(923.92, Punta, with contribution) with Bogota's retail price as a labelled sensitivity (EPM publishes "
+            "no EV charging price). Under a flat price the two cities differ by the constant factor 0.900; the "
+            "ranking is identical (results/week7_ranking_invariance.csv). Source: results/week7_replicability_margin.csv."),
+        n_runs=100 * len(arms), configs=["station_v0_bogota"], algorithms=[_w7_label(a) for a in arms])
+
+
 def _save(fig, name):
     os.makedirs(FIGURES_DIR, exist_ok=True)
     fig.savefig(f"{FIGURES_DIR}/{name}.png", dpi=300)
@@ -1357,7 +1611,9 @@ if __name__ == "__main__":
         # (and their captions' git commit/timestamp) untouched.
         _fns = {"f08": lambda: make_f08_learning_curves(load_registry()),
                 "f12": make_f12_extended_training_reward, "f13": make_f13_extended_validation,
-                "f14": make_f14_all_models_comparison}
+                "f14": make_f14_all_models_comparison, "f15": make_f15_grid_growth,
+                "f16": make_f16_transformer_sizing, "f17": make_f17_voltage_attribution,
+                "f18": make_f18_two_city_margin}
         for _fid in _only.split(","):
             _fns[_fid.strip()]()
         raise SystemExit(0)
@@ -1379,5 +1635,9 @@ if __name__ == "__main__":
     make_f12_extended_training_reward()
     make_f13_extended_validation()
     make_f14_all_models_comparison()
+    make_f15_grid_growth()
+    make_f16_transformer_sizing()
+    make_f17_voltage_attribution()
+    make_f18_two_city_margin()
 
     print("\nAll figures regenerated.")

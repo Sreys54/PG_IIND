@@ -198,7 +198,8 @@ def optimality_gap(df, algos=None, out_path="results/week5_optimality_gap.csv"):
     return out
 
 
-def requested_energy_by_cell():
+def requested_energy_by_cell(config_path=REFERENCE_CONFIG_PATH):
+    # config_path added Week 7 (grid growth settings); default = Week 5 behaviour.
     """R(s) per (seed, day_type): total requested energy
     (desired_capacity - battery_capacity_at_arrival) of EVs departing
     WITHIN the simulation horizon -- the brief's ENS_abs denominator.
@@ -211,7 +212,7 @@ def requested_energy_by_cell():
     result = {}
     for seed in SEEDS:
         for eval_day in EVAL_DAYS:
-            env = make_env(REFERENCE_CONFIG_PATH, eval_day, seed)
+            env = make_env(config_path, eval_day, seed)
             reset_for_evaluation(env, seed)
             y, m, d = eval_day
             eval_day_str = f"{y:04d}-{m:02d}-{d:02d}"
@@ -233,13 +234,14 @@ def requested_energy_by_cell():
 
 
 def ens_and_compliance(df, algos=None, out_path="results/week5_ens_compliance.csv",
-                       requested_energy_out_path="results/week5_requested_energy_by_cell.csv"):
+                       requested_energy_out_path="results/week5_requested_energy_by_cell.csv",
+                       config_path=REFERENCE_CONFIG_PATH):
     print("=== (5) Energy-not-served (ENS_rel/ENS_abs) + target compliance ===")
     df = df.copy()
     df["net_delivered"] = df["total_energy_charged"].astype(float) - df["total_energy_discharged"].astype(float)
 
     print("  Computing R(s) (requested energy of EVs departing within horizon) per cell...")
-    r_by_cell = requested_energy_by_cell()
+    r_by_cell = requested_energy_by_cell(config_path)
     r_df = pd.DataFrame([{"seed": s, "eval_day": d, **v} for (s, d), v in r_by_cell.items()])
     r_df.to_csv(requested_energy_out_path, index=False)
     total_still_connected = r_df["n_still_connected"].sum()

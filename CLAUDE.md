@@ -386,10 +386,20 @@ in place.** Real current state:
 
 **Update, 2026-09-28: Week 6 Part 0 (extended RL training) — branch
 `semana-6`, from `main` at `23468f3`. Not merged, not tagged.**
-- **Single RL model for Weeks 6–7 (Objectives 4–5) — STATUS: PENDING THE
-  USER'S EXPLICIT DECISION on the Part B verdict. Do not treat either
-  candidate as adopted until this line says so.**
-  - Pre-registered rule output: **`TD3_vanilla_extended_ts102`**, checkpoint
+- **FINAL RL MODEL (ADOPTED by the user, 2026-10-05; fixed for the rest of
+  the thesis, never substitute another seed or checkpoint):
+  `TD3_vanilla` extended, training seed 102, primary checkpoint at 850,000
+  steps.**
+  - Model:
+    `experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps.zip`
+  - VecNormalize:
+    `experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps_vecnormalize.pkl`
+    (load frozen: `training=False`, `norm_reward=False`)
+  - Registry name on the non-grid grid: `TD3_vanilla_extended_ts102`.
+  - Accepted trade-off: test tracking error 41,195, against 32,575 at its
+    own 60k checkpoint.
+  - Original Part 0 record, kept for history. The pre-registered rule output
+    was the same checkpoint, **`TD3_vanilla_extended_ts102`**, checkpoint
     at 850,000 steps,
     `experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps.zip`
     (+ `_vecnormalize.pkl` next to it). Pinned in
@@ -421,6 +431,68 @@ in place.** Real current state:
   - `FIGURE_SPECS` and `scripts/make_week5_handback.py` do not exist: figures
     are `make_figures.py` functions (`--only f12,f13`), and handbacks are
     `.md` rendered by `scripts/render_docx.py`.
+
+**Update, 2026-10-06: Week 7, Objectives 4 and 5 (final practical phase).
+Branch `semana-7`, from `main` at `ebf3634`. Uncommitted, untagged: the
+user commits and tags `v0.4-infra-guidelines` and `v0.5-replicability`.**
+Everything above about the "current phase" is history. The current state
+is the following.
+- **Phase:** the practical work is complete. Only the final thesis document
+  remains. The night's decision log is `thesis_docs/overnight_report.md`,
+  and the deliverables index is `thesis_docs/DELIVERABLES_INDEX.md`.
+- **Final RL model (unchanged, author's decision):** `TD3_vanilla` extended,
+  seed 102, 850,000 steps (see the Week 6 Part 0 block above).
+- **Grid vs. non-grid registry rows.** `results/master_results.csv` has a
+  last column, `simulate_grid` (added by
+  `scripts/migrate_registry_schema_week7.py`; every pre-Week-7 row is
+  `False` except the Week 2 smoke test).
+  - Grid rows: `config_name` `station_v0_bogota_grid[_spawn1.3|_spawn1.6|_load1.3|_load1.6]`,
+    `analysis_row=True`, `simulate_grid=True`, 5 arms × 50 seeds × 2 days
+    per setting.
+  - Voltage probe rows: `station_v0_bogota_grid_probe_*`,
+    `analysis_row=False`.
+  - Non-grid statistics: `analysis_row=True` and
+    `config_name == 'station_v0_bogota'` (2,200 rows).
+  - At the base setting, the grid rows are identical to the non-grid rows
+    on every station metric (0.0 difference, asserted).
+- **Grid model facts.**
+  - `ev2gym_thesis/grid/placement.py` must be enabled in any process that
+    builds a grid env. EV2Gym has no station-placement key, and it would
+    otherwise spread the 8 stations over 8 buses with 8 × 100 kW
+    transformers.
+  - The station is on bus 27 (`network_info.thesis_station_bus`).
+  - The feeder is EV2Gym's RL-ADN 34-node network, not a validated IEEE
+    feeder.
+  - The voltage band is 0.95–1.05 p.u. (`ev2gym_thesis/grid/voltage.py::band_check`).
+    The feeder is out of band at bus 27 even with the station idle, so
+    voltage is reported only as the station's increment over the
+    idle-station baseline of the same cell. **Never claim absolute RETIE
+    compliance.**
+  - Parallel EV2Gym processes need per-process day-config and replay
+    directories (`run_week7_grid._per_process_day_configs`).
+- **Replicability city: Medellín (EPM).** Constants are in
+  `ev2gym_thesis/prices/medellin.py`; the source PDF is
+  `thesis_docs/sources/epm_tariffs/2026-septiembre_epm_tarifas.pdf`
+  (accessed 2026-10-05).
+  - Nivel II commercial, with contribution: Punta **923.92** (the base
+    cost) and Fuera de Punta 917.58 COP/kWh.
+  - CU without contribution: 769.94 / 764.65. Both Week 5 invariants pass.
+  - EPM publishes **no** EV charging price, so 1,450 is used only as a
+    labelled sensitivity. The intraday spread is 0.69%.
+  - The margin ranking is tariff-invariant under a flat price (asserted).
+- **Res. 40223 de 2021, Art. 4 (corrected statement, standing):** every
+  Level 2 and Level 3 AC station must have at least one Tipo 1 (SAE J1772)
+  connector, and every Level 3 DC station at least one CCS Combo 1
+  connector. It is a minimum, not an exclusive standard, and it does not
+  mention CCS Combo 2. **The project's CCS2-only DC configuration would not
+  by itself satisfy it.**
+- **Corrections made this phase:**
+  - S5.8's 503.9 COP/day (a stale pre-Gate-4 CSV) is now 551.9 COP/day;
+  - the fleet battery is **70 kWh**, and documents saying 60 kWh need
+    correcting (overnight report, Checkpoint 1a);
+  - the S5.11 seed-spread sentence;
+  - the S5.11 point-3 interpretation (the training reward *improved*).
+- **Consolidated limitations:** `thesis_docs/chapters/08_limitations.md`.
 
 ## Useful Commands (reference, don't re-derive these each time)
 

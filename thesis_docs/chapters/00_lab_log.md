@@ -1,5 +1,412 @@
 # Lab Log
 
+## 2026-10-06 00:50 (UTC−5) — Final brief completed; nothing committed (branch `semana-7`)
+
+All steps done, no hard stop. Decision rules and their outcomes, the headline answers to Objectives 4 and 5, the compliance table and the grouped commit plan are at the top of `thesis_docs/overnight_report.md`. Deliverables: chapters 06, 07 and 08 (new consolidated limitations); `Week7_Objectives4_5_Parameter_Method_and_Implementation_Justification.{md,docx}`; Progress Log sections 13 and 14; 18 Week 7 workbooks; figures f15–f18 (visual QA fixes logged in the handback); `test_week6_infra.py` (17 tests) and `test_replicability.py` (9 tests), all passing; `thesis_docs/DELIVERABLES_INDEX.md`; `CLAUDE.md` updated.
+
+## 2026-10-06 00:45 (UTC−5) — Final brief, Step 2: Objective 4 grid results (branch `semana-7`)
+
+**Run.**
+- 3 detached workers, launched at 23:16.
+- Worker 1 crashed at about 23:28 (shared day-config race). All workers
+  were stopped, fixed with per-process directories, shards verified, and
+  resumed at 23:35.
+- Finished at 00:17. 2,500/2,500 cells, 0 errors after the resume.
+- Merged once: 2,500 rows appended, and the 3,353 prior rows were verified
+  byte-identical.
+- Each arm × setting has exactly 100 rows.
+- The analysis ran at about 00:30.
+
+**Integrity.**
+- Base setting, all 500 cells × 5 arms: grid = non-grid on all 9 station
+  metrics (maximum difference 0.0).
+- Axis 2 (feeder load) settings are cell-by-cell identical to base on
+  every station metric, and differ only in voltage. EV2Gym has no feedback
+  from the feeder to the station (declared as limitation L20).
+
+**Headline numbers** (95% cluster-bootstrap CI, n_clusters = 50):
+
+| | Value |
+|---|---|
+| Round Robin overload | 0 in all seeds at every setting; 95th-percentile peak 66.8 / 73.3 / 67.6 kW at 1.0× / 1.3× / 1.6× |
+| AFAP overload | 14.2 / 24.0 / 26.4 kWh/day; 28 / 42 / 39 of 50 seeds; 95th-percentile peak 172.7 / 191.9 / 189.1 kW → next standard size 225 kVA |
+| Round Robin satisfaction | 99.91 / 99.89 / 99.93%. The 90% threshold is not reached within 1.6×, and satisfaction is unchanged vs. base (CI includes zero) |
+| Round Robin energy at 1.6× | +37.3 kWh/day [+30.9, +44.1] vs. base |
+| Voltage | The idle feeder is out of band in 78 / 84 / 86 / 100 / 100 of 100 cells. The station adds 2.7–4.5 out-of-band samples per day. Round Robin's Δ min V is −0.00053 against AFAP's −0.00084 p.u. at base (37% smaller, CIs disjoint) |
+| Round Robin cost vs. AFAP | 551.9 / 800.0 / 556.1 COP/day (under 1% of margin) |
+| Final RL vs. Round Robin | Tracking error +27.6k to +33.4k; overload +3.58 to +7.37 kWh/day; all CIs exclude zero |
+| Targets | Satisfaction and ENS_rel met by all arms at all settings. Voltage not assessable as compliance on this feeder |
+
+**Files belonging to Objective 4** (for a separate commit and the
+`v0.4-infra-guidelines` tag):
+- **Code:**
+  - `ev2gym_thesis/grid/__init__.py`, `ev2gym_thesis/grid/placement.py`,
+    `ev2gym_thesis/grid/voltage.py`;
+  - `ev2gym_thesis/registry.py`;
+  - `ev2gym_thesis/xlsx_export.py` (`PER_UNIT_VOLTAGE_FORMAT`; the file
+    also holds the `MIXED_UNIT` constant from Part 0);
+  - `scripts/migrate_registry_schema_week7.py`,
+    `scripts/week7_grid_equivalence.py`, `scripts/week7_voltage_probe.py`,
+    `scripts/week7_zero_charging_baseline.py`, `scripts/run_week7_grid.py`,
+    `scripts/run_week7_worker.cmd`, `scripts/analyze_week7_infra.py`;
+  - `scripts/analyze_week5_results.py` (`config_path` parameter);
+  - `scripts/make_figures.py` (f15–f18; shared with Objective 5);
+  - `scripts/export_week7_results_xlsx.py` (shared with Objective 5).
+- **Configs:** `experiments/phase3_infra_replicability/configs/*.yaml`
+  (5 settings and 5 probes).
+- **Data:**
+  - `results/master_results.csv`;
+  - `results/week7_grid_*`, `results/week7_transformer_*`,
+    `results/week7_voltage_*`, `results/week7_target_compliance.*`
+    (`.csv` and `.xlsx`);
+  - `experiments/phase3_infra_replicability/results/week7_timing_one_cell.*`.
+- **Figures:** `figures/f15_grid_growth.*`, `figures/f16_transformer_sizing.*`,
+  `figures/f17_voltage_attribution.*`.
+- **Tests:** `ev2gym_thesis/tests/test_week6_infra.py`;
+  `ev2gym_thesis/tests/test_final_rl_model.py` (pin scoped to the non-grid
+  config).
+- **Docs:** `thesis_docs/chapters/06_infrastructure.md`; `.gitignore`.
+
+## 2026-10-06 00:35 (UTC−5) — Final brief, Step 3: Objective 5 results (branch `semana-7`)
+
+- **3a:** see Checkpoint 2.
+- **3b:** `results/week7_transfer_classification.*`. Only the tariff inputs
+  are both city-specific and available.
+- **3c:** recomputed from the registry's energy on the non-grid rows plus
+  all 2,500 grid rows. Round Robin's cost of the 100 kW limit is 551.9
+  COP/day in Bogotá against 497.0 in Medellín at base (ratio 0.900; 0.47%
+  of margin in both). It is 800.0 against 720.3 at 1.3× and 556.1 against
+  500.8 at 1.6×. **Ranking invariance holds in all 48 dataset × price-scenario
+  checks** (asserted in code and pinned by a test).
+- **3d, decision rule fired:** no source defends a per-station demand
+  ratio. EV registrations give Medellín/Bogotá = 0.40 (January–August 2025,
+  Andi–Fenalco via El Colombiano); charger counts give about 0.45 (lower
+  bound). Both naive readings fall below 1.0×, so the guidelines are
+  presented as conditional on demand. A proposal for 0.4×, 0.7× and 0.9×
+  Axis 1 runs costs about 27 min per setting on one process, or about 10
+  min on 3 workers. Not run.
+- **Found while working:** S5.8's 503.9 COP/day came from a stale
+  pre-Gate-4 CSV, `results/week5_margin_vs_overload.csv`, which no script
+  in the repo regenerates. The current value is 551.9 [274, 874]. A dated
+  correction note was added to S5.8; the stale CSV is left untouched as
+  history and flagged.
+
+## 2026-10-05 23:16–23:35 (UTC−5) — Step 2 grid run: launch, one worker crash, fix, resume (branch `semana-7`)
+
+**Launch (23:16).** Three detached workers were started through
+`scripts/run_week7_worker.cmd` (WMI `Win32_Process.Create`, keep-awake),
+running `scripts/run_week7_grid.py --worker i --n-workers 3 --seeds 50`. The
+spec is 5 arms × 5 settings × 50 seeds × 2 days = 2,500 cells, split by
+index modulo 3. Each worker writes only its own shard
+(`experiments/phase3_infra_replicability/results/shards/`, gitignored).
+The registry is written once, at the end, by `--merge`.
+
+**Crash (about 23:28, worker 1, after 170 cells).** The error was
+`TypeError: 'NoneType' object is not subscriptable` in `EV2Gym.__init__`.
+The cause is the same race condition as in Week 6 Part 0:
+`config_utils.make_day_config` rewrites per-day YAML files in directories
+that the workers share. Those directories come from three places:
+- `scripts/backfill_registry.py::TMP_DAY_CONFIG_DIR`;
+- `env_factory.make_env`'s default;
+- `oracle/replay_utils.DAY_CONFIG_DIR`.
+
+Worker 1 read a half-written file. Workers 0 and 2 had not crashed but
+were exposed to the same risk.
+
+**Fix (23:34).** All workers were stopped. In
+`run_week7_grid.py::_per_process_day_configs`, every module's
+`make_day_config` name now points to a per-process directory
+(`<dir>_pid<PID>`); the files written are byte-identical. Two further
+changes:
+- **Oracle replays** were also moved to per-process directories. Their file
+  names (`sim_<date>_<random seeded by the scenario seed>`) could collide
+  between two workers on the same seed and different settings. The
+  existing parity check would have turned such a collision into a crash,
+  not a wrong result.
+- **`.gitignore`** gained `**/_tmp_*_pid*/` and the per-process replay
+  directories.
+
+**Shard integrity check before resuming.** There were 259 / 170 / 265
+rows in the three registry shards, the same counts in the voltage shards,
+no duplicate run_ids, and no empty key fields. A file read successfully
+during the race is correct, because every worker writes identical content
+for the same name; only partial reads fail, and they fail loudly. The
+analysis also asserts that the base-setting grid rows equal the non-grid
+registry rows for all five arms on every shared cell (S6.1).
+
+**Resume (23:35).** The workers were relaunched with the same commands.
+Each one skips the cells already in its shard.
+
+## 2026-10-05 23:24 (UTC−5) — Final brief, Checkpoint 2: Medellín tariff data (branch `semana-7`)
+
+**City (labelled assumption):** **Medellín**. It is a district of categoría
+especial, its network operator and regulated retailer is EPM, and EPM
+publishes a monthly regulated tariff sheet in the same CREG CU format as
+Enel's Bogotá sheet. That makes the Week 5 invariants applicable unchanged.
+All sources and access dates are in `thesis_docs/sources/SOURCES_week7.md`,
+and the local copy is
+`thesis_docs/sources/epm_tariffs/2026-septiembre_epm_tarifas.pdf`.
+
+**Operator cost.** EPM, regulated market, **September 2026**, the most
+recent sheet listed, accessed 2026-10-05 23:21. Non-residential **Nivel II**
+in COP/kWh:
+
+| Line | Punta | Fuera de Punta |
+|---|---:|---:|
+| Industrial y Comercial, **with** contribution | 923.92 | 917.58 |
+| CU, **without** contribution (Oficial y Exentos) | 769.94 | 764.65 |
+| Components G / T / D / CV / PR / R | 401.37 / 46.84 / 197.10 / 96.41 / 22.54 / 5.68 | 399.72 / 42.74 / 197.10 / 96.41 / 23.10 / 5.59 |
+
+The monomial Nivel II CU (without contribution) is 767.30; its components
+are not published.
+
+**Invariant check** (Week 5 tolerances):
+
+| Period | Components vs. stated CU | With / without contribution |
+|---|---|---|
+| Punta | 769.94 = 769.94 → pass | 1.19999 → pass |
+| Fuera de Punta | 764.66 vs. 764.65, diff 0.01, at the inclusive tolerance bound → pass | 1.20000 → pass |
+
+The Fuera de Punta 0.01 difference is consistent with rounding six
+two-decimal components, and it is declared.
+
+**Base cost value (labelled assumption, conservative):** 923.92 COP/kWh, the
+higher validated with-contribution rate (Punta). Every Medellín margin is
+therefore a lower bound, as in Bogotá. Sensitivities:
+- Fuera de Punta: 917.58;
+- monomial CU × 1.20 = 920.76 (derived; the with-contribution monomial is
+  not published).
+
+**Retail price:** no EPM EV-charging price is published (negative result,
+sources tried listed in `SOURCES_week7.md`). **Decision rule fired:**
+Bogotá's 1,450 COP/kWh is used as a **labelled sensitivity**, not as a
+Medellín price. No competitor's price is substituted.
+
+**Intraday spread:** Medellín (923.92 − 917.58) / 917.58 = **0.69%**,
+against Bogotá's 1.57% recorded in Week 5. The generation component is
+401.37 / 769.94 = 52.1% of the CU, matching Bogotá's ~52%.
+
+**Decision rules:**
+- **Data unavailable / invariant fails:** did not fire. Medellín's data is
+  available and both invariants pass, so the alternative city (Cali) was
+  not needed.
+- **Spread materially larger than Bogotá's:** did not fire. 0.69% is
+  smaller, and no price-signal simulation is warranted.
+
+## 2026-10-05 23:20 (UTC−5) — Final brief, Checkpoint 1: Objective 4 checks 1a–1e (branch `semana-7`)
+
+### 1a. Pre-flight
+
+**Registry before Week 7:** 3,153 rows.
+
+| `analysis_row` | `superseded` | Rows |
+|---|---|---:|
+| True | False | 2,200 (all `station_v0_bogota`) |
+| False | True | 953 |
+
+After the registry changes below there are 3,353 rows.
+
+**Registry changes made at this checkpoint:**
+1. **`simulate_grid` column added**, the one new column the brief allows.
+   It was appended as the last column with `False` for every existing row
+   (`scripts/migrate_registry_schema_week7.py`). The migration was verified
+   two ways: the 38 prior columns are identical value by value, and every
+   raw line changed only by an appended `,False`. The registry backup is in
+   the session scratchpad.
+2. **Correction.** A test then found one pre-existing grid row, the Week 2
+   smoke test `v2ggrid_smoke_test` (`notes = pipeline_smoke_test_grid`).
+   Its new flag was set to `True` (`--fix-smoke-test-flag`). Exactly one
+   raw line changed.
+3. **200 probe rows** from 1d, with `analysis_row = False` and
+   `superseded = False`.
+
+**Oracle variant.** Week 5 evaluated `Optimal_Oracle_Tracking` and
+`Optimal_Oracle_Balanced`. S5.6's tracking-error optimality gap used
+`Optimal_Oracle_Tracking`. **Labelled assumption:** Week 7 uses
+`Optimal_Oracle_Tracking` as the upper bound, because its objective is the
+same tracking target that RR, MPC and RL are judged on.
+
+**Statistics-set filter:**
+- non-grid: `analysis_row == True` and `config_name == 'station_v0_bogota'`
+  (`registry_analysis.main_grid_rows`);
+- grid: `analysis_row == True` and `simulate_grid == True` and
+  `config_name` in the 5 Week 7 setting names.
+
+**ENS_rel (S5.7).** `(E_AFAP(s) − E_a(s)) / E_AFAP(s)`, with net energy
+summed over both day types per seed. The arm passes when the 95%
+cluster-bootstrap CI upper bound is below 15%. It was **formally adopted in
+Week 5**, not merely proposed.
+
+**Fleet battery.** `station_v0_bogota.yaml` uses **70 kWh**
+(`battery_capacity: 70`, line 132, `heterogeneous_ev_specs: False`). These
+documents state **60 kWh** instead:
+
+| Document | Exact text |
+|---|---|
+| `thesis_docs/Progress_Log_Thesis_Project_corrected_2026-09-09.docx` | "All simulated vehicles share one 60 kWh battery profile for Week 1." |
+| `../Progress_Log_Thesis_Project.docx` | "Uniform, 60 kWh battery" |
+| `../Progress_Log_Thesis_Project.backup-before-week3-20260813000202.docx` | "Uniform, 60 kWh battery" |
+| `../Week1_Parameter_and_Method_Justification.docx` | "All simulated vehicles share one 60 kWh battery profile for Week 1." |
+
+No `.md`, `.py` or `.yaml` file states 60 kWh. An older lab-log entry said
+that "no document stating 60 kWh" was found; that search covered Markdown
+only and was incomplete. **These documents are not edited here (extend,
+never rewrite). The author should correct 60 → 70 kWh in them.**
+
+### 1b. Grid bring-up and equivalence
+
+**Config.** `experiments/phase3_infra_replicability/configs/station_v0_bogota_grid.yaml`.
+The diff against `station_v0_bogota.yaml` contains only these changes:
+- `number_of_transformers: 1 → -1`;
+- `simulate_grid: False → True`;
+- `load_multiplier: 1 → 1.0`;
+- `network_info.thesis_station_bus: 27`, added with a labelled comment.
+
+**Station placement (finding).** No EV2Gym config key places the station on
+a bus. In grid mode `load_grid` creates 33 transformers (one per bus) and
+spreads the 8 stations round-robin: 8 buses, each with its own 100 kW
+transformer, which is 800 kW of capacity. **That would not preserve the
+100 kW local limit.** `ev2gym_thesis/grid/placement.py` wraps `load_grid`
+from outside the library (nothing in `ev2gym/` is edited) and puts all 8
+stations on bus 27, transformer id 25. Bus 27 is labelled as the
+electrically farthest bus (series path R = 2.90, 16 hops), the conservative
+choice for voltage.
+
+**Station transformer limit:**
+- non-grid: 1 transformer, 100 kW;
+- grid: 33 transformers, with only #25 carrying EV load, at **100 kW**.
+
+The limit is **preserved**.
+
+**Network.** EV2Gym's "node_34" network is the RL-ADN 34-node feeder (Hou
+et al., 2025), 7.80 MW total nominal load, PV at 80% (`pv_scale`). It is
+called "IEEE 34-bus" in this thesis only as the library names it; it is not
+validated against the IEEE published data (declared).
+
+**Tolerance (stated before running):** absolute difference ≤ 1e-6 on every
+metric. AFAP and RR × seeds 0–9 × both EVAL_DAYS (40 paired cells,
+`results/week7_grid_equivalence*.csv`):
+
+| Metric | Mean, non-grid | Mean, grid | Max abs diff |
+|---|---:|---:|---:|
+| total_ev_served | 13.500 | 13.500 | 0.0 |
+| total_energy_charged | 199.4145 | 199.4145 | 0.0 |
+| total_transformer_overload | 5.5772 | 5.5772 | 0.0 |
+| average_user_satisfaction | 0.999398 | 0.999398 | 0.0 |
+| tracking_error | 35,365.88 | 35,365.88 | 0.0 |
+
+In the 1e timing cell (seed 0, weekday), all 5 arms (AFAP, RR,
+MPC_TrackingG2V, the final RL model and the oracle) also reproduce their
+non-grid registry values exactly. **No divergence; the 1b divergence rule
+did not fire.** Station metrics are identical with and without the grid;
+voltage is the only new information.
+
+### 1c. RL compatibility
+
+The observation space is `(27,)` under both configs. Over a full episode
+with the final RL model (seed 4, weekday), observations, actions and the
+final tracking error are bit-identical at every step. The frozen
+VecNormalize statistics are never updated. This is pinned by
+`test_week6_infra.TestRLCompatibility`. No adapter is needed, and **the RL
+arm stays in the grid runs (5 arms)**.
+
+### 1d. Can `voltage_violation` trip?
+
+**Definitions** (`ev2gym/utilities/utils.py::get_statistics`, grid mode
+only, on `env.node_voltage`: 34 buses × 96 steps, in p.u., row 0 = slack
+bus):
+
+| Metric | What it measures |
+|---|---|
+| `voltage_violation` | Σ over all buses and steps of min(0, 0.05 − abs(1 − v)). Aggregate, cumulative, ≤ 0, in p.u.·step; a 1-tuple, summed by `registry._coerce_scalar`. |
+| `voltage_violation_counter` | Number of (bus, step) samples outside [0.95, 1.05]. |
+| `voltage_violation_counter_per_step` | Number of steps with at least one bus outside. Not a registry column; recomputed into `results/week7_voltage_*.csv`. |
+
+**Band.** Hard-coded at 0.95–1.05 p.u., which equals the ±5% band the
+thesis adopts. An independent check was implemented and tested anyway:
+`ev2gym_thesis/grid/voltage.py::band_check`, which also reports the station
+bus separately. It matches the library exactly on all 200 probe rows (same
+counter; magnitude difference 7.5e-15).
+
+**Probe** (`results/week7_voltage_probe*.csv`). AFAP and RR, seeds 0–9 × 2
+days, spawn 30, `load_multiplier` from 0.5 to 1.0, plus a zero-charge
+diagnostic with the station idle:
+
+| load_multiplier | Cells tripping, AFAP | Cells tripping, RR | Cells tripping, idle station | Min V (AFAP) |
+|---:|---:|---:|---:|---:|
+| 0.5 | 0/20 | 0/20 | 0/20 | 0.9658 |
+| 0.7 | 0/20 | 0/20 | 0/20 | 0.9520 |
+| **0.8** | **4/20** | 4/20 | 3/20 | 0.9450 |
+| 0.9 | 10/20 | 9/20 | 9/20 | 0.9378 |
+| 1.0 | 16/20 | 15/20 | 15/20 | 0.9305 |
+
+The smallest setting at which the metric becomes non-zero is
+**load_multiplier 0.8**; no probed setting at or below 0.7 trips. The worst
+bus is always bus 27, the station's bus.
+
+**Finding: not a negative result. The metric trips at the library's
+nominal feeder, but the feeder's background load drives it.** With the
+station idle, 15/20 cells already violate at load 1.0. The station adds only
+a small increment: at most about 0.0006 p.u. of extra depth, plus a few
+extra (bus, step) samples. **The 1d negative-result rule did not fire.**
+
+**Consequence (labelled, for chapter 06).** Voltage compliance is reported
+as **the station's increment over the zero-charging baseline of the same
+cell**. `scripts/week7_zero_charging_baseline.py` records that baseline for
+every Step 2 cell. **No absolute RETIE compliance claim is made for the
+feeder**: the base feeder is itself outside the band at bus 27.
+
+### 1e. Timing
+
+One grid cell end to end (base setting, seed 0, weekday):
+
+| Arm | Seconds |
+|---|---:|
+| AFAP | 4.77 (includes the first-cell warm-up) |
+| RR | 0.85 |
+| MPC_TrackingG2V | 3.61 |
+| TD3 extended seed 102 | 4.59 |
+| Oracle | 2.49 (Gurobi OPTIMAL; licence OK) |
+
+That is 16.3 s per (setting, seed, day). The Step 2 grid has 5 settings × 2
+days per seed, so the single-process projection is:
+- 20 seeds: 0.9 h;
+- 30 seeds: 1.4 h;
+- 50 seeds: 2.3 h, or 2.8 h with the 25% margin.
+
+**Seed-count rule fired: 50 seeds.** Fifty seeds with the margin end at
+about 02:15 even run serially, before 07:00. Launched at 23:16 as 3
+detached workers (`scripts/run_week7_worker.cmd`, WMI, keep-awake). The
+measured 0.23–0.24 cells/s per worker gives an ETA of about 00:15. That is
+2,500 cells = 5 arms × 5 settings × 50 seeds × 2 days.
+
+## 2026-10-05 ~23:00 (UTC−5) — Final practical brief, Checkpoint 0: Week 6 Part 0 closed on `semana-7`
+
+`main` = `semana-6` = `ebf3634` (verified, nothing missing), and `semana-7`
+was created from `main`. Done on `semana-7`:
+- **Progress Log section "12."** appended (480 → 512 paragraphs, prior
+  content verified unchanged). It had never been run.
+- **Final RL model recorded as the author's decision**: `TD3_vanilla`
+  extended, seed 102, primary checkpoint at 850,000 steps, in S5.11, the
+  Part 0 handback, the Progress Log and `CLAUDE.md`.
+- **S5.11 extended** with per-seed paired cluster CIs (n_clusters = 50)
+  against each seed's own 60k checkpoint. Tracking error is worse for all
+  three seeds (+13,241 / +10,243 / +8,620).
+
+**Decision rule fired (point 3).** `total_energy_charged` confirms the
+energy-for-tracking trade-off (+18.6 kWh/day, CI excludes zero). The test
+`total_reward` under the training reward, however, *improved* (+3,997, CI
+[+2,340, +5,790]), so the "rather than reaching a better reward" wording
+was dropped as unsupported. The reading kept is that extended training
+optimised its own reward, which values satisfaction over tracking.
+
+**Correction.** The 2026-09-28 sentence "the seed spread did not shrink
+in any meaningful sense" was wrong for the user-outcome metrics:
+- average satisfaction range 3.22 → 0.11 pp;
+- `ENS_rel` range 16.13 → 0.59 pp.
+
+The sentence is corrected in place and marked.
+
 ## 2026-09-28 (UTC−5) — Week 6 Part 0: run completed, Part B analysis and Part C deliverables (branch `semana-6`) — verdict pending the user's decision
 
 **Run completion.** All three seeds stopped with

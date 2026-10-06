@@ -1,0 +1,10 @@
+metric,n_cells,n_arms,max_abs_diff,identical
+total_ev_served,500,5,0.0,True
+total_transformer_overload,500,5,0.0,True
+average_user_satisfaction,500,5,0.0,True
+min_energy_user_satisfaction,500,5,0.0,True
+tracking_error,500,5,0.0,True
+energy_tracking_error,500,5,0.0,True
+battery_degradation,500,5,0.0,True
+total_energy_charged,500,5,0.0,True
+energy_user_satisfaction,500,5,0.0,True

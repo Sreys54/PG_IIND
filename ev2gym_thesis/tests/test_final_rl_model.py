@@ -294,6 +294,10 @@ class TestFinalModelPins(unittest.TestCase):
 
     def test_registry_row_count_pin(self):
         df = pd.read_csv("results/master_results.csv", low_memory=False)
+        # Scoped 2026-10-05 (Week 7): the grid-enabled rows reuse the name
+        # TD3_vanilla_extended_ts102 under the station_v0_bogota_grid* configs;
+        # this pin is about the non-grid Week 6 Part 0 evaluation only.
+        df = df[df.config_name == "station_v0_bogota"]
         new = df[df.algorithm.isin(NEW_ARMS)]
         self.assertEqual(len(new), 900)
         self.assertTrue((new.groupby("algorithm").size() == 100).all())

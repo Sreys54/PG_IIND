@@ -703,6 +703,17 @@ this chapter, on the three declared axes:
   constraint will always look slightly worse on margin than one that
   doesn't — that is the cost of the constraint being real, not a mark
   against the strategy.
+  *Correction (2026-10-05, Week 7).* The 503.9 COP/day figure and S5.1's
+  table (AFAP overload 13.25 kWh) come from
+  `results/week5_margin_vs_overload.csv`. That file predates the Gate 4
+  grid regeneration, and no script in the repo regenerates it. Recomputed
+  from the current 100-cell analysis rows with Week 5's own
+  `analyze_week5_results.load_economics_df`, Round Robin concedes
+  **551.9 COP/day** (cluster-bootstrap 95% CI [274, 874], n_clusters = 50)
+  against AFAP's 118,084 COP/day margin, and AFAP's overload is
+  14.22 kWh/day (S5.6). The conclusion is unchanged: the cost is under 1%.
+  See `results/week7_replicability_margin.csv` (dataset `nongrid`,
+  `bogota_base`).
 - **User satisfaction and energy-not-served.** Round Robin clears both
   targets by a wide margin (99.90% average satisfaction, `ENS_rel` CI
   upper bound 0.75% — S5.7), indistinguishable in practice from AFAP's
@@ -964,46 +975,106 @@ point estimate is 20.04% and its CI upper bound 22.85%. It is the only
 arm in this project to date to fail a declared target
 (`results/week6_part0_ens_compliance.csv`).
 
-**Spread across training seeds** (range of the three per-seed means,
-relative to their mean): tracking error 8.3% (new60k) → 7.3% (extended);
-transformer overload 30.8% → 82.9% (`results/week6_part0_train_seed_dispersion.csv`).
-The spread did not shrink in any meaningful sense. Tracking error is
-marginally tighter around a worse value, and overload is far more
-seed-dependent after extended training.
+**Spread across training seeds** (range of the three per-seed means;
+`results/week6_part0_train_seed_dispersion.csv`,
+`results/week6_part0_ens_compliance.csv`). The spread depends on the
+metric, so each is reported separately:
+
+| Metric | new60k range | Extended range | Change |
+|---|---:|---:|---|
+| Average satisfaction | 3.22 pp | 0.11 pp | shrank |
+| Minimum energy satisfaction (0–100) | 17.14 | 1.71 | shrank |
+| `ENS_rel` (point estimates 9.55 / 20.04 / 3.91% → 1.61 / 1.94 / 2.20%) | 16.13 pp | 0.59 pp | shrank |
+| Tracking error (relative range) | 8.3% | 7.3% | marginally tighter, around a worse value |
+| Transformer overload (relative range) | 30.8% | 82.9% | widened |
+
+*Correction (2026-10-05): an earlier version of this paragraph said the
+spread "did not shrink in any meaningful sense". That holds for tracking
+error and overload only. It is wrong for the user-outcome metrics.*
 
 ### Verdict
 
-**Extended training did not improve the model on the pre-registered
-criterion; it degraded it.**
+Paired cluster bootstrap, extended primary checkpoint against the same
+seed's new-run 60k checkpoint (B − A, n_clusters = 50 in every row):
 
-- **Tracking error.** Against the environment-matched 60k checkpoints, the
-  extended primary checkpoints have 33% higher tracking error on the test
-  grid (+10,701; the 95% CI excludes zero).
-- **Transformer overload.** The difference is not statistically
-  distinguishable from zero (+0.74 kWh, CI [−1.98, +3.40]).
-- **User outcomes.** These improved significantly: average satisfaction
-  +1.8 points, minimum energy satisfaction 83 → 95, and `ENS_rel` from
-  4–20% down to 2%.
+| Seed | Tracking error | Overload (kWh) | Avg. satisfaction | Energy charged (kWh/day) | `total_reward` (training reward) |
+|---|---|---|---|---|---|
+| 100 | +13,241 [+10,689, +15,920] | +3.19 [−1.23, +7.74] | +0.0152 [+0.0106, +0.0200] | +15.83 [+11.38, +20.30] | +3,333 [+1,430, +5,202] |
+| 101 | +10,243 [+8,140, +12,441] | +0.62 [−4.22, +5.20] | +0.0360 [+0.0306, +0.0413] | +36.17 [+30.93, +41.34] | +5,961 [+3,286, +8,792] |
+| 102 | +8,620 [+6,877, +10,419] | −1.58 [−4.38, +1.27] | +0.0034 [+0.0005, +0.0065] | +3.74 [+0.53, +7.09] | +2,698 [+432, +5,028] |
+| 3-seed mean | +10,701 [+9,042, +12,472] | +0.74 [−1.98, +3.40] | +0.0182 [+0.0155, +0.0209] | +18.58 [+15.86, +21.24] | +3,997 [+2,340, +5,790] |
 
-The extended policy therefore settled at a different operating point,
-delivering more energy and tracking the setpoint less closely. This is
-consistent with the composite reward's per-EV user-incentive term
-(−1000 × (1 − satisfaction)) weighing more as training continues. The
-experiment does not isolate that mechanism, so it is stated as an
-interpretation, not a finding. On the axes S5.8 used to recommend Round
-Robin (tracking, overload, satisfaction), the extended model remains worse
-than Round Robin on all three, with every CI excluding zero. **RL was not
-budget-limited at 60,000 steps.** Roughly 8–15× more training stabilised
-the policy without closing, or even narrowing, the gap to Round Robin, and
-**the Round Robin recommendation of S5.8 stands**.
+1. **Extended training did not improve the selection criterion.** For all
+   three seeds, test-grid tracking error is worse than the same seed's
+   new-run 60k checkpoint, and every CI excludes zero. The convergence rule
+   detected a plateau, not an improvement.
+2. **User outcomes improved, and their across-seed spread shrank.**
+   Average satisfaction rose for every seed (CIs exclude zero). `ENS_rel`
+   fell from 3.9–20.0% to 1.6–2.2%. Minimum energy satisfaction rose from
+   83.5 to 95.3. **Transformer overload did not change significantly** for
+   any seed or for the 3-seed mean (every CI contains zero), so no
+   improvement in overload is claimed.
+3. **Interpretation (labelled, verified against `total_energy_charged`).**
+   The extended policies deliver more energy in every seed (+18.6 kWh/day
+   for the 3-seed mean, CI excludes zero), at the cost of a larger
+   deviation from the power setpoint. **The brief's proposed wording, that
+   the policy moved along the trade-off "rather than reaching a better
+   reward", is not supported by the data and is not made.** The test-grid
+   `total_reward`, computed under the same training reward
+   `SqTrError_TrPenalty_UserIncentives`, improved for all three seeds
+   (+3,997 for the 3-seed mean, CI [+2,340, +5,790]). The supported reading
+   is that extended training did optimise its own reward better. Because
+   that reward penalises each unsatisfied EV (−1000 × (1 − satisfaction))
+   alongside the squared tracking term, better optimisation moved the
+   policy towards delivering energy and away from tracking the setpoint.
+   This is the reward-versus-evaluation-metric misalignment declared in
+   Week 3 (`03_rl_baseline.md`), now measured directly.
+4. **Round Robin still dominates every implementable arm on tracking and
+   overload.** Against every causal arm in the registry (AFAP, the random
+   control, and all 15 TD3 checkpoints), Round Robin has lower tracking
+   error and lower overload, with every paired CI excluding zero
+   (n_clusters = 50). On average satisfaction Round Robin (99.91%) is
+   0.09 pp below AFAP and the random control, CI [+0.04, +0.16] pp. AFAP
+   achieves this with 14.22 kWh/day of overload. Round Robin is
+   statistically indistinguishable from the last checkpoints of seeds 101
+   and 102. For the one arm that was extended, to 14× its original budget
+   (850,000 of 60,000 steps for seed 102), the gap to Round Robin is
+   therefore **not a budget artefact**. No claim is made about the other RL
+   arms: `TD3_TrackingOnly` was not extended, and it uses a different
+   reward. Extending it is future work. **The Round Robin recommendation of
+   S5.8 stands.**
 
-The pre-registered rule selects `TD3_vanilla_extended_ts102` at 850,000
-steps
-(`experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps.zip`)
-as the single RL model for Weeks 6–7. Because that checkpoint is worse on
-the criterion than the new run's own 60k checkpoints, **which RL model is
-carried forward is left to the author's explicit decision** and is not
-adopted by this section.
+### Final RL model (author's decision)
+
+**The single RL model for the rest of the thesis is `TD3_vanilla`
+extended, training seed 102, primary checkpoint at 850,000 steps.**
+
+- Model:
+  `experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps.zip`
+- VecNormalize statistics:
+  `experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps_vecnormalize.pkl`
+
+This is the author's decision, not a rule output. It coincides with the
+pre-registered rule's selection. Validation tracking error of each seed's
+primary checkpoint, as plain facts: seed 100 = 42,531 (at 400,000 steps),
+seed 101 = 46,554 (630,000), **seed 102 = 40,378 (850,000)**.
+
+The model is kept for four reasons:
+
+- the advisor asked for one stabilised model;
+- seed 102 has the best results of the extended checkpoints on the thesis's
+  user and grid axes. Its test-grid overload of 3.58 kWh/day is the lowest
+  of all 15 TD3 checkpoints, against 5.16 at 60k. Its `ENS_rel` is 2.20%,
+  against 3.91% at 60k, the best of the three 60k checkpoints. Its average
+  satisfaction is 99.59%, against 99.24% at 60k;
+- it has the lowest validation and test tracking error of the extended
+  checkpoints;
+- it is the longest-trained seed (910,000 steps).
+
+**Declared trade-off:** its test-grid tracking error (41,195) is worse than
+that of its own 60k checkpoint (32,575, +8,620, CI [+6,877, +10,419]). This
+is accepted in exchange for the stabilised policy and the user and
+energy-not-served outcomes above.
 
 ### Limitations
 

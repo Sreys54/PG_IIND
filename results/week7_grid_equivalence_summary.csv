@@ -1,0 +1,6 @@
+metric,mean_nongrid,mean_grid,max_abs_diff,within_tolerance,n_cells,tolerance_abs
+total_ev_served,13.5,13.5,0.0,True,40,1e-06
+total_energy_charged,199.4145387028875,199.4145387028875,0.0,True,40,1e-06
+total_transformer_overload,5.577203116523163,5.577203116523163,0.0,True,40,1e-06
+average_user_satisfaction,0.999397767857143,0.999397767857143,0.0,True,40,1e-06
+tracking_error,35365.88138484077,35365.88138484077,0.0,True,40,1e-06

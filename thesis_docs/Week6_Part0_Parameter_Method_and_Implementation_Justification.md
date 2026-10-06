@@ -1,7 +1,7 @@
 # Week 6, Part 0 — Parameter, Method, and Implementation Justification: Extended Training of the Selected RL Policy
 
-**Status: complete (2026-09-28). The final-model decision is pending the
-author's review of the verdict below.** This document follows the Week 5
+**Status: complete (2026-09-28). The final-model decision was taken by the
+author on 2026-10-05: seed 102 extended, primary checkpoint (see below).** This document follows the Week 5
 mechanism: a hand-maintained Markdown record rendered to `.docx` by
 `scripts/render_docx.py` (plain black text, bold section titles, no Word
 Heading styles). No `scripts/make_week5_handback.py` exists in the repo, so
@@ -31,17 +31,37 @@ selection criterion.**
   - average satisfaction +1.8 points;
   - minimum energy satisfaction 83 → 95;
   - `ENS_rel` from 3.9–20.0% to 1.6–2.2%.
-- **Seed spread.** The spread across training seeds did not shrink in any
-  meaningful sense: tracking error went from 8.3% to 7.3% relative range,
-  and overload from 30.8% to 82.9%.
-- **Budget.** RL was not budget-limited at 60,000 steps. The extended model
-  remains worse than Round Robin on tracking error, overload and
-  satisfaction (every CI excludes zero), so **the Round Robin
-  recommendation stands.**
-- **Final model.** The pre-registered rule selects
-  `TD3_vanilla_extended_ts102` at 850,000 steps. Because that checkpoint is
-  worse than the 60k checkpoints on the rule's own criterion, which RL
-  model is kept is the author's decision.
+- **Per seed.** Tracking error is worse than the same seed's 60k
+  checkpoint for all three seeds: +13,241 / +10,243 / +8,620, every CI
+  excluding zero, n_clusters = 50. The convergence rule detected a plateau,
+  not an improvement.
+- **Seed spread (corrected 2026-10-05).** The spread shrank for user
+  outcomes. Average satisfaction range went from 3.22 to 0.11 pp, and
+  `ENS_rel` range from 16.13 to 0.59 pp. For tracking error the range is
+  marginally tighter (8.3% → 7.3% relative) around a worse value, and for
+  overload it widened (30.8% → 82.9%).
+- **Interpretation, verified.** The extended policies deliver more energy
+  (+18.6 kWh/day [+15.9, +21.2]) and score a **better** total training
+  reward (+3,997 [+2,340, +5,790]). Extended training optimised its own
+  reward, which values satisfaction over tracking. The wording "rather than
+  reaching a better reward" is not supported by the data and is not used.
+- **Budget.** RL was not budget-limited at 60,000 steps. Round Robin has
+  lower tracking error and overload than every implementable arm (all CIs
+  exclude zero). For the one arm extended to about 14× its budget, the gap
+  is not a budget artefact. **The Round Robin recommendation stands.**
+- **Final model (author's decision, 2026-10-05).** `TD3_vanilla` extended,
+  **training seed 102, primary checkpoint at 850,000 steps** (validation
+  tracking error 40,378, against 42,531 for seed 100 and 46,554 for seed
+  101). Model:
+  `experiments/phase2_algorithms/models/TD3_vanilla_extended_ts102/checkpoints/td3_vanilla_extended_ts102_850000_steps.zip`,
+  with `..._vecnormalize.pkl` beside it. It is kept for four reasons:
+  - the advisor asked for one stabilised model;
+  - it has the lowest overload of all 15 TD3 checkpoints (3.58 kWh/day);
+  - its `ENS_rel` is 2.20% and its average satisfaction 99.59%;
+  - it is the longest-trained seed.
+
+  Accepted trade-off: test tracking error of 41,195, against 32,575 at its
+  own 60k checkpoint (+8,620 [+6,877, +10,419]).
 
 ## Part 1 — Parameters and Methods
 

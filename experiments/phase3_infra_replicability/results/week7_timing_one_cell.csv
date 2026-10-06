@@ -1,0 +1,6 @@
+arm,seconds,tracking_error,total_transformer_overload,notes_status
+ChargeAsFastAsPossible,4.77,67730.4656681785,37.322524410576406,
+RoundRobin,0.85,11467.148308647531,0.0,
+MPC_TrackingG2V,3.61,7134.476911709245,0.0,
+TD3_vanilla_extended_ts102,4.59,53314.51642558617,16.486126515967356,
+Optimal_Oracle_Tracking,2.49,5243.775280844873,0.0,True

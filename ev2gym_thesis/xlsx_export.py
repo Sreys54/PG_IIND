@@ -38,6 +38,7 @@ PCT_ALREADY_SCALED_FORMAT = '#,##0.00"%"'  # underlying value is already on a 0-
 SECONDS_FORMAT = "#,##0.000"
 DIMENSIONLESS_4DP_FORMAT = "#,##0.000000"  # for very small values (e.g. battery_degradation)
 MIXED_UNIT_4DP_FORMAT = "#,##0.0000"  # Week 6 Part 0: long-format tables whose rows carry different metrics (unit named in a Metric column)
+PER_UNIT_VOLTAGE_FORMAT = "0.00000"  # Week 7: bus voltages and voltage deltas in per unit (p.u.)
 
 
 def export_formatted_xlsx(csv_path: str, xlsx_path: str, column_labels: dict,

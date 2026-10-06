@@ -232,6 +232,10 @@ eval_logs/
 # rule; caught by `git check-ignore -v` while preparing the commit.
 # results/timeseries/ stays ignored (regenerable per-run .npz arrays).
 !/results/week6_part0_*
+# Week 7 (Objectives 4-5): allowlisted up front, per this file's own
+# standing lesson. results/timeseries/week7_voltage/ (per-run .npz voltage
+# arrays) stays ignored under /results/* -- regenerable.
+!/results/week7_*
 models_RL/
 plots/
 plot_results_dict.pkl
@@ -260,3 +264,13 @@ experiments/phase4_oracle/replays_raw/
 experiments/phase4_oracle/replays_g2v/
 
 MPC EVCS V2G - v2/
+# Week 7 (Objective 4): per-day config copies and per-worker shards are
+# regenerable intermediates (shards are merged into results/master_results.csv
+# by scripts/run_week7_grid.py --merge).
+experiments/phase3_infra_replicability/configs/_tmp*/
+experiments/phase3_infra_replicability/results/shards/
+
+# Per-process day-config directories (scripts/run_week7_grid.py::_per_process_day_configs)
+**/_tmp_*_pid*/
+experiments/phase4_oracle/replays_raw_pid*/
+experiments/phase4_oracle/replays_g2v_pid*/

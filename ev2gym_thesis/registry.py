@@ -92,7 +92,13 @@ STATS_COLUMNS = [
     "voltage_violation_counter",
 ]
 
-REGISTRY_COLUMNS = META_COLUMNS + STATS_COLUMNS
+# Week 7 (Objective 4), user-authorized: separates grid-enabled
+# (simulate_grid=True, EV2Gym 34-node feeder) rows from the non-grid Week 1-6
+# rows. Appended as the LAST column by scripts/migrate_registry_schema_week7.py
+# with "False" for every pre-existing row (all were non-grid), so each existing
+# line changed only by a trailing ",False".
+GRID_FLAG_COLUMNS = ["simulate_grid"]
+REGISTRY_COLUMNS = META_COLUMNS + STATS_COLUMNS + GRID_FLAG_COLUMNS
 DEDUP_KEY_COLUMNS = ("config_name", "algorithm", "seed", "eval_day")
 # doc:end registry_schema
 
@@ -145,12 +151,24 @@ def load_existing_keys() -> set:
 
 
 # doc:begin append_runs
+def _with_simulate_grid_default(row: dict) -> dict:
+    """Week 7: pre-Week-7 writers (all non-grid) do not set simulate_grid;
+    default it to False for them. A grid config row must declare the flag
+    explicitly, so a forgotten flag can never mislabel grid data."""
+    if "simulate_grid" in row:
+        return row
+    if "grid" in str(row.get("config_name", "")):
+        raise ValueError(f"run_id={row.get('run_id')!r}: grid config row without an explicit simulate_grid flag")
+    return dict(row, simulate_grid=False)
+
+
 def append_runs(rows: list, force: bool = False) -> dict:
     """Validate and append rows to the master registry. Never overwrites.
 
     Returns {"appended": n, "skipped": n} so callers can report what
     actually happened rather than assuming every row was written.
     """
+    rows = [_with_simulate_grid_default(r) for r in rows]
     for row in rows:
         missing = set(REGISTRY_COLUMNS) - set(row.keys())
         extra = set(row.keys()) - set(REGISTRY_COLUMNS)

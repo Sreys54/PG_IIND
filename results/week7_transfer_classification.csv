@@ -1,0 +1,11 @@
+model_input,classification,bogota_value,medellin_value,note
+"Energy purchase cost (CU, Nivel 2 commercial, with contribution)",city-specific and replaced,"Enel Colombia, Aug 2026: 865.7615 COP/kWh (monomial)","EPM, Sep 2026: 923.92 COP/kWh (Punta; 917.58 Fuera de Punta)",Both invariant-checked (Week 5 tolerances).
+Retail EV charging price,"city-specific but unavailable, therefore kept and declared","Enel, Aug 2025: 1,450 COP/kWh","Not published by EPM; Bogota's 1,450 used as a labelled sensitivity",No competitor price substituted (pairing rule).
+Intraday price spread (Punta vs Fuera de Punta),city-specific and replaced,1.57% (Week 5),0.69% (EPM Sep 2026),Below Bogota's; no price-signal control warranted in either city.
+EV arrival/departure distributions,"city-specific but unavailable, therefore kept and declared",EV2Gym's Dutch public-charging data,Same Dutch data,No Colombian session-level dataset available for either city.
+"EV fleet specification (70 kWh, 50 kW AC/DC limit)",city-independent,station_v0_bogota.yaml,Same,Same national vehicle market; one homogeneous spec in both.
+"Station: 8 ports, 100 kW local transformer",city-independent,station_v0_bogota.yaml,Same,"A station design, not a city property; the guidelines are about this design."
+"Feeder abstraction (EV2Gym 34-node feeder, station at bus 27)","city-specific but unavailable, therefore kept and declared",RL-ADN 34-node feeder,Same,No EPM or Enel feeder model is public; the same abstract feeder is used in both.
+Demand level (EVs per station per day),"city-specific but unavailable, therefore kept and declared",spawn_multiplier 30 (Week 1 sizing),Not mapped (see demand mapping),City EV registrations differ (Medellin/Bogota = 0.40 Jan-Aug 2025) but no source gives per-station demand.
+Climate / ambient temperature,"city-specific but unavailable, therefore kept and declared",Not modelled by EV2Gym in the main grid,Not modelled,Week 2 degradation study was Bogota-only; not transferred.
+"National regulation (RETIE voltage band, Res. 40223/2021 connectors, CREG CU method)",city-independent,National,National,Applies identically in both cities.

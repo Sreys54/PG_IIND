@@ -1,0 +1,4 @@
+quantity,medellin,bogota,ratio_medellin_over_bogota,supports_per_station_demand_mapping
+EV registrations Jan-Aug 2025,2148,5358,0.4008958566629339,False
+EV registrations Aug 2025,367,722,0.5083102493074793,False
+"Public charging points (Medellin ~30, source above; Bogota >=67 Enel X chargers, Week 1, lower bound)",30,67,0.44776119402985076,False
