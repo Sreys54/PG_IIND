@@ -51,3 +51,27 @@ Robin at the reference demand.
 The corrected Progress Log itself is not edited in place. Its new section
 15.1 records each of these corrections with the paragraph's section
 number.
+
+## Final capacity brief (2026-10-07): passages the DC session-duration results change
+
+The `.tex` file is not on this machine. Search the Overleaf document for
+these passages; Chapter 6 S6.6, Chapter 7 S7.10 and Chapter 8 L7 hold the
+full argument.
+
+| Search for (in your LaTeX) | Change |
+|---|---|
+| Any statement that Round Robin "keeps the 100 kW transformer within its rating", "zero overload up to 2.5×", or "removes the overload" | Add: "under EV2Gym's Dutch session durations (mean 300.6 min). EV2Gym's Round Robin follows a median-smoothed power setpoint, not the transformer; under 42-minute DC sessions it overloads in 65/100 runs at the reference demand." |
+| "34.6%" demand not served / "the 8 ports bind" / "12 ports at 1.0×" / "10 ports at 0.733×" | Mark as a Dutch-duration sensitivity. Under 42-minute DC sessions: lower-bound rejections 0.9/day (not 8.9), DNS 2.4% (AFAP) and 5.0% (transformer-capped Round Robin) at the same spawn multiplier; **the binding constraint is power, not ports.** |
+| Capacity guideline stated in multiples ("below 0.733× the guideline holds", "1.3–1.6× demand growth") | Restate in physical units: "8 ports and 112.5 kVA under a transformer-capped round-robin load manager serve up to 47 arrivals/day (763 kWh/day) with demand not served ≤ 15%; at 57 arrivals/day (911 kWh/day) 10 ports on the same unit." |
+| Round Robin as "the recommended strategy" for Objective 4 | Qualify: "a load manager that reads the transformer rating (round-robin allocation capped at the rating); EV2Gym's setpoint-following Round Robin does not meet the criteria under DC sessions." |
+| Any description of the simulated sessions as DC fast-charging sessions, or of arrival/energy data without a source | Add: "EV2Gym's session durations are ElaadNL Dutch public-charging data (mean 300.6 min, minimum 225 min); the DC model uses an external, non-Colombian reference of 42 min (U.S. DOE, 2023), bracket 32–78 min." |
+| "No single Enel site has 8 DC ports" or similar | Replace with: "Enel's upgraded Unicentro Bogotá site serves up to 10 vehicles simultaneously (Blu Radio, 2026)." |
+| The final compliance table | Replace with the DC table (handback `Dwell_Capacity_...docx`, Part 1): only the transformer-capped Round Robin meets every evaluable target at 1.0× and 1.3×; at 1.6× no arm meets the satisfaction target counting rejected arrivals. |
+| Final RL model results presented without qualification in a capacity context | Add: "trained on Dutch durations; out of its training distribution under DC sessions." |
+
+**Add to the LaTeX bibliography (APA 7):**
+- Blu Radio. (2026, May 13). *Conductores en Bogotá podrán cargar hasta el 50 % de batería de su carro eléctrico en menos tiempo* (C. Durán, Author). https://www.bluradio.com/motor/conductores-en-boogta-podran-cargar-hasta-el-50-de-bateria-de-su-carro-electrico-en-menos-tiempo-so35
+- Enel Colombia. (2024, May). *Avances en infraestructura de recarga de vehículos eléctricos.* https://www.enel.com.co/es/historias/archive/2024/05/infraestructura-de-recarga-de-vehiculos-electricos.html
+- Hardman, S. (2026). Exploring electric vehicle driver activities and expenditure while using DC fast chargers. *Findings.* https://doi.org/10.32866/001c.162484
+- U.S. Department of Energy, Vehicle Technologies Office. (2023, December 4). *FOTW #1319: EV charging at paid DC fast charging stations average 42 minutes per session* [Fact of the Week]. https://www.energy.gov/cmei/vehicles/articles/fotw-1319-december-4-2023-ev-charging-paid-dc-fast-charging-stations-average
+

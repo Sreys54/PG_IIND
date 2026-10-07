@@ -887,13 +887,80 @@ def build_closure_section(doc):
 # doc:end closure_progress_log
 
 
+# doc:begin dwell_progress_log
+DWELL_TITLE = "16. Final Capacity Brief -- DC Session Duration and Growth Scenario"
+
+
+def build_dwell_section(doc):
+    """Final capacity brief (2026-10-07). Appended after section 15; earlier
+    sections are corrected by reference (16.1), never edited."""
+    import pandas as pd
+    s = pd.read_csv("results/dwell_a_session_summary.csv").set_index("variant")
+    brk = pd.read_csv("results/dwell_c1_breaking_levels.csv")
+    mins = pd.read_csv("results/dwell_c2_minimal_configs.csv")
+    pu = pd.read_csv("results/dwell_d_physical_units.csv")
+    tc = pd.read_csv("results/dwell_e_target_compliance.csv")
+    add_heading(doc, DWELL_TITLE)
+
+    add_heading(doc, "16.1. Corrections to Earlier Sections (dated 2026-10-07)")
+    add_bullet(doc, "Sections 10-15 (Weeks 5-7 and closure): every algorithm comparison and capacity result used EV2Gym's "
+                    "Dutch session durations, which are inconsistent with DC fast charging (16.2). The Weeks 1-5 "
+                    "comparison was not rerun. The closure capacity results (section 15.3) are now a declared sensitivity.")
+    add_bullet(doc, "Sections 13 and 15 (Round Robin keeps the 100 kW transformer within its rating): this holds only under "
+                    "long stays. EV2Gym's Round Robin follows a median-smoothed power setpoint, not the transformer (16.3).")
+    add_bullet(doc, "Closure limitation 'an 8-port DC site exceeds any single Enel site': withdrawn. Enel's Unicentro Bogota "
+                    "site serves up to 10 vehicles simultaneously (Blu Radio, 2026).")
+
+    d = s.loc["dutch"]
+    add_heading(doc, "16.2. Session Duration in the Simulator")
+    add_body(doc,
+        f"EV2Gym draws connections from ElaadNL Dutch public-charging data, floored at 200 min. At the reference demand the "
+        f"simulated mean is {d.duration_mean_min:.1f} min [{d.duration_mean_ci_low:.1f}, {d.duration_mean_ci_high:.1f}] "
+        f"(minimum {d.duration_min_min:.0f} min; n_clusters = {int(d.n_clusters)}), against 42 min for paid US DC sessions "
+        f"(U.S. DOE, 2023). The brief's 90-minute rule fired, and a DC session model (lognormal, mean 42 min, CV 0.5; "
+        f"bracket 32 and 78 min; external references, not Colombian) became primary. Under it, rejected arrivals at 1.0x "
+        f"fall from {d.rejected_lower_per_day:.1f} to {s.loc['42'].rejected_lower_per_day:.2f} per day: the closure's "
+        f"34.6% demand not served was largely a session-duration artefact.")
+
+    add_heading(doc, "16.3. Capacity Threshold (8 ports, 100 kW, 42 min)")
+    for _, r in brk[brk.dwell_mean_min == 42].iterrows():
+        hold = "no tested level" if pd.isna(r.highest_level_not_broken) else f"{r.highest_level_not_broken:g}x"
+        add_bullet(doc, f"{r.algorithm}: highest level meeting all criteria: {hold}; breaks at {r.breaking_level_label} "
+                        f"on {r.criteria_broken_at_breaking_level} (n_clusters = {int(r.n_clusters)}).")
+    q = pu[(pu.model == "DC 42 min") & (pu.ports == 8) & (pu.level == 1.3)].iloc[0]
+    add_body(doc,
+        f"The binding constraint is power: every arm that does not read the transformer rating exceeds 100 kW from 0.267x. "
+        f"EV2Gym's Round Robin follows a median-smoothed setpoint and fails at every level. With a transformer-capped "
+        f"round-robin load manager (diagnostic arm added by this brief), 8 ports and the 100 kW unit serve up to "
+        f"{q.arrivals_offered_per_day:.0f} arrivals/day ({q.kwh_requested_per_day:.0f} kWh/day) with demand not served "
+        f"at or below 15%. The threshold is the same at 32 min and one level lower at 78 min.")
+
+    add_heading(doc, "16.4. Growth Scenario (1.3x and 1.6x)")
+    for _, r in mins.iterrows():
+        add_bullet(doc, f"{r.level:g}x, {r.algorithm}: {r.minimal_config}"
+                        + ("" if pd.isna(r.get("dns_lower_mean")) else
+                           f" (demand not served {100 * r.dns_lower_mean:.1f}%, margin {r.gross_margin_cop_mean:,.0f} COP/day)")
+                        + ".")
+
+    add_heading(doc, "16.5. Final Target Compliance (DC 42 min, 8 ports, 100 kW, n_clusters = 50)")
+    for _, r in tc.iterrows():
+        add_bullet(doc, f"{r.level:g}x, {r.algorithm}: satisfaction counting rejected arrivals {r.sat_all_arrivals_status} "
+                        f"({100 * r.sat_all_arrivals_mean:.1f}%); demand not served {r.dns_status} "
+                        f"({100 * r.dns_lower_mean:.1f}%); transformer {r.transformer_status} "
+                        f"({int(r.cells_with_overload)}/100 runs overload); voltage {r.voltage_status}.")
+    add_body(doc, "Full argument: thesis_docs/Dwell_Capacity_Parameter_Method_and_Implementation_Justification.docx and "
+                  "chapters 06 (S6.6), 07 (S7.10) and 08 (L7). References: U.S. DOE (2023); Hardman (2026); Blu Radio (2026); "
+                  "Enel Colombia (2024).")
+# doc:end dwell_progress_log
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--section", choices=["week5", "week6_part0", "week7", "closure"], required=True,
+    ap.add_argument("--section", choices=["week5", "week6_part0", "week7", "closure", "dwell"], required=True,
                     help="which section to append (each runs once; nothing already in the file is modified)")
     args = ap.parse_args()
-    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7", "closure") else PROGRESS_LOG_PATH
+    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7", "closure", "dwell") else PROGRESS_LOG_PATH
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"{path!r} not found relative to the current working directory. Run this script with "
@@ -905,6 +972,10 @@ if __name__ == "__main__":
         # Week 3, Week 4, and the Week 4 correction were already appended in
         # earlier sessions; Week 5 was appended as "2.4. Week 5".
         build_week5_section(doc)
+    elif args.section == "dwell":
+        if any(p.text.strip() == DWELL_TITLE for p in doc.paragraphs):
+            raise SystemExit(f"{DWELL_TITLE!r} already present in {path} -- not appending twice.")
+        build_dwell_section(doc)
     elif args.section == "closure":
         if any(p.text.strip() == CLOSURE_TITLE for p in doc.paragraphs):
             raise SystemExit(f"{CLOSURE_TITLE!r} already present in {path} -- not appending twice.")

@@ -280,3 +280,7 @@ experiments/phase4_oracle/replays_g2v_pid*/
 
 # Closure brief Part C: worker shards (merged into the registry) are regenerable intermediates
 experiments/phase3_infra_replicability/results/closure_shards/
+# Final capacity (dwell) brief: results tables are deliverables (the blanket
+# /results/* rule would swallow them); worker shards are regenerable.
+!/results/dwell_*
+experiments/phase3_infra_replicability/results/dwell_shards/

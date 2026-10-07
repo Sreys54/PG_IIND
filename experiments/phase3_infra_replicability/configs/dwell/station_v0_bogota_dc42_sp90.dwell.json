@@ -1,0 +1,7 @@
+{
+  "session_model": "lognormal connection duration, ev2gym_thesis/demand/dc_sessions.py",
+  "mean_min": 42.0,
+  "cv": 0.5,
+  "rounding": "nearest timestep, floor 1 step",
+  "label": "external reference, not Colombian (U.S. DOE 2023 / Hardman 2026)"
+}

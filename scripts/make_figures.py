@@ -1731,6 +1731,190 @@ def make_f21_city_cost():
 # doc:end closure_figures
 
 
+# doc:begin dwell_figures
+DWELL_ARMS = ["ChargeAsFastAsPossible", "RoundRobin", "RoundRobin_TransformerCapped", "TD3_vanilla_extended_ts102"]
+DWELL_X = {0.25: 0.2667, 0.75: 0.7333}
+
+
+def _dwell_label(a):
+    return {"TD3_vanilla_extended_ts102": "Final RL model (out of training distribution)",
+            "RoundRobin": "Round Robin (EV2Gym, follows the setpoint)"}.get(a, style_for(a)["label"])
+
+
+def _clean(ax):
+    ax.grid(color="0.9", linewidth=0.6)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+
+
+def make_f22_session_duration():
+    """Dwell brief Part A/B: the connection-duration distribution EV2Gym builds
+    (Dutch, as configured) against the three DC variants, 1.0x, 100 cells."""
+    import pandas as pd
+    ev = pd.read_csv("results/dwell_sessions_ev_level.csv")
+    fig, ax = plt.subplots(figsize=(10, 5.2))
+    styles = {"dutch": ("0.25", "-", "EV2Gym as configured (Dutch public-charging durations)"),
+              "32": ("#9ecae1", "--", "DC transform, mean 32 min (low)"),
+              "42": ("#08519c", "-", "DC transform, mean 42 min (central)"),
+              "78": ("#6a51a3", "-.", "DC transform, mean 78 min (high)")}
+    for v, (col, ls, lab) in styles.items():
+        x = np.sort(ev[ev.variant.astype(str) == v].duration_min.values)
+        ax.step(x, np.arange(1, len(x) + 1) / len(x), where="post", color=col, linestyle=ls, linewidth=2,
+                label=f"{lab}: mean {x.mean():.0f} min, n = {len(x):,} EVs")
+    ax.axvline(90, color="#d62728", linestyle=":", linewidth=1.5,
+               label="Checkpoint A rule: 90 min (Enel Colombia 2024, about 1 h 30 min to 100%)")
+    ax.axvspan(25, 30, color="0.85", zorder=0, label="Enel Unicentro, 50% in 25-30 min (Blu Radio 2026)")
+    ax.set_xlim(0, 660)
+    ax.set_xticks(range(0, 661, 60))
+    ax.set_xlabel("Connection duration per session (minutes; 15-minute timestep)")
+    ax.set_ylabel("Cumulative share of sessions")
+    _clean(ax)
+    ax.legend(fontsize=8, frameon=False, loc="lower right")
+    ax.set_title("Simulated connection durations at 1.0x demand: EV2Gym's own sessions never last less than 225 min\n"
+                 "Empirical CDF over every spawned EV, 50 scenario seeds x 2 day types", fontsize=10)
+    fig.tight_layout()
+    _save(fig, "f22_session_duration")
+    write_caption(
+        "f22_session_duration",
+        what_it_shows=(
+            "Final capacity brief, Parts A-B. EV2Gym draws each stay from the ElaadNL 'public' mean session length for "
+            "the arrival time (2.8-12.5 h), floors it at min_time_of_stay (200 min) and adds two steps, so no session is "
+            "shorter than 225 min; the mean is 300.6 min [296.5, 304.7]. The DC transform "
+            "(ev2gym_thesis/demand/dc_sessions.py) redraws durations from a lognormal (CV 0.5) with mean 32, 42 or 78 "
+            "min (external references, not Colombian: U.S. DOE 2023; Hardman 2026), rounded to the 15-minute step. "
+            "Steps in the curves are the timestep. Source: results/dwell_sessions_ev_level.csv, "
+            "results/dwell_a_session_summary.csv."),
+        n_runs=400, configs=["station_v0_bogota (1.0x), 4 session models"], algorithms=["none (policy-independent)"])
+
+
+def make_f23_dc_capacity_threshold():
+    """Dwell brief C1 under 42-min DC sessions: demand not served and P95 peak
+    by demand level for each arm; Round Robin's bracket at 32/78 min."""
+    import pandas as pd
+    d = pd.read_csv("results/dwell_c1_capacity_by_level.csv")
+    dutch = pd.read_csv("results/closure_c1_capacity_by_level.csv")
+    dutch = dutch[dutch.algorithm == "RoundRobin"].sort_values("level")
+    fig, axes = plt.subplots(1, 3, figsize=(17, 5.6))
+    c = d[d.dwell_mean_min == 42]
+    offs = dict(zip(DWELL_ARMS, [-0.03, -0.01, 0.01, 0.03]))
+    for arm in DWELL_ARMS:
+        g = c[c.algorithm == arm].sort_values("level")
+        if not len(g):
+            continue
+        x = g.level.replace(DWELL_X) * (1 + offs[arm])
+        sty = style_for(arm)
+        kw = dict(fmt=sty["marker"] + "-", color=sty["color"], markeredgecolor="black", capsize=3, linewidth=1.5,
+                  label=_dwell_label(arm))
+        axes[0].errorbar(x, 100 * g.dns_lower_mean, yerr=[100 * (g.dns_lower_mean - g.dns_lower_ci_low),
+                                                          100 * (g.dns_lower_ci_high - g.dns_lower_mean)], **kw)
+        axes[1].errorbar(x, g.peak_kw_p95, yerr=[g.peak_kw_p95 - g.peak_kw_p95_ci_low,
+                                                 g.peak_kw_p95_ci_high - g.peak_kw_p95], **kw)
+    axes[0].plot(dutch.level.replace(DWELL_X), 100 * dutch.dns_lower_mean, color="0.55", linestyle="--", marker="s",
+                 markersize=4, label="Round Robin under EV2Gym's Dutch durations (closure run)")
+    for m, ls in [(32, ":"), (42, "-"), (78, "-.")]:
+        for arm in ["RoundRobin", "RoundRobin_TransformerCapped"]:
+            g = d[(d.dwell_mean_min == m) & (d.algorithm == arm)].sort_values("level")
+            if len(g):
+                axes[2].plot(g.level.replace(DWELL_X), 100 * g.dns_lower_mean, linestyle=ls,
+                             marker=style_for(arm)["marker"], color=style_for(arm)["color"], markeredgecolor="black",
+                             markersize=5, linewidth=1.5,
+                             label=("Round Robin, capped" if arm.endswith("Capped") else "Round Robin (EV2Gym)")
+                             + f", {m} min")
+    for ax in (axes[0], axes[2]):
+        ax.axhline(15, color="0.2", linestyle=":", linewidth=1.3)
+        ax.text(5.2, 15.5, "15% target", fontsize=8, ha="right", va="bottom", color="0.2")
+        ax.set_ylabel("Demand not served, lower bound (% of requested energy)")
+        ax.set_ylim(0, 100)
+    axes[1].axhline(100, color="0.2", linestyle=":", linewidth=1.3)
+    axes[1].text(5.2, 103, "100 kW transformer", fontsize=8, ha="right", va="bottom", color="0.2")
+    axes[1].set_ylabel("95th-percentile per-seed peak station power (kW)")
+    titles = ["Demand not served, 42-min sessions", "Peak station power, 42-min sessions",
+              "Round Robin bracket: 32 / 42 / 78 min"]
+    for ax, t in zip(axes, titles):
+        ax.set_xscale("log")
+        ax.set_xticks([0.2667, 0.5, 1.0, 1.6, 2.5, 5.0])
+        ax.set_xticklabels(["0.267", "0.5", "1.0", "1.6", "2.5", "5.0"])
+        ax.minorticks_off()
+        ax.set_xlabel("Demand level (multiple of the Week 1 spawn multiplier, log scale)")
+        ax.set_title(t, fontsize=10)
+        _clean(ax)
+    axes[0].legend(fontsize=7.5, frameon=False, loc="upper right")
+    axes[2].legend(fontsize=7.5, frameon=False, loc="upper right")
+    fig.suptitle("8 ports, 100 kW, DC session durations: demand not served and peak power by demand level\n"
+                 "Point = mean (left, right) or P95 over 50 seeds (middle); bar = 95% CI, cluster bootstrap over 50 "
+                 "scenario seeds", fontsize=10)
+    fig.tight_layout(rect=[0, 0, 1, 0.9])
+    _save(fig, "f23_dc_capacity_threshold")
+    write_caption(
+        "f23_dc_capacity_threshold",
+        what_it_shows=(
+            "Final capacity brief C1 under the DC session model (primary). Left and middle: 42-minute sessions, four arms. "
+            "Right: demand not served for EV2Gym's Round Robin and the transformer-capped diagnostic at 32, 42 and 78 "
+            "minutes. EV2Gym's Round Robin charges ceil(setpoint / port power) EVs, and the setpoint is median-smoothed "
+            "over 5 steps, which erases short-session spikes: it under-delivers and still exceeds 100 kW where spikes "
+            "survive. The capped diagnostic (same allocation, budget = 0.999 x rating) never exceeds 100 kW by "
+            "construction. The final RL model was trained on Dutch durations and is out of its training distribution. "
+            "Grey dashed: the closure (Dutch-duration) Round Robin, now a declared sensitivity. Source: "
+            "results/dwell_c1_capacity_by_level.csv."),
+        n_runs=int(d.n_runs.sum()), configs=["station_v0_bogota_dc{32,42,78}_sp{8..150}"],
+        algorithms=[_dwell_label(a) for a in DWELL_ARMS])
+
+
+def make_f24_growth_configs():
+    """Dwell brief C2: which (ports, transformer) configurations meet all
+    three criteria at 1.3x and 1.6x, per arm (constant station demand)."""
+    import pandas as pd
+    from matplotlib.colors import LinearSegmentedColormap
+    c = pd.read_csv("results/dwell_c2_growth_options.csv")
+    arms = [a for a in ["RoundRobin", "RoundRobin_TransformerCapped", "ChargeAsFastAsPossible"] if a in set(c.algorithm)]
+    fig, axes = plt.subplots(len(arms), 2, figsize=(12, 3.6 * len(arms)), squeeze=False)
+    cmap = LinearSegmentedColormap.from_list("dns", ["#f7fbff", "#6baed6", "#08306b"])
+    kws = sorted(c.transformer_kw.unique())
+    ports = sorted(c.ports.unique())
+    names = {"broken_dns": "DNS", "broken_peak": "peak", "broken_satisfaction": "sat."}
+    for i, arm in enumerate(arms):
+        for j, lvl in enumerate([1.3, 1.6]):
+            ax = axes[i][j]
+            g = c[(c.algorithm == arm) & (c.level == lvl)]
+            grid = np.full((len(ports), len(kws)), np.nan)
+            for _, r in g.iterrows():
+                grid[ports.index(r.ports), kws.index(r.transformer_kw)] = 100 * r.dns_lower_ci_high
+            ax.imshow(grid, cmap=cmap, vmin=0, vmax=60, aspect="auto", origin="lower")
+            for _, r in g.iterrows():
+                y, x = ports.index(r.ports), kws.index(r.transformer_kw)
+                ok = bool(r.meets_all)
+                why = [names[k] for k in names if bool(r[k])]
+                txt = f"{100 * r.dns_lower_mean:.1f}%\n" + ("meets all" if ok else "fails: " + ",".join(why))
+                ax.text(x, y, txt, ha="center", va="center", fontsize=7,
+                        color="white" if 100 * r.dns_lower_ci_high > 35 else "black",
+                        fontweight="bold" if ok else "normal")
+                if ok:
+                    ax.add_patch(plt.Rectangle((x - 0.5, y - 0.5), 1, 1, fill=False, edgecolor="#2ca02c", linewidth=2.5))
+            ax.set_xticks(range(len(kws)))
+            ax.set_xticklabels([{100.0: "100 kW\n(ref.)", 134.2: "150 kVA", 201.2: "225 kVA", 268.3: "300 kVA",
+                                 357.8: "400 kVA"}.get(k, f"{k:g}") for k in kws], fontsize=8)
+            ax.set_yticks(range(len(ports)))
+            ax.set_yticklabels(ports, fontsize=8)
+            ax.set_ylabel("Charging ports")
+            ax.set_title(f"{_dwell_label(arm)}, {lvl:g}x", fontsize=9.5)
+    fig.suptitle("Growth scenario, 42-min DC sessions, constant station demand: mean demand not served per configuration\n"
+                 "Cell colour = 95% CI upper bound of demand not served (0-60%); green frame = meets all three criteria "
+                 "(n_clusters = 50)", fontsize=10)
+    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    _save(fig, "f24_growth_configs")
+    write_caption(
+        "f24_growth_configs",
+        what_it_shows=(
+            "Final capacity brief C2 at 1.3x and 1.6x, 42-minute DC sessions, ports scaled at constant station demand "
+            "(spawn multiplier x 8/ports). Criteria: satisfaction counting rejected arrivals (CI low >= 90%), demand not "
+            "served (CI high <= 15%), P95 peak (CI high <= the candidate's own rating in kW at pf 0.894). Transformer "
+            "ratings are Enel ET-013 classes; 100 kW is the reference unit. AFAP and the capped Round Robin are labelled "
+            "additions; the RL model is tied to 8 ports and excluded. Source: results/dwell_c2_growth_options.csv."),
+        n_runs=int(c.n_runs.sum()), configs=["station_v0_bogota_dc42_sp{39,48}[_p{10..16}_cd]_tx{100..357.8}"],
+        algorithms=[_dwell_label(a) for a in arms])
+# doc:end dwell_figures
+
+
 def _save(fig, name):
     os.makedirs(FIGURES_DIR, exist_ok=True)
     fig.savefig(f"{FIGURES_DIR}/{name}.png", dpi=300)
@@ -1770,7 +1954,9 @@ if __name__ == "__main__":
                 "f14": make_f14_all_models_comparison, "f15": make_f15_grid_growth,
                 "f16": make_f16_transformer_sizing, "f17": make_f17_voltage_attribution,
                 "f18": make_f18_two_city_margin, "f19": make_f19_capacity_threshold,
-                "f20": make_f20_port_options, "f21": make_f21_city_cost}
+                "f20": make_f20_port_options, "f21": make_f21_city_cost,
+                "f22": make_f22_session_duration, "f23": make_f23_dc_capacity_threshold,
+                "f24": make_f24_growth_configs}
         for _fid in _only.split(","):
             _fns[_fid.strip()]()
         raise SystemExit(0)
@@ -1799,5 +1985,8 @@ if __name__ == "__main__":
     make_f19_capacity_threshold()
     make_f20_port_options()
     make_f21_city_cost()
+    make_f22_session_duration()
+    make_f23_dc_capacity_threshold()
+    make_f24_growth_configs()
 
     print("\nAll figures regenerated.")

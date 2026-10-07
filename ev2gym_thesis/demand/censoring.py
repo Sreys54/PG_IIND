@@ -57,6 +57,11 @@ import ev2gym.utilities.loaders as _loaders
 
 _ORIGINAL_EV_SPAWNER = _loaders.EV_spawner
 LAST = {}
+# The spawner the replay wraps: the library's by default, or whatever was
+# installed before enable() (final capacity brief: the DC session-duration
+# transform, ev2gym_thesis/demand/dc_sessions.py, which must be enabled
+# first). Added 2026-10-06; behaviour without the transform is unchanged.
+_INNER = {"spawner": _ORIGINAL_EV_SPAWNER}
 
 
 # doc:begin censoring_reconstruction
@@ -119,7 +124,7 @@ def _reconstruct(env, arrival_probabilities, evs):
 
 def _capturing_spawner(env):
     snap = np.random.get_state()
-    evs = _ORIGINAL_EV_SPAWNER(env)
+    evs = _INNER["spawner"](env)
     post = np.random.get_state()
     np.random.set_state(snap)
     ap = np.random.rand(env.number_of_ports, env.simulation_length)
@@ -129,11 +134,14 @@ def _capturing_spawner(env):
 
 
 def enable():
+    if _loaders.EV_spawner is not _capturing_spawner:
+        _INNER["spawner"] = _loaders.EV_spawner
     _loaders.EV_spawner = _capturing_spawner
 
 
 def disable():
-    _loaders.EV_spawner = _ORIGINAL_EV_SPAWNER
+    _loaders.EV_spawner = _INNER["spawner"]
+    _INNER["spawner"] = _ORIGINAL_EV_SPAWNER
 
 
 # doc:begin scenario_demand

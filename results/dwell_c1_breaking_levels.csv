@@ -1,0 +1,9 @@
+dwell_mean_min,algorithm,levels_tested,lowest_level_tested,first_level_broken_satisfaction,first_level_broken_dns,first_level_broken_peak,breaking_level,breaking_level_label,highest_level_not_broken,breaks_at_lowest_level_tested,criteria_broken_at_breaking_level,first_criterion,value,ci_low,ci_high,confirmed_one_level_beyond,n_clusters
+32.0,RoundRobin,"0.25,0.5,0.75,1,1.3,1.6,2,2.5,3,4,5",0.25,0.25,0.25,0.25,0.25,0.267x (spawn 8),,True,satisfaction;dns;peak,satisfaction,0.8445028555101005,0.8329156630276116,0.8558868192181118,True,50
+32.0,RoundRobin_TransformerCapped,"0.25,0.5,0.75,1,1.3,1.6,2,2.5,3,4,5",0.25,1.6,1.6,,1.6,1.6x,1.3,False,satisfaction;dns,satisfaction,0.9055352925329029,0.8927679636497959,0.9174438739680614,True,50
+42.0,ChargeAsFastAsPossible,"0.25,0.5,0.75,1,1.3,1.6,2,2.5,3,4,5",0.25,1.6,2.0,0.25,0.25,0.267x (spawn 8),,True,peak,peak,145.95781130785832,126.88071726867587,159.87750498205992,True,50
+42.0,RoundRobin,"0.25,0.5,0.75,1,1.3,1.6,2,2.5,3,4,5",0.25,0.25,0.25,0.25,0.25,0.267x (spawn 8),,True,satisfaction;dns;peak,satisfaction,0.8919541721211002,0.8808019368383895,0.9023698552592639,True,50
+42.0,RoundRobin_TransformerCapped,"0.25,0.5,0.75,1,1.3,1.6,2,2.5,3,4,5",0.25,1.6,1.6,,1.6,1.6x,1.3,False,satisfaction;dns,satisfaction,0.8861097316292844,0.8715599558252268,0.8998990212742837,True,50
+42.0,TD3_vanilla_extended_ts102,"0.25,0.5,0.75,1,1.3,1.6,2,2.5,3,4,5",0.25,1.3,0.25,0.25,0.25,0.267x (spawn 8),,True,dns;peak,dns,0.3309843769866246,0.30129407428994626,0.36145096869559823,True,50
+78.0,RoundRobin,"0.25,0.5,0.75,1,1.3,1.6,2,2.5,3,4,5",0.25,1.3,0.25,0.25,0.25,0.267x (spawn 8),,True,dns;peak,dns,0.1454443572351727,0.11834772488273343,0.17417908014998584,True,50
+78.0,RoundRobin_TransformerCapped,"0.25,0.5,0.75,1,1.3,1.6,2,2.5,3,4,5",0.25,1.3,1.6,,1.3,1.3x,1.0,False,satisfaction,satisfaction,0.8794718455583473,0.8614237798655388,0.8965290715102607,True,50

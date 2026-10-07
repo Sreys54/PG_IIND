@@ -1,0 +1,5 @@
+# git status at start of Final Capacity Brief (dwell) run
+# captured: 2026-10-06 22:02 Bogota (UTC-5)
+# branch: semana-7  HEAD: 942122a
+?? thesis_docs/dwell_baseline_status.txt
+# (empty above = clean tree)

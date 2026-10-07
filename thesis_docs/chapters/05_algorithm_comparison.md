@@ -11,6 +11,19 @@
 > control, the recommended-strategy matrix) are written during Part B, per
 > `PROJECT_ROADMAP.md`'s Week 5 entry and the Week 5 brief's section 19.
 
+
+*[Dated note 2026-10-07, final capacity brief.] The algorithm comparison in
+this chapter (Weeks 1–5) used EV2Gym's Dutch public-charging session
+durations, with a mean connection of 300.6 min and no session shorter than
+225 min (06 S6.6.1). Those durations are inconsistent with DC fast charging.
+Per the brief, the comparison was **not rerun**.
+
+Its rankings describe long-dwell sessions. In particular, Round Robin's
+zero overload is a property of EV2Gym's power setpoint under long stays,
+not of a transformer-aware policy. Under 42-minute DC sessions, Round Robin
+exceeds 100 kW from the lowest demand tested (06 S6.6.4; 08 L7, items
+35 and 39).*
+
 ## S5.1 Colombian gross margin: what it does and does not measure
 
 ### The result

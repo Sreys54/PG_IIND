@@ -1,0 +1,6 @@
+{
+  "_comment": "Final capacity brief, diagnostic arm added after the first C1 results (EV2Gym's Round Robin follows the median-smoothed power setpoint, not the transformer): RoundRobin_TransformerCapped on the same C1 (42 min), C1rr (32/78 min) and C2 grids as dwell_main.json. Same configs, same seeds.",
+  "C1": {"mean": 42, "levels": [0.25, 0.5, 0.75, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0, 4.0, 5.0], "arms": ["RoundRobin_TransformerCapped"]},
+  "C1rr": {"means": [32, 78], "levels": [0.25, 0.5, 0.75, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0, 4.0, 5.0], "arms": ["RoundRobin_TransformerCapped"]},
+  "C2": {"mean": 42, "levels": [1.3, 1.6], "ports": [8, 10, 12, 14, 16], "kw": [100.0, 134.2, 201.2, 268.3, 357.8], "arms": ["RoundRobin_TransformerCapped"]}
+}

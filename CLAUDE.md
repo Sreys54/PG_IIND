@@ -550,6 +550,50 @@ Standing facts (do not lose them):
 - **Laptop limits.** At most 2 parallel EV2Gym workers. Three workers plus
   the test suite overloaded the machine.
 
+**Update, 2026-10-07: Final capacity brief (DC session duration and growth
+scenario). Branch `semana-7`, uncommitted: the user commits.** The decision
+log is the dwell section at the top of `thesis_docs/overnight_report.md`.
+The handback is
+`thesis_docs/Dwell_Capacity_Parameter_Method_and_Implementation_Justification.{md,docx}`.
+
+Standing facts (do not lose them):
+- **EV2Gym's sessions are Dutch AC sessions, not DC.**
+  - Durations come from the ElaadNL `public` column of
+    `mean-session-length-per.csv`, floored at `min_time_of_stay` = 200 min,
+    plus 2 steps.
+  - The simulated mean is 300.6 min; no session is under 225 min.
+  - Every Weeks 1–7 and closure result uses these durations. The closure
+    capacity results are now a declared sensitivity.
+- **The DC session model is primary for capacity.**
+  - `ev2gym_thesis/demand/dc_sessions.py` is a lognormal, mean 42 min, CV
+    0.5, with a 32/78 min bracket. These are external references, not
+    Colombian (U.S. DOE 2023; Hardman 2026).
+  - The transform rewrites departures inside EV2Gym's spawner, from outside
+    the library. Its parameters live in a `<config>.dwell.json` sidecar,
+    never a YAML key.
+  - Enable it BEFORE `censoring.enable()`.
+- **EV2Gym's RoundRobin follows the median-smoothed power setpoint, never
+  the transformer** (`heuristics.py`, lines 58–77).
+  - Its zero overload in Weeks 1–7 is a long-stay artefact.
+  - Under DC sessions it fails at every demand level.
+  - `ev2gym_thesis/heuristics.py::RoundRobinTransformerCapped` is a
+    DIAGNOSTIC arm: the same allocation, with a budget of 0.999 × rating.
+- **Results:**
+  - Runs are in `results/dwell_registry.csv` (23,200 rows, master schema).
+    `master_results.csv` was NOT touched; its pins are unchanged.
+  - The binding constraint under DC is power, not ports.
+  - The capped Round Robin holds through 1.3×, which is 47 offered
+    arrivals/day (763 kWh/day), on 8 ports and the 100 kW unit. At 1.6×
+    (57/day, 911 kWh/day) it needs 10 ports.
+  - The closure's 34.6% DNS was largely a duration artefact.
+- **The demand multiplier is not comparable across session models.** Use
+  physical units (`results/dwell_d_physical_units.csv`). At 1.0×: Dutch
+  22.3 arrivals and 327 kWh/day; DC 42 min, 38.9 arrivals and 627 kWh/day.
+- **The final RL model is out of its training distribution under DC
+  sessions.** Never present its DC results as RL evidence.
+- **Enel Unicentro Bogotá serves up to 10 vehicles simultaneously** (Blu
+  Radio 2026). The "8 ports exceed any Enel site" limitation is withdrawn.
+
 ## Useful Commands (reference, don't re-derive these each time)
 
 ```bash

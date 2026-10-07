@@ -120,6 +120,14 @@ currently combines 8 ports with 50 kW DC capability at a single location;
 charging at the CCS2 standard Enel's own network already uses elsewhere,
 not as a snapshot of any single site today.
 
+*Update (2026-10-07, final capacity brief).* The statement that no Enel
+site combines 8 ports with DC fast charging no longer holds: Enel's
+upgraded Unicentro Bogotá site serves up to 10 vehicles simultaneously,
+with eight 30 kW hoses and two of up to 75 kW (Blu Radio, 2026; saved in
+`thesis_docs/sources/dwell_sessions/`). The 8-port count is therefore
+within what Enel already deploys at one site. The uniform 50 kW per port
+remains a modelling assumption (08, item 42).
+
 ## 1.2 Simulation Setup
 
 - Config: `experiments/phase1_baseline/configs/station_v0_bogota.yaml`

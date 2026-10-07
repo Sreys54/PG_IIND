@@ -1,4 +1,4 @@
-# Chapter 8 — Consolidated Limitations (Weeks 1–7)
+# Chapter 8 — Consolidated Limitations (Weeks 1–7 and final capacity brief)
 
 This chapter is the single list of the thesis's declared limitations, for
 the final document. **Labelled assumption (2026-10-05):** no consolidated
@@ -17,6 +17,9 @@ items marked **[corrected]** replace an earlier statement that was wrong.
    transformer (4:1 oversubscription). Its port count is grounded in the
    Enel X inventory, but the DC hardware is a modelling assumption
    (01 §1.4). The guidelines are about this design and are not general.
+   *[corrected 2026-10-07, final capacity brief]* An 8-port site is not
+   larger than what Enel deploys: Enel's upgraded Unicentro Bogotá site
+   serves up to 10 vehicles simultaneously (Blu Radio, 2026; item 42).
 3. **Fleet specification.** The fleet is homogeneous, with 70 kWh
    batteries. **[W7, corrected]** Some documents state 60 kWh: the Week 1
    Word handback, the external Progress Log and §8.1.4 of the corrected
@@ -202,3 +205,101 @@ items marked **[corrected]** replace an earlier statement that was wrong.
     there, as the brief scopes the rerun to AFAP and RR. The ±5% result on
     node_123 (met by both, with a 0.022 p.u. margin) concerns a test
     network, not a Colombian feeder (06, Guideline 3).
+
+## L7. Session duration and the DC capacity model [final capacity brief, 2026-10-06]
+
+35. **Weeks 1–7 used Dutch AC session durations.** EV2Gym draws each
+    connection from the `public` column of
+    `ev2gym/data/mean-session-length-per.csv`. That is ElaadNL data on Dutch
+    public charging, with means of 2.8–12.5 h by arrival time
+    (`utils.py::spawn_single_EV`, lines 232–240). Each draw is floored at
+    `min_time_of_stay` = 200 min and has 2 steps added (lines 251–252 and
+    336–338). The spawner never reads the charger's power or type.
+    - The simulated mean is **300.6 min [296.5, 304.7]**, and no session is
+      shorter than 225 min. That is 7.2 times the 42-minute paid DC
+      reference (results/dwell_a_session_summary.csv; Checkpoint A).
+    - **The Weeks 1–5 algorithm comparison (05) and the Week 7 and closure
+      capacity results (06, Guideline 2 and C3) all rest on these
+      durations.** They were not rerun. The closure's capacity results are
+      kept as a declared sensitivity, and the capacity guideline now uses
+      the DC model (06 S6.6).
+36. **The DC session duration is an external reference, not Colombian
+    data.** The central value is 42 min, the mean of 1,412,050 paid US DC
+    sessions, 2020–2023, excluding Tesla (U.S. Department of Energy [DOE],
+    2023). The bracket is:
+    - low, 32 min: self-reported, California (Hardman, 2026);
+    - high, 78 min: free US sessions (U.S. DOE, 2023).
+
+    The CV of 0.5 is a labelled assumption, supported by the survey's
+    per-activity SDs (Hardman, 2026, Supplemental Information, Table 3).
+    Enel publishes no per-session statistics. Its own figures are
+    statements, not distributions: 50% in 25–30 min and full in a little
+    over an hour at Unicentro (Blu Radio, 2026), and about 1 h 30 min to
+    100% (Enel Colombia, 2024). That last page could not be saved; it was
+    bot-blocked and the Internet Archive was offline. The US fleet and
+    charger mix differ from Bogotá's.
+37. **Energy per session is not rescaled.** EV2Gym's energy requested comes
+    from the Dutch per-arrival demand table (12.3–21.6 kWh means), drawn as
+    Normal(e, 0.5e). The homogeneous 70 kWh battery only caps it and sets
+    the arrival state of charge. The simulated mean is 15.0 kWh (Dutch,
+    1.0×) and 16.1 kWh (DC, 42 min). That is 27–32% below the 22.0 kWh paid
+    DC reference (U.S. DOE, 2023), so DC demand per session is understated.
+38. **How the DC model is applied.** The transform
+    (`ev2gym_thesis/demand/dc_sessions.py`) rewrites departures inside
+    EV2Gym's spawner, from outside the library:
+    - arrivals that the Dutch population already had keep their energy
+      bitwise;
+    - arrivals that exist only because ports now free up draw their energy
+      from the library under a keyed RNG.
+
+    Three properties of the simulator remain:
+    - **15-minute resolution.** A 42-minute session is simulated as 3 steps
+      (45 min), a ±7.5-minute resolution (±18%). At 32 minutes, 29% of
+      sessions are a single step.
+    - **A 3-step port cooldown.** A port takes a new arrival only after 3
+      free steps (45 min; `utils.py`, lines 534–536). This is kept as the
+      library's behaviour. It is conservative, because it overstates the
+      ports needed.
+    - **The setpoint guard.** For 1-step sessions only, the power setpoint
+      is computed as if the session lasted 2 steps, to avoid a library
+      crash. This affects the tracking target and EV2Gym's Round Robin.
+39. **EV2Gym's Round Robin follows the power setpoint, not the
+    transformer.** It charges ceil(setpoint / port power) EVs
+    (`heuristics.py`, lines 58–77). The setpoint is each EV's requested
+    energy × 1.8, spread over its stay and median-smoothed over 5 steps.
+    - **Under Dutch durations** the setpoint stays below 100 kW. That is
+      why Round Robin showed zero overload in Weeks 1–7, and why it
+      delivered almost all the energy.
+    - **Under DC durations** the median filter erases short-session spikes,
+      so Round Robin under-delivers and still overloads (06 S6.6).
+    - **The Weeks 1–7 statement "Round Robin keeps the 100 kW transformer
+      within its rating" is therefore conditional on long stays.** It is a
+      property of the setpoint, not of a transformer-aware policy.
+    - The diagnostic `RoundRobin_TransformerCapped`
+      (`ev2gym_thesis/heuristics.py`) is the same allocation with the
+      rating as its budget. It was added by this brief and was not part of
+      the Weeks 1–7 comparison.
+40. **The final RL model is out of its training distribution under DC
+    durations.** It was trained on Dutch durations. It was evaluated under
+    the transform without retraining, and every row is labelled
+    `out_of_training_distribution=dc_session_durations`. Its DC results
+    are not evidence about RL under DC charging.
+41. **The demand multiplier is not comparable across session models.**
+    EV2Gym's arrivals are drawn per port, and blocked draws are lost. The
+    same `spawn_multiplier` therefore offers a different number of
+    arrivals under long and short stays. At 1.0× that is 22.3 arrivals and
+    327 kWh/day (Dutch) against 38.9 arrivals and 627 kWh/day (DC, 42 min)
+    (`results/dwell_d_physical_units.csv`). For this reason every
+    threshold is stated in physical units (06 S6.6; 07 S7.4).
+42. **[corrected] Site size.** The earlier limitation was that an 8-port DC
+    site exceeds anything Enel deploys. It no longer holds. Enel's
+    upgraded Unicentro Bogotá site serves up to 10 vehicles
+    simultaneously, with eight 30 kW hoses and two of up to 75 kW (Blu
+    Radio, 2026). What remains an assumption is the uniform 50 kW per port,
+    not the port count (01 §1.1).
+
+**References for L7 (APA 7).**
+- Blu Radio. (2026, May 13). *Conductores en Bogotá podrán cargar hasta el 50 % de batería de su carro eléctrico en menos tiempo* (C. Durán, Author). https://www.bluradio.com/motor/conductores-en-boogta-podran-cargar-hasta-el-50-de-bateria-de-su-carro-electrico-en-menos-tiempo-so35
+- Enel Colombia. (2024, May). *Avances en infraestructura de recarga de vehículos eléctricos.* https://www.enel.com.co/es/historias/archive/2024/05/infraestructura-de-recarga-de-vehiculos-electricos.html
+- Hardman, S. (2026). Exploring electric vehicle driver activities and expenditure while using DC fast chargers. *Findings.* https://doi.org/10.32866/001c.162484
+- U.S. Department of Energy, Vehicle Technologies Office. (2023, December 4). *FOTW #1319: EV charging at paid DC fast charging stations average 42 minutes per session* [Fact of the Week]. https://www.energy.gov/cmei/vehicles/articles/fotw-1319-december-4-2023-ev-charging-paid-dc-fast-charging-stations-average

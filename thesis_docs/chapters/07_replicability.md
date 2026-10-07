@@ -195,6 +195,8 @@ They remain valid as checks that the code implements the economics.
 
 ## S7.4 Demand transfer
 
+*[Dated note 2026-10-07, final capacity brief.] This section states demand as a multiple of EV2Gym's spawn multiplier, under Dutch session durations. That multiple is not a physical quantity: the same multiplier offers 22.3 arrivals/day under Dutch durations and 38.9 under 42-minute DC sessions. The transfer rule is now stated in physical units in S7.10.*
+
 The question is whether the Medellín station should be mapped onto a
 different point of the Objective 4 demand axis (Axis 1, 1.0–1.6×). The
 evidence found:
@@ -363,6 +365,8 @@ Two consequences follow:
 
 ## S7.8 Lower demand (closure brief D3)
 
+*[Dated note 2026-10-07, final capacity brief.] This section states demand as a multiple of EV2Gym's spawn multiplier, under Dutch session durations. That multiple is not a physical quantity: the same multiplier offers 22.3 arrivals/day under Dutch durations and 38.9 under 42-minute DC sessions. The transfer rule is now stated in physical units in S7.10.*
+
 The closure runs at 0.5× and 0.733× the Week 1 demand (06 S6.4; the
 spawn multiplier 22 gives 0.733×, not 0.75×) answer S7.4's open question
 directly. They replace the proposed 0.4/0.7/0.9× runs, which were not run.
@@ -451,3 +455,47 @@ Replicating the study in a second city is therefore immediate for the
 economic layer and conditional, not established, for the physical layer.
 The binding gaps are a Colombian charging-session dataset and a
 per-station demand figure, not the tariff.
+
+## S7.10 Demand transfer in physical units (final capacity brief, 2026-10-07)
+
+This section replaces the closure's D3 statement ("below 0.733× the
+guideline holds"), which was expressed in multiples of the Week 1 spawn
+multiplier under Dutch session durations. A multiple is meaningful only
+against EV2Gym's reverse-engineered `spawn_multiplier`, and it is not even
+stable within the simulator. EV2Gym draws arrivals per port and drops the
+draws that land on occupied ports, so the same multiplier offers a different
+number of arrivals under different session lengths. At 1.0×:
+- **Dutch durations:** 22.3 arrivals and 327 kWh per day;
+- **42-minute DC sessions:** 38.9 arrivals and 627 kWh per day
+
+(`results/dwell_d_physical_units.csv`; arrivals offered = spawned plus
+rejected, lower bound; energy = spawned EVs' requested energy plus the
+rejected arrivals' mean requested energy).
+
+**Transfer rule.** Another city, or another site, applies the guideline
+from its own **arrivals per day and kWh requested per day** at the station,
+not from a multiplier. Under 42-minute DC sessions and the transformer-capped
+round-robin load manager (06 S6.6.6):
+
+| Station's own demand | Configuration that meets all three criteria | Evidence (n_clusters = 50) |
+|---|---|---|
+| ≤ 47 arrivals/day, ≤ 763 kWh/day (≤ 95 kWh per port per day) | 8 ports, 112.5 kVA (the 100 kW unit) | DNS 9.0% (CI high 10.2%) at 47.3 arrivals/day |
+| ≤ 57 arrivals/day, ≤ 911 kWh/day | 10 ports, same unit | DNS 9.0% (CI high 9.9%) at 56.5 arrivals/day |
+| 57 arrivals/day, without a rating-aware manager | 10 ports and 300 kVA (unmanaged charging) | DNS 3.2%, P95 peak 237.6 kW (CI high 258.2) |
+
+**How a city uses it.** The city takes its station's arrivals per day from
+operator records and reads the row. If its sessions are longer (the
+78-minute bracket), the 8-port limit falls to about 35 arrivals/day
+(556 kWh/day).
+
+**No Colombian city is placed on this axis.** No source gives arrivals per
+station per day for Bogotá, Medellín or the other four categoría especial
+cities (S7.4, S7.8). Enel's Unicentro site, sized for up to 10 simultaneous
+vehicles (Blu Radio, 2026), gives a site size, not a demand.
+
+### References for S7.10 (APA 7)
+
+- Blu Radio. (2026, May 13). *Conductores en Bogotá podrán cargar hasta el 50 % de batería de su carro eléctrico en menos tiempo* (C. Durán, Author). https://www.bluradio.com/motor/conductores-en-boogta-podran-cargar-hasta-el-50-de-bateria-de-su-carro-electrico-en-menos-tiempo-so35
+- Enel Colombia. (2024, May). *Avances en infraestructura de recarga de vehículos eléctricos.* https://www.enel.com.co/es/historias/archive/2024/05/infraestructura-de-recarga-de-vehiculos-electricos.html
+- Hardman, S. (2026). Exploring electric vehicle driver activities and expenditure while using DC fast chargers. *Findings.* https://doi.org/10.32866/001c.162484
+- U.S. Department of Energy, Vehicle Technologies Office. (2023, December 4). *FOTW #1319: EV charging at paid DC fast charging stations average 42 minutes per session* [Fact of the Week]. https://www.energy.gov/cmei/vehicles/articles/fotw-1319-december-4-2023-ev-charging-paid-dc-fast-charging-stations-average

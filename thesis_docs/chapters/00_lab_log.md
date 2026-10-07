@@ -1,5 +1,244 @@
 # Lab Log
 
+## 2026-10-07 02:15 (UTC−5) — Final capacity brief completed; nothing committed (branch `semana-7`)
+
+All parts done; no hard stop. The rules that fired, the duration table, the 42-minute justification, the thresholds in multipliers and physical units, the minimal growth configurations, the final compliance table, the test summary (154 tests; 1 failure in a new test's arbitrary coverage bound, fixed; `test_dwell` 15/15 OK on rerun) and the grouped commit plan are at the top of `thesis_docs/overnight_report.md`. The Enel Colombia (2024) page could not be saved: bot-blocked, and the Internet Archive was offline. It is cited from the brief's details.
+
+## 2026-10-07 01:25 (UTC−5) — Final capacity brief, CHECKPOINT C: thresholds and growth scenario under DC sessions (branch `semana-7`)
+
+**Runs.** 23,200 runs over 81 configs, 50 seeds × 2 days per (config, arm),
+with 2 detached workers (the laptop limit). Outputs are in
+`results/dwell_registry.csv` (master schema) and the policy-independent
+replay in `results/dwell_censoring_by_cell.csv`.
+- **Main plan** (15,100 runs, 01:58 h):
+  - C1: AFAP, Round Robin and the final RL model at 42 min, 11 levels from
+    0.267× to 5.0×;
+  - C1rr: Round Robin at 32 and 78 min;
+  - C2: Round Robin, plus AFAP as a labelled addition, at 1.3× and 1.6×,
+    with ports 8–16 at constant station demand × transformer 100 kW /
+    150 / 225 / 300 / 400 kVA (ET-013 classes at pf 0.894).
+- **Diagnostic plan** (8,100 runs, 0:38 h): `RoundRobin_TransformerCapped`
+  on the same C1, C1rr and C2 grids. It was added after C1 showed the
+  setpoint coupling (labelled judgement call, below).
+- `results/master_results.csv` was not opened for writing.
+
+**Timing rule** ("if Parts B + C exceed 8 h, cut the 32/78 repeats
+first"): Parts B + C took about 2.6 h of wall clock, so the rule did not
+fire. Nothing was cut.
+
+**Finding 1: EV2Gym's Round Robin follows the power setpoint, not the
+transformer.** `heuristics.py`, lines 58–77, charges
+ceil(setpoint / port power) EVs. The setpoint is each EV's requested
+energy × 1.8, spread over [arrival + 1, departure) and median-smoothed over
+5 steps (`utils.py::generate_power_setpoints`). It never reads the
+transformer limit.
+- With 5-hour stays the setpoint is smooth and below 100 kW, which is the
+  only reason Round Robin showed zero overload in Weeks 1–7.
+- With DC sessions the median filter erases isolated spikes. On a 0.267×
+  cell, 434.5 kWh of raw setpoint became 169.7 kWh, against 241.4 kWh
+  requested, and 14 of 34 connected steps had a zero setpoint. Round Robin
+  therefore under-delivers, and still overloads where spikes survive.
+
+**Judgement call (conservative, labelled).** EV2Gym's Round Robin is
+reported as the brief's arm, first and unchanged. A **diagnostic**
+`RoundRobinTransformerCapped` (`ev2gym_thesis/heuristics.py`) was added. It
+uses the same allocation code, with the budget set to 0.999 × the rating
+instead of the setpoint. It separates "round-robin load management" from
+"EV2Gym's setpoint-coupled implementation". It was not in the Weeks 1–7
+comparison.
+
+**C1 thresholds, 8 ports, 100 kW, 42 min** (`results/dwell_c1_breaking_levels.csv`;
+CI side hardest to claim; n_clusters = 50):
+
+| Arm | Highest level meeting all three | Breaks at | Criteria broken there [95% CI] |
+|---|---|---|---|
+| Round Robin (EV2Gym) | **none tested** | 0.267× (lowest tested) | satisfaction counting rejected 89.2% [88.1, 90.2]; DNS 48.7% (CI high 53.0%); P95 peak 102.9 kW (CI high 122.8) |
+| AFAP | **none tested** | 0.267× | P95 peak 146.0 kW [126.9, 159.9]. DNS first breaks at 2.0×, satisfaction at 1.6× |
+| Final RL model (out of distribution) | **none tested** | 0.267× | DNS 33.1% [30.1, 36.1]; P95 peak 120.3 kW (CI high 146.4) |
+| **Round Robin, transformer-capped (diagnostic)** | **1.3×** | 1.6× | satisfaction counting rejected 88.6% [87.2, 90.0]; DNS 14.2% (CI high 15.7%). Peak never binds (99.9 kW by construction) |
+
+- The next level beyond the break also fails, for every arm (rule:
+  confirm one level beyond).
+- No threshold is claimed below 0.267×. EV2Gym's Round Robin has *higher*
+  DNS at lower demand (48.7% at 0.267× against 24.8% at 1.0×), because
+  sparse spikes are the ones the median filter removes.
+
+**Which constraint binds first.**
+- **Power (the transformer)**, for every arm that does not read the
+  rating. AFAP's peak is above 100 kW from 0.267×, while its DNS stays
+  ≤ 15% up to 1.6× (10.5%, CI high 11.8%).
+- **Ports and the energy throughput of the 100 kW unit**, only once power
+  is managed. For the capped Round Robin it is demand served, from 1.6×,
+  and adding 2 ports fixes it (C2).
+- This reverses the closure's Dutch-duration reading, under which the 8
+  ports bound first.
+
+**Bracket** (Round Robin threshold at 32 / 42 / 78 min):
+- EV2Gym's Round Robin: never meets at any of the three durations, so the
+  threshold does not move. At 78 min its DNS is ≤ 15% at 0.5–1.0×, but its
+  peak exceeds 100 kW.
+- The capped diagnostic: holds through 1.3× at 32 and at 42 min, and
+  through 1.0× at 78 min (breaks at 1.3×: satisfaction 87.95% [86.14, 89.65]).
+  The threshold moves by one tested level across the bracket.
+
+**C2, growth scenario, 42 min, constant station demand** (Pareto-minimal
+configurations meeting all three; `results/dwell_c2_minimal_configs.csv`):
+
+| Level | Round Robin (EV2Gym) | Round Robin, capped (diagnostic) | AFAP (labelled addition) |
+|---|---|---|---|
+| 1.3× | **none in the grid**. Best: 16 ports, 400 kVA, DNS 14.1% (CI high 15.4%) | **8 ports, 100 kW (reference)**: DNS 9.0% (CI high 10.2%), 0 overload, margin 403,586 COP/day [393,933, 413,810] | **8 ports, 300 kVA**: DNS 5.5% (CI high 6.5%), P95 226.7 kW (CI high 253.2), margin 419,622 [408,410, 431,338] |
+| 1.6× | **14 ports, 400 kVA**: DNS 13.1% (CI high 14.3%), P95 233.5 kW (CI high 279.6), margin 512,630 [496,839, 528,413] | **10 ports, 100 kW**: DNS 9.0% (CI high 9.9%), 0 overload, margin 483,951 [474,602, 493,444], +30,667 COP/day [22,008, 39,400] vs 8 ports | **10 ports, 300 kVA**: DNS 3.2% (CI high 3.9%), P95 237.6 kW (CI high 258.2), margin 515,102 [504,443, 525,948] |
+
+- With 8 ports at 1.6× the capped Round Robin fails on satisfaction under
+  every rating up to 400 kVA (88.0% CI low). The ports bind there.
+- EV2Gym's Round Robin behaves identically under every rating, because its
+  setpoint does not depend on the rating. Its configurations differ only in
+  overload.
+
+**Part D, physical units** (`results/dwell_d_physical_units.csv`;
+policy-independent; 8 ports unless stated):
+
+| Model, level | Offered arrivals/day [CI] | kWh requested/day [CI] | kWh/port/day | Mean port occupancy |
+|---|---|---|---|---|
+| DC 42, 0.267× | 13.9 [13.0, 14.7] | 222.6 [207.8, 237.6] | 27.8 | 5% |
+| DC 42, 1.0× | 38.9 [37.5, 40.3] | 627.2 [600.8, 654.9] | 78.4 | 14% |
+| DC 42, 1.3× | 47.3 [46.0, 48.6] | 762.6 [739.1, 788.5] | 95.3 | 17% |
+| DC 42, 1.6× | 56.6 [54.7, 58.5] | 910.7 [879.9, 942.5] | 113.8 | 19% |
+| DC 42, 1.6×, 10 ports, constant demand | 56.5 [55.4, 57.6] | 912.3 [890.7, 934.8] | 91.2 | 16% |
+| DC 32, 1.3× | 49.1 | 796.8 | 99.6 | 13% |
+| DC 78, 1.0× | 34.6 | 556.2 | 69.5 | 23% |
+| Dutch (EV2Gym as configured), 1.0× | 22.3 | 327.5 | 40.9 | 35% (Part A) |
+
+**Guideline sentences:**
+- "A station of 8 ports and 112.5 kVA (the 100 kW unit) under
+  transformer-capped Round Robin serves up to **47 arrivals/day
+  (763 kWh/day)** with demand not served ≤ 15% (9.0%, CI high 10.2%)."
+- "At 57 arrivals/day (911 kWh/day) it needs **10 ports** on the same
+  unit."
+- Under EV2Gym's Round Robin no 8-port configuration meets the criteria at
+  any demand.
+
+**Was the closure's 34.6% an artefact?** Largely, yes. At the same
+spawn multiplier (1.0×), DC sessions give:
+- 0.88 rejected arrivals/day instead of 8.90 (lower bound), and port
+  occupancy of 14% instead of 35%;
+- demand not served of 2.4% for AFAP (CI high 3.2%) and 5.0% for the
+  capped Round Robin (CI high 6.1%), against the closure's 34.3% / 34.6%.
+
+The station also faces more demand under DC sessions, not less: 38.9
+against 22.3 arrivals/day. The 34.6% came from 5-hour Dutch stays holding
+the 8 ports, not from a lack of ports for DC charging.
+
+**Hard stops:** none. No library file was edited, no registry row was
+touched, and Gurobi was not used.
+
+## 2026-10-06 22:25 (UTC−5) — Final capacity brief, CHECKPOINT A: session duration in the simulator (branch `semana-7`)
+
+**A.1 Source of the session data (read from source, no library file edited).**
+- **Connection duration.** `ev2gym/utilities/utils.py::spawn_single_EV`:
+  - lines 232–238: time of stay ~ Normal(m(h), 0.2·m(h)) hours, where m(h)
+    is the `public` column of `ev2gym/data/mean-session-length-per.csv`
+    (loaded by `loaders.load_ev_spawn_scenarios`, lines 67–89). The table
+    holds 48 half-hour arrival times, with means from 2.8 h to 12.5 h;
+  - line 240: converted to steps as h·60/15 + 1;
+  - lines 251–252: floored at `ev.min_time_of_stay` // 15 = 200 // 15 =
+    13 steps (EV2Gym example-config value, kept since Week 1);
+  - lines 336–338: `time_of_departure = int(stay + step + 3)` with
+    `time_of_arrival = step + 1`. A connection therefore lasts
+    int(stay) + 2 steps, and **never less than 15 steps (225 min)**.
+- **Energy requested** (lines 203–211): Normal(e(h), 0.5·e(h)) kWh, where
+  e(h) is the `public` column of `ev2gym/data/mean-demand-per-arrival.csv`
+  (12.3–21.6 kWh by arrival time). It is redrawn in [5, 10) kWh when below
+  5, and capped by the 70 kWh battery.
+- **Dataset.** ElaadNL open data on Dutch public charging (EV2Gym paper,
+  §III, ref. [24]).
+- **AC vs. DC.** There is no difference. The spawner never reads the
+  charger's power or type. The same table drives a 7 kW AC post and this
+  project's 50 kW ports.
+
+**A.2 Simulated sessions at 1.0×** (base config, 50 seeds × 2 days, every
+spawned EV; `results/dwell_a_session_summary.csv`; means with a cluster
+bootstrap over the seed, n_clusters = 50):
+
+| Quantity | Value |
+|---|---|
+| Connection duration, mean | **300.6 min [296.5, 304.7]** |
+| Connection duration, median / P10 / P90 | 270 / 225 / 420 min |
+| Connection duration, minimum / maximum | 225 / 645 min |
+| Energy requested, mean / median | 15.04 kWh [14.52, 15.59] / 14.04 kWh |
+| Arrivals per day, spawned (got a port) | 13.44 [13.07, 13.80] |
+| Arrivals per day, offered (spawned + rejected, lower bound) | 22.34 [20.57, 24.18] |
+| Rejected arrivals per day, lower / upper bound | 8.90 / 34.93 |
+| Late arrivals dropped by the horizon rule, per day | 11.21 |
+| Mean port occupancy over the day | 35.1% [33.9, 36.2] |
+
+**Timestep.** 15 min. A 42-minute session is 2.8 steps, so it is
+simulated as 3 steps (45 min). The resolution is ±7.5 min, which is ±18% of
+a 42-minute session. One more property of the simulator matters only for
+short sessions: a port takes a new arrival only after it has been free at
+t, t−1 and t−2 (utils.py lines 534–536). That means 3 idle steps (45 min)
+after each departure. With 5-hour stays this is negligible. With 3-step DC
+sessions it caps a port at one session per 6 steps. It is kept as the
+library's own behaviour, which is conservative because it overstates the
+ports needed, and is declared in chapter 08.
+
+**A.3 Simulated vs. reference** (`results/dwell_a_reference_comparison.csv`;
+the references are external and none is Colombian per-session data):
+
+| Source | Mean session | Energy per session | Simulated mean ÷ reference |
+|---|---|---|---|
+| **EV2Gym as configured (Dutch durations), 1.0×** | **300.6 min** | **15.0 kWh** | — |
+| Paid DC fast charging, US (U.S. DOE, 2023; 1,412,050 sessions) | 42 min | 22.0 kWh | 7.2× |
+| Free DC fast charging, US (same source; 957,265 sessions) | 78 min | 40.7 kWh | 3.9× |
+| California DCFC survey, self-reported (Hardman, 2026) | 32 min | — | 9.4× |
+| Enel Unicentro Bogotá, 50% charge (Blu Radio, 2026) | 25–30 min | — | 10.9× (midpoint) |
+| Enel Unicentro Bogotá, full charge (Blu Radio, 2026) | "a little over 1 h" | — | 5.0× (at 60 min) |
+| Enel Colombia (2024), average to 100% | about 90 min | — | 3.3× |
+
+**Decision rule, as written:** "If the simulated mean connection duration is
+above 90 minutes …, run Part B, and the DC-session model becomes the primary
+model for the capacity guideline. The original Dutch-duration results stay as
+a declared sensitivity. The Weeks 1–5 algorithm comparison is not rerun."
+
+**300.6 min > 90 min, so the rule fires.**
+- Part B runs.
+- The 42-minute DC model is primary for Parts C–D.
+- The closure (Dutch) capacity results become a declared sensitivity.
+- Chapters 05 and 08 will declare that Weeks 1–5 used Dutch durations.
+
+The shortest simulated session (225 min) is already 2.5× the slowest Enel
+figure. The rule would fire even on the minimum.
+
+**Corrections to the brief, from source:**
+1. **Energy per session.** The brief attributes the gap to "the model's
+   70 kWh homogeneous fleet". In fact the energy requested comes from the
+   Dutch per-arrival demand table. The 70 kWh battery only caps it and sets
+   the arrival SoC. The simulated 15.0 kWh is 32% below the 22.0 kWh
+   paid-DC reference. It is not rescaled; this is a declared limitation.
+2. **Enel 2024 page.** It could not be saved. The site serves a bot-check
+   page to curl and to the fetch tool, and the Internet Archive was offline.
+   It is cited with the brief's details, and the failure is noted in the lab
+   log and in `SOURCES_dwell.md`.
+3. **Findings per-activity durations.** The brief's "29.7–38.4 min, SD about
+   14–19" is not in the article text. It is in the article's Supplemental
+   Information, Table 3, which was saved. The three most-reported activities
+   are:
+   - stayed with the car: 29.65 min, SD 15.56;
+   - restroom: 30.70 min, SD 15.06;
+   - café, restaurant or bar: 38.39 min, SD 19.00.
+   This gives a CV of 0.49–0.52, which supports the CV of 0.5. Across all
+   activities, the means run from 29.65 to 45.33 min.
+
+**Part B is already implemented and checked on the 1.0× population** (one
+runner, used by C1–C2):
+- realised means at 1.0× are 32.22 / 42.73 / 79.36 min, within
+  +0.7% / +1.7% / +1.7% of the 32 / 42 / 78 min targets;
+- under 42 min, lower-bound rejections fall from 8.90 to 0.88 per day, and
+  the horizon drop falls from 11.2 to 0 per day.
+
+**Hard stops:** none. No file in `ev2gym/models` or `ev2gym/rl_agent` was
+edited. `results/master_results.csv` was not opened for writing.
+
 ## 2026-10-06 21:16 (UTC−5) — Closure brief completed; nothing committed (branch `semana-7`)
 
 All parts done; no hard stop. Decision rules, Part A corrections (with the Overleaf passages), the Part B finding, thresholds and C3 sentences, the six-city answer, the voltage outcome (node_123 in band; AFAP and RR met the ±5% band there, weekday only), the final compliance table, the full test summary (139 tests, OK) and the grouped commit plan are at the top of `thesis_docs/overnight_report.md`.

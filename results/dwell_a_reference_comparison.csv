@@ -1,0 +1,8 @@
+quantity,kind,mean_session_min,mean_session_ci,median_session_min,p10_min,p90_min,energy_per_session_kwh,ratio_sim_mean_to_reference,source,n_clusters
+"EV2Gym 'public' scenario as configured (Dutch durations), 1.0x, 50 seeds x 2 days",simulated,300.60267857142856,"[296.5, 304.7]",270.0,225.0,420.0,15.042228655919086,,results/dwell_a_session_summary.csv,50.0
+"Paid DC fast charging, US (EVWATTS, 1,412,050 sessions, 2020-2023, no Tesla)","external reference, not Colombian session data",42.0,,,,,22.0,7.157206632653061,"U.S. DOE VTO (2023), FOTW #1319",
+"Free DC fast charging, US (EVWATTS, 957,265 sessions)","external reference, not Colombian session data",78.0,,,,,40.7,3.853880494505494,"U.S. DOE VTO (2023), FOTW #1319",
+"DC fast charging, California survey (self-reported last session)","external reference, not Colombian session data",32.0,,,,,,9.393833705357142,"Hardman (2026), Findings",
+"Enel Colombia, Unicentro Bogota: 50% state of charge (announcement)","external reference (Enel Colombia statement, not session statistics)",27.5,,,,,,10.931006493506493,Blu Radio (2026): 'aproximadamente 25 a 30 minutos' (midpoint),
+"Enel Colombia, Unicentro Bogota: full charge (announcement)","external reference (Enel Colombia statement, not session statistics)",60.0,,,,,,5.010044642857142,Blu Radio (2026): 'poco mas de una hora' (lower bound shown),
+"Enel Colombia (2024): average to 100% (plausibility ceiling, Checkpoint A rule)","external reference (Enel Colombia statement, not session statistics)",90.0,,,,,,3.340029761904762,"Enel Colombia (2024); page not retrievable, cited from the brief",
