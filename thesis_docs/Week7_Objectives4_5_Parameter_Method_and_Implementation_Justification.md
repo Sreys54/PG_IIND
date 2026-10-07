@@ -18,6 +18,12 @@ Robin) is the infrastructure guideline**.
   level, with a 95th-percentile peak of 67–73 kW.
 - User satisfaction is unchanged: 99.89–99.93%, and the change against
   base has a CI that includes zero.
+  **Withdrawn 2026-10-06 (closure brief, Checkpoint B):** this is satisfaction
+  of the EVs that obtained a port only. EV2Gym silently drops arrivals at
+  occupied ports, so demand not served (rejected + shortfall, lower bound)
+  is 34.6% [30.8, 38.4] for Round Robin at 1.0× and 65.0% [63.0, 66.9] at
+  1.6×, n_clusters = 50. The station is port-limited at the reference
+  demand. See `Closure_Parameter_Method_and_Implementation_Justification`.
 - It delivers +37.3 kWh/day [+30.9, +44.1] more energy at 1.6×.
 - Unmanaged charging (AFAP) overloads the transformer in 28–42 of 50 seeds
   (14.2–26.4 kWh/day). It would need a transformer of about 173–192 kW for
@@ -41,6 +47,8 @@ Robin) is the infrastructure guideline**.
   because EV2Gym has no feeder-to-station feedback.
 - The satisfaction > 90% and `ENS_rel` < 15% targets are **met by every arm
   at every setting**.
+  **Withdrawn in part 2026-10-06:** both targets cover spawned EVs only.
+  On demand not served, every arm fails the 15% target at every setting.
 - The final RL model stays worse than Round Robin on tracking error and
   overload at every growth level. Its overload grows with demand: +3.79
   kWh/day from 1.0× to 1.6×.

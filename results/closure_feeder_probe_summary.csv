@@ -1,0 +1,5 @@
+feeder,n_buses,station_bus,cells_screened,cells_out_of_band,min_v,max_v,qualifies_in_band_idle,runnable_as_shipped,reason
+node_123,123.0,115.0,20.0,0.0,0.973765146757122,1.000103238911256,True,True,
+node_34,34.0,27.0,1.0,1.0,0.9461470568901876,1.0,False,True,
+node_25,,,,,,,False,False,no PD/QD nominal-load columns; Laurent power flow cannot be built
+node_69,,,,,,,False,False,no PD/QD nominal-load columns; Laurent power flow cannot be built

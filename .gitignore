@@ -236,6 +236,9 @@ eval_logs/
 # standing lesson. results/timeseries/week7_voltage/ (per-run .npz voltage
 # arrays) stays ignored under /results/* -- regenerable.
 !/results/week7_*
+# Closure brief (2026-10-06): every closure_* table and its .xlsx twin -- checked with
+# `git check-ignore -v` before closeout, the same lesson as Weeks 4, 5 and 7.
+!/results/closure_*
 models_RL/
 plots/
 plot_results_dict.pkl
@@ -274,3 +277,6 @@ experiments/phase3_infra_replicability/results/shards/
 **/_tmp_*_pid*/
 experiments/phase4_oracle/replays_raw_pid*/
 experiments/phase4_oracle/replays_g2v_pid*/
+
+# Closure brief Part C: worker shards (merged into the registry) are regenerable intermediates
+experiments/phase3_infra_replicability/results/closure_shards/

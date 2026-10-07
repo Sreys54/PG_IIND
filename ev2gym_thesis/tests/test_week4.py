@@ -215,22 +215,30 @@ class TestOracleBoundTripwire(unittest.TestCase):
 
 @unittest.skipUnless(os.path.exists("results/master_results.csv"), "registry not present")
 class TestRegistryCount(unittest.TestCase):
-    """Entregable 7's registry count check, pinned as a test: the arm set
-    for station_v0_bogota is AFAP, Round Robin, 3x TD3_vanilla,
-    RandomPolicy, Optimal_Oracle_Tracking, Optimal_Oracle_Balanced, 3x
-    TD3_TrackingOnly -- 11 arms x 50 cells = 550 rows. Computed from the
-    actual registry, not trusted from arithmetic alone -- same pattern as
-    Week 3's 300-row check."""
+    """Entregable 7's registry count check, pinned as a test.
 
-    EXPECTED_ARMS = {
+    Corrected 2026-10-06 (closure brief A.3). The Week 4 version pinned 11
+    arms x 50 cells. Since then the grid was rebuilt in Week 5 Gate 4 to 50
+    seeds x 2 EVAL_DAYS = 100 cells. Week 5 added the two MPC arms and Week 6
+    Part 0 added nine TD3 arms. The test now pins the full current arm set
+    (22 arms x 100 cells = 2,200 analysis rows). Each arm must cover exactly
+    the SEEDS x EVAL_DAYS grid once. That is stricter than the old per-arm
+    count. Computed from the actual registry, not from arithmetic alone."""
+
+    WEEK4_ARMS = {
         "ChargeAsFastAsPossible", "RoundRobin",
         "TD3_vanilla_ts100", "TD3_vanilla_ts101", "TD3_vanilla_ts102",
         "RandomPolicy",
         "Optimal_Oracle_Tracking", "Optimal_Oracle_Balanced",
         "TD3_TrackingOnly_ts100", "TD3_TrackingOnly_ts101", "TD3_TrackingOnly_ts102",
     }
+    WEEK5_MPC_ARMS = {"MPC_TrackingG2V", "MPC_EnergyMaxG2V"}
+    WEEK6_PART0_ARMS = {f"TD3_vanilla_{kind}_ts{s}" for kind in ("extended", "extended_last", "new60k")
+                        for s in (100, 101, 102)}
+    EXPECTED_ARMS = WEEK4_ARMS | WEEK5_MPC_ARMS | WEEK6_PART0_ARMS
 
-    def test_station_v0_bogota_has_550_main_grid_rows(self):
+    def test_station_v0_bogota_has_full_main_grid_for_every_arm(self):
+        from ev2gym_thesis.eval_protocol import EVAL_DAYS, SEEDS
         from ev2gym_thesis.registry_analysis import load_registry, main_grid_rows
 
         rows = load_registry()
@@ -243,15 +251,19 @@ class TestRegistryCount(unittest.TestCase):
             f"unexpected: {present_arms - self.EXPECTED_ARMS}"
         )
 
-        expected_count = len(self.EXPECTED_ARMS) * 50  # 11 arms x 50 cells
+        cells = {(str(s), "%04d-%02d-%02d" % d) for s in SEEDS for d in EVAL_DAYS}
+        self.assertEqual(len(cells), 100)
+        expected_count = len(self.EXPECTED_ARMS) * len(cells)  # 22 arms x 100 cells
         self.assertEqual(
             len(grid), expected_count,
-            f"Expected {expected_count} rows ({len(self.EXPECTED_ARMS)} arms x 50 cells), got {len(grid)}."
+            f"Expected {expected_count} rows ({len(self.EXPECTED_ARMS)} arms x {len(cells)} cells), got {len(grid)}."
         )
 
         for algo in self.EXPECTED_ARMS:
-            n = sum(1 for r in grid if r["algorithm"] == algo)
-            self.assertEqual(n, 50, f"{algo} has {n} rows, expected 50.")
+            # some arms store the seed as "12.0": compare as integers
+            got = [(str(int(float(r["seed"]))), r["eval_day"]) for r in grid if r["algorithm"] == algo]
+            self.assertEqual(len(got), len(cells), f"{algo} has {len(got)} rows, expected {len(cells)}.")
+            self.assertEqual(set(got), cells, f"{algo} does not cover exactly the SEEDS x EVAL_DAYS grid.")
 
 
 @unittest.skipUnless(os.path.exists("results/master_results.csv"), "registry not present")

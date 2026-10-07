@@ -1575,6 +1575,162 @@ def make_f18_two_city_margin():
         n_runs=100 * len(arms), configs=["station_v0_bogota"], algorithms=[_w7_label(a) for a in arms])
 
 
+# doc:begin closure_figures
+CLOSURE_ARMS = ["ChargeAsFastAsPossible", "RoundRobin", "TD3_vanilla_extended_ts102"]
+
+
+def make_f19_capacity_threshold():
+    """Closure C1: demand not served (lower bound) and P95 peak vs demand
+    level, per arm, with the two targets."""
+    import pandas as pd
+    d = pd.read_csv("results/closure_c1_capacity_by_level.csv")
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    offs = {"ChargeAsFastAsPossible": -0.012, "RoundRobin": 0.0, "TD3_vanilla_extended_ts102": 0.012}
+    for arm in CLOSURE_ARMS:
+        g = d[d.algorithm == arm].sort_values("level")
+        x = g.level.replace({0.75: 0.7333}) + offs[arm]
+        sty = style_for(arm)
+        lab = _w7_label(arm)
+        axes[0].errorbar(x, 100 * g.dns_lower_mean,
+                         yerr=[100 * (g.dns_lower_mean - g.dns_lower_ci_low), 100 * (g.dns_lower_ci_high - g.dns_lower_mean)],
+                         fmt=sty["marker"] + "-", color=sty["color"], markeredgecolor="black", capsize=3, label=lab)
+        axes[1].errorbar(x, g.peak_kw_p95, yerr=[g.peak_kw_p95 - g.peak_kw_p95_ci_low, g.peak_kw_p95_ci_high - g.peak_kw_p95],
+                         fmt=sty["marker"] + "-", color=sty["color"], markeredgecolor="black", capsize=3, label=lab)
+    axes[0].axhline(15, color="0.2", linestyle=":", linewidth=1.3, label="Target: demand not served < 15%")
+    axes[1].axhline(100, color="0.2", linestyle=":", linewidth=1.3, label="Transformer limit, 100 kW")
+    axes[0].set_ylabel("Demand not served, lower bound (% of requested energy)")
+    axes[1].set_ylabel("95th-percentile per-seed peak station power (kW)")
+    for ax in axes:
+        ax.set_xlabel("Demand level (multiple of the Week 1 demand; 0.733x = spawn 22)")
+        ax.set_xticks([0.5, 0.7333, 1.0, 1.3, 1.6, 2.0, 2.5])
+        ax.set_xticklabels(["0.5", "0.733", "1.0", "1.3", "1.6", "2.0", "2.5"])
+        ax.grid(color="0.9", linewidth=0.6)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+    # Visual QA fix (closure): the in-axes legend covered AFAP's 1.0-1.3x error
+    # bars on the right panel, so one shared legend sits below both panels.
+    h, l = axes[0].get_legend_handles_labels()
+    h2, l2 = axes[1].get_legend_handles_labels()
+    fig.legend(h + [h2[0]], l + [l2[0]], loc="lower center", ncol=5, fontsize=8.5, frameon=False)
+    axes[0].set_ylim(0, 100)
+    axes[1].set_ylim(0, 260)
+    fig.suptitle("Where the 8-port, 100 kW station breaks: demand not served (left) and peak power (right), by arm\n"
+                 "Point = mean (left) or P95 over 50 seeds (right); bar = 95% CI, cluster bootstrap over 50 scenario seeds",
+                 fontsize=10)
+    fig.tight_layout(rect=[0, 0.07, 1, 0.92])
+    _save(fig, "f19_capacity_threshold")
+    write_caption(
+        "f19_capacity_threshold",
+        what_it_shows=(
+            "Closure brief C1. Left: demand not served, lower bound (rejected arrivals' energy plus shortfall on served "
+            "EVs, over total requested; ev2gym_thesis/demand/censoring.py). Right: 95th percentile over 50 seeds of the "
+            "per-seed peak station power. Round Robin breaks the 15% target at 0.733x and never exceeds 100 kW; AFAP and "
+            "the final RL model exceed 100 kW from 0.5x. Demand not served is nearly identical across arms: the 8 ports "
+            "set it. 1.0/1.3/1.6x are the Week 7 Step 2 rows (identical to non-grid); the rest are closure rows. Source: "
+            "results/closure_c1_capacity_by_level.csv."),
+        n_runs=int(d.n_runs.sum()), configs=["station_v0_bogota_sp15/22/60/75", "station_v0_bogota_grid[base/spawn1.3/1.6]"],
+        algorithms=[_w7_label(a) for a in CLOSURE_ARMS])
+
+
+def make_f20_port_options():
+    """Closure C2: Round Robin's demand not served for each port option,
+    as run and at constant station demand, at 0.733x and 1.0x."""
+    import pandas as pd
+    c = pd.read_csv("results/closure_c2_options.csv")
+    c = c[(c.algorithm == "RoundRobin") & (c.transformer_kw == 100.0)]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+    for ax, lvl in zip(axes, [0.75, 1.0]):
+        g = c[c.level == lvl]
+        for k, (treat, col, mk) in enumerate([("as run", "0.65", "o"), ("constant", style_for("RoundRobin")["color"], "s")]):
+            for ports in [8, 10, 12]:
+                if ports == 8:
+                    r = g[g.ports == 8].iloc[0]
+                else:
+                    sub = g[(g.ports == ports) & g.station_demand.str.startswith(treat)]
+                    if not len(sub):
+                        continue
+                    r = sub.iloc[0]
+                x = ports + (-0.18 if k == 0 else 0.18)
+                ax.errorbar(x, 100 * r.dns_lower_mean,
+                            yerr=[[100 * (r.dns_lower_mean - r.dns_lower_ci_low)], [100 * (r.dns_lower_ci_high - r.dns_lower_mean)]],
+                            fmt=mk, color=col, markeredgecolor="black", capsize=3, markersize=7,
+                            label=(("Spawn unchanged (more ports also add arrivals)" if k == 0 else
+                                    "Constant station demand (spawn x 8/ports)") if ports == 10 else None))
+        ax.axhline(15, color="0.2", linestyle=":", linewidth=1.3, label="Target: demand not served < 15%")
+        ax.set_xticks([8, 10, 12])
+        ax.set_xlabel("Charging ports (transformer 100 kW; Round Robin)")
+        ax.set_title(f"Demand level {'0.733x (spawn 22)' if lvl == 0.75 else '1.0x (Week 1 sizing)'}", fontsize=10)
+        ax.grid(axis="y", color="0.9", linewidth=0.6)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+    axes[0].set_ylabel("Demand not served, lower bound (% of requested energy)")
+    axes[0].legend(fontsize=8.5, frameon=False, loc="upper right")
+    fig.suptitle("What closes the demand gap: more ports (a larger transformer changes nothing for Round Robin)\n"
+                 "Point = mean over 100 cells; bar = 95% CI, cluster bootstrap over 50 scenario seeds", fontsize=10)
+    fig.tight_layout(rect=[0, 0, 1, 0.9])
+    _save(fig, "f20_port_options")
+    write_caption(
+        "f20_port_options",
+        what_it_shows=(
+            "Closure brief C2, Round Robin on the 100 kW transformer. EV2Gym draws arrivals per port, so adding ports at "
+            "an unchanged spawn multiplier also adds demand (grey); the constant-demand variants scale the spawn "
+            "multiplier by 8/ports so only the port count changes (blue, the primary reading). 10 ports meet the 15% "
+            "target at 0.733x and 12 ports at 1.0x. The 112.5 and 150 kVA variants (not plotted) leave Round Robin's "
+            "values identical. Censoring recomputed for each port count. Source: results/closure_c2_options.csv."),
+        n_runs=int(c.n_runs.sum()), configs=["station_v0_bogota_sp22/sp30[_p10|_p12]_tx100[_cd]"],
+        algorithms=["Round Robin"])
+
+
+def make_f21_city_cost():
+    """Closure D2: Round Robin's cost of the 100 kW limit in the six
+    categoria especial cities, flat cost vs the operator's two-band option."""
+    import pandas as pd
+    c = pd.read_csv("results/closure_multicity_rr_cost.csv")
+    c = c[c.retail_price_label == "1450_reference"].reset_index(drop=True)
+    t = pd.read_csv("results/closure_multicity_tariffs.csv").set_index("city")
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    y = range(len(c))
+    for i, r in c.iterrows():
+        ax.errorbar(r.conceded_flat_cop_day, i - 0.15,
+                    xerr=[[r.conceded_flat_cop_day - r.conceded_flat_ci_low], [r.conceded_flat_ci_high - r.conceded_flat_cop_day]],
+                    fmt="o", color="0.35", markeredgecolor="black", capsize=3, label="Flat (monomial) cost" if i == 0 else None)
+        if not pd.isna(r.conceded_tou_cop_day):
+            ax.errorbar(r.conceded_tou_cop_day, i + 0.15,
+                        xerr=[[r.conceded_tou_cop_day - r.conceded_tou_ci_low], [r.conceded_tou_ci_high - r.conceded_tou_cop_day]],
+                        fmt="s", color=style_for("RoundRobin")["color"], markeredgecolor="black", capsize=3,
+                        label="Operator's two-band option" if i == 0 else None)
+    labels = []
+    for city in c.city:
+        sp = t.loc[city, "intraday_spread"]
+        labels.append(f"{city}\n({t.loc[city, 'operator'].split(' (')[0]}, {t.loc[city, 'sheet_month']}; "
+                      f"spread {'n/a' if pd.isna(sp) else f'{100 * sp:.2f}%'})")
+    ax.set_yticks(list(y))
+    ax.set_yticklabels(labels, fontsize=8.5)
+    ax.invert_yaxis()
+    from matplotlib.ticker import FuncFormatter
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    ax.set_xlabel("Round Robin's margin conceded vs. AFAP (COP per simulated day; retail 1,450 COP/kWh in every city)")
+    ax.grid(axis="x", color="0.9", linewidth=0.6)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.legend(fontsize=8.5, frameon=False, loc="lower right")
+    ax.set_title("Cost of keeping the 100 kW transformer with Round Robin, in the six categoria especial cities\n"
+                 "Point = mean over 100 paired runs; bar = 95% CI, cluster bootstrap over 50 scenario seeds", fontsize=10)
+    fig.tight_layout()
+    _save(fig, "f21_city_cost")
+    write_caption(
+        "f21_city_cost",
+        what_it_shows=(
+            "Closure brief D2. Each city's Nivel 2 commercial energy cost with contribution (ev2gym_thesis/prices/cities.py, "
+            "sources saved in thesis_docs/sources/) applied to the non-grid statistical rows. Flat: margin = energy x "
+            "(1,450 - cost), so the relative cost is 0.47% everywhere (Proposition 7.1). Two-band: each run's 15-minute "
+            "station power profile priced at the operator's peak and off-peak rates. Barranquilla (Air-e, 10.03% spread, "
+            "17-22 h) is the only city where the two-band cost departs materially from the flat one. Cali uses EMCALI's "
+            "January 2026 sheet, the latest retrievable. Source: results/closure_multicity_rr_cost.csv."),
+        n_runs=200, configs=["station_v0_bogota"], algorithms=["AFAP", "Round Robin"])
+# doc:end closure_figures
+
+
 def _save(fig, name):
     os.makedirs(FIGURES_DIR, exist_ok=True)
     fig.savefig(f"{FIGURES_DIR}/{name}.png", dpi=300)
@@ -1613,7 +1769,8 @@ if __name__ == "__main__":
                 "f12": make_f12_extended_training_reward, "f13": make_f13_extended_validation,
                 "f14": make_f14_all_models_comparison, "f15": make_f15_grid_growth,
                 "f16": make_f16_transformer_sizing, "f17": make_f17_voltage_attribution,
-                "f18": make_f18_two_city_margin}
+                "f18": make_f18_two_city_margin, "f19": make_f19_capacity_threshold,
+                "f20": make_f20_port_options, "f21": make_f21_city_cost}
         for _fid in _only.split(","):
             _fns[_fid.strip()]()
         raise SystemExit(0)
@@ -1639,5 +1796,8 @@ if __name__ == "__main__":
     make_f16_transformer_sizing()
     make_f17_voltage_attribution()
     make_f18_two_city_margin()
+    make_f19_capacity_threshold()
+    make_f20_port_options()
+    make_f21_city_cost()
 
     print("\nAll figures regenerated.")

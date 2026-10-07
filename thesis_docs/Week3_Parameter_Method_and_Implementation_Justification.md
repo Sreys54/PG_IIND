@@ -1146,3 +1146,25 @@ matching the calibration estimate almost exactly; learning curves show a
 weak-but-consistent positive trend across all 3 seeds, not clean
 convergence -- reported as the legitimate result of the declared reduced
 training budget, not adjusted or hidden.
+
+## Correction (2026-10-06, closure brief A.2)
+
+Every number in this handback comes from the Week 3 evaluation grid (5
+scenario seeds x 10 evaluation days). That grid was superseded in Week 5:
+its days were not independent, and its setpoints predated the Gate 4 fix.
+The figures here are kept as a historical record. Do not cite them as
+current results. The current statistical grid has 100 runs
+(`analysis_row=True`); the cluster bootstrap resamples the scenario seed,
+with n_clusters = 50. On that grid:
+
+| Quantity | This handback (superseded grid) | Current grid |
+|---|---|---|
+| AFAP transformer overload (kWh/day) | 5.33 [1.93, 8.73] | 14.22 [9.58, 19.28] |
+| Round Robin transformer overload (kWh/day) | 0.0 | 0.0 (all 100 runs) |
+| Random-policy control overload (kWh/day) | 0.22 | 3.32 [1.75, 5.17] |
+| Round Robin vs. AFAP, energy charged | -0.08% | -0.47% [-0.75%, -0.23%] |
+
+The qualitative conclusion stands: the random control's overload is lower
+than AFAP's, so a low overload alone does not show that TD3 learned
+anything. The Week 3 checkpoints re-evaluated on the current grid are the
+`TD3_vanilla_ts*` arms in `thesis_docs/chapters/05_algorithm_comparison.md`.

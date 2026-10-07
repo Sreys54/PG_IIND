@@ -42,7 +42,10 @@ items marked **[corrected]** replace an earlier statement that was wrong.
    signal worth exploiting: the Punta / Fuera de Punta spread is 1.57% in
    Bogotá and 0.69% in Medellín. Margin is therefore proportional to energy
    delivered, and it cannot discriminate between strategies except through
-   energy (05 S5.1; 07 S7.3).
+   energy (05 S5.1; 07 S7.3). *Closure (2026-10-06):* this is now stated
+   as Proposition 7.1, with proof (07 S7.3a). It holds exactly only under
+   a flat tariff. Air-e (Barranquilla) publishes a 10% two-band Nivel 2
+   option under which it does not hold exactly (07 S7.7; item 31).
 8. **Retail price.** Bogotá's 1,450 COP/kWh is a single Enel figure from
    August 2025, paired with a 2026 cost, so margins are lower bounds.
    **[W7]** Medellín's retail EV price is not published by EPM. Bogotá's
@@ -107,19 +110,95 @@ items marked **[corrected]** replace an earlier statement that was wrong.
     transformer would carry other customers' load. Axis 2 results are
     therefore voltage-only (06 S6.4).
 21. **Transformer sizing from 50 seeds is directional for the tail.** The
-    95th percentile rests on 2–3 tail seeds, and sizing figures assume
-    unity power factor (06 S6.4).
+    95th percentile rests on 2–3 tail seeds (06 S6.4). *Correction
+    (2026-10-06, closure A.4):* sizing figures are now converted at
+    pf 0.894, derived from CREG 015/2018, and at unity power factor. They
+    are mapped to Enel's ET-013 standard ratings, and both readings give
+    225 kVA for AFAP (item 29).
 
 ## L5. Replicability [W7]
 
 22. **Only the tariff is city-specific and available.** Arrivals, demand
-    level, feeder and climate are the same declared stand-ins in both
-    cities, so the physical results are conditional for Medellín, not
-    established (07 S7.2, S7.6).
+    level, feeder and climate are the same declared stand-ins in every
+    city, so the physical results are conditional outside Bogotá, not
+    established (07 S7.2, S7.6, S7.9). *Closure:* extended to all six
+    categoría especial cities (07 S7.7).
 23. **Demand mapping is not defended by any source.** City-level EV
     registrations (Medellín / Bogotá = 0.40, January–August 2025) do not
     give per-station demand. Both naive mappings fall below the 1.0–1.6×
-    range studied, and the guidelines do not cover lower-demand stations
-    (07 S7.4).
+    range studied (07 S7.4). *Closure (2026-10-06):* lower-demand stations
+    are now covered down to 0.5× (07 S7.8). No city is mapped onto the
+    axis, because there is still no per-station source.
 24. **EPM's Fuera de Punta CU** satisfies the component-sum invariant only
     at the inclusive 0.01 COP/kWh rounding bound (07 S7.1).
+
+## L6. Closure brief findings and limitations [closure, 2026-10-06]
+
+25. **Arrivals at a full station are silently dropped by EV2Gym.** An
+    arrival drawn for an occupied port is never created
+    (`utils.py::EV_spawner`, lines 490 and 531–537). Every registry metric
+    therefore covers served EVs only. This includes satisfaction,
+    `ENS_rel` and EVs served. Demand not served, which counts rejected
+    arrivals, is a post-processing reconstruction
+    (`ev2gym_thesis/demand/censoring.py`) with three labelled
+    assumptions:
+    - a lower bound (rejected drivers would have taken any free port);
+    - an upper bound (every blocked draw is a lost customer);
+    - each rejected arrival requests the day's mean requested energy.
+
+    On the lower bound, Round Robin fails the 15% target from 0.733×
+    (06, Guideline 2). **Every Week 7 statement that satisfaction "is
+    unchanged" or "never below 90%" is withdrawn** as a statement about
+    the station's users.
+26. **Arrivals are drawn per port.** In EV2Gym, more ports also means more
+    potential arrivals. Port comparisons are therefore reported at
+    constant station demand (spawn multiplier × 8/P) as the primary
+    reading, and as run as a secondary reading (06, C2).
+27. **Demand levels are quantised.** The spawn multiplier is rounded, so
+    "0.75×" is 0.733× (spawn 22). The constant-demand variants use
+    non-integer multipliers (17.6, 14.67, 24, 20), which EV2Gym accepts
+    because the multiplier enters only as a factor (`utils.py`, line 538).
+28. **Port counts above 12 were not simulated.** The number of ports that
+    keeps DNS below 15% at 1.3–2.5× is not stated. The RL policy cannot
+    run other port counts, because its observation and action spaces are
+    fixed at 8, so it is absent from C2.
+29. **Power factor.** The 0.894 used for kVA is derived from CREG 015/2018's
+    50% reactive-energy threshold. The compiled text places that clause
+    next to a "Legislación Anterior" note, which is a verification caveat.
+    Recommended ratings are stated at both 0.894 and unity power factor.
+    The operator's ET-013 list is used as the set of standard ratings.
+    NTC 819 (ICONTEC) is paywalled and was not consulted.
+30. **City tariffs.**
+    - EMCALI's latest retrievable sheet is January 2026.
+    - The EMCALI charging price (2,500 COP/kWh) is from the press.
+    - EPM, Air-e and Afinia publish no per-kWh charging price.
+    - ESSA prices per a unit not defined in kWh.
+    - Afinia's Nivel 2 two-band row is identified indirectly.
+
+    Absolute margins outside Bogotá are therefore sensitivities, not
+    claims (07 S7.7).
+31. **Two-band tariffs break exact ranking invariance.** Proposition 7.1
+    holds only for a flat (monomial) tariff. Under Air-e's 10% two-band
+    option, Round Robin's cost of the limit is 3.6× its flat value, and
+    the margin ranking shifts in 12 of 22 positions (07 S7.7).
+32. **Lower demand is monotone on average, not per cell.** 18 of 100 cells
+    show higher DNS at 0.5× than at 0.733× under Round Robin. No city can
+    be mapped onto the demand axis, because no per-station demand source
+    exists (07 S7.8).
+33. **The 37% voltage reduction is a base-setting figure.** It is the
+    ratio of mean drops in the feeder-wide daily minimum voltage relative
+    to the idle station: 36.4% [22.3, 47.0]. At 1.3× and 1.6× demand it is
+    24.7% and 22.7% (06, Guideline 3).
+34. **Feeders.** Of EV2Gym's four shipped networks:
+    - node_34 is out of band when idle;
+    - node_25 and node_69 cannot run as shipped, because their bus files
+      have no nominal loads;
+    - node_123 is in band when idle.
+
+    The AFAP and Round Robin voltage runs on node_123 cover the weekday
+    evaluation day only. On the weekend day, EV2Gym's background-load
+    generator loops until a 123-bus sample has no NaN, and it did not
+    finish within 240 s. MPC, the RL model and the oracle were not rerun
+    there, as the brief scopes the rerun to AFAP and RR. The ±5% result on
+    node_123 (met by both, with a 0.022 p.u. margin) concerns a test
+    network, not a Colombian feeder (06, Guideline 3).

@@ -113,17 +113,25 @@ cells each, n_clusters = 50. Results are in COP per simulated day
 **The cost of respecting the 100 kW transformer limit with the recommended
 deployable strategy** (Round Robin against AFAP) is 551.9 COP/day in
 Bogotá and 497.0 COP/day in Medellín. That is 0.47% of AFAP's margin in
-both cities. **In relative terms the cost transfers exactly.** Under a flat
-price, the conceded margin is (energy foregone) × (retail − cost), so the
-two cities differ only by the factor (1,450 − 923.92) / (1,450 − 865.76)
-= 0.900.
+both cities. The equal 0.47% and the factor (1,450 − 923.92) / (1,450 −
+865.76) = 0.900 between the two cities are **consequences of
+Proposition 7.1 (S7.3a), not empirical findings**. Under a flat price,
+the relative cost is ΔE / E_AFAP whatever the tariff, so it could not
+have differed between the cities.
 
-**Ranking invariance, verified programmatically**
+*Correction (2026-10-06, closure brief D1).* This paragraph originally presented "the cost transfers
+exactly" as a finding of the replication. It is an algebraic identity of
+the flat-tariff economics, proved in S7.3a.
+
+**Implementation check of Proposition 7.1**
 (`results/week7_ranking_invariance.csv`, asserted in
 `analyze_week7_replicability.py::ranking_invariance` and pinned in
 `test_replicability.py`). Across eight price scenarios, the ranking of the
 arms by margin is identical to their ranking by energy delivered, and
-identical across all scenarios. The eight scenarios are:
+identical across all scenarios. Proposition 7.1 guarantees this for any
+flat price with retail above cost. The check therefore verifies that the
+code implements the economics correctly. It is not evidence about
+Medellín. The eight scenarios are:
 - Bogotá base and Bogotá retail ±20%;
 - Medellín base and Medellín retail ±20%;
 - the two Medellín cost sensitivities.
@@ -131,8 +139,59 @@ identical across all scenarios. The eight scenarios are:
 This holds for every dataset: the non-grid rows and each of the five grid
 settings (S7.5). Under a flat tariff with retail above cost, **no tariff
 level in either city can change which strategy is economically
-preferable**. The economic argument for or against a strategy is entirely
-its energy delivered.
+preferable** (Proposition 7.1). The economic argument for or against a
+strategy is entirely its energy delivered. This is true **only under a
+flat (monomial) tariff**. Under a two-band time-of-use option the ranking
+can change, and S7.7 measures by how much.
+
+### S7.3a Proposition 7.1 (flat-tariff economics)
+
+**Setting.** Let arm a deliver energy E_a(s) ≥ 0 in cell s (a scenario seed
+and day). The station buys energy at a constant unit cost c and sells it
+at a constant unit price p > c, both fixed over the day. Two facts hold in
+this project:
+- no arm discharges (V2G is disabled, `total_energy_discharged` = 0);
+- no arm's control decision depends on p or c (Week 5, Gate 0).
+
+The daily gross margin is therefore M_a(s) = (p − c) · E_a(s).
+
+**Proposition 7.1.** Under these conditions, for any arms a, b and any
+p > c:
+1. sign(M_a(s) − M_b(s)) = sign(E_a(s) − E_b(s)) in every cell. The same
+   holds for the means over any set of cells: the ranking of arms by mean
+   margin equals their ranking by mean energy delivered.
+2. The relative margin that arm b concedes against AFAP is
+   (M̄_AFAP − M̄_b) / M̄_AFAP = (Ē_AFAP − Ē_b) / Ē_AFAP, independent of p
+   and c.
+3. The absolute margin conceded, M̄_AFAP − M̄_b = (p − c)(Ē_AFAP − Ē_b),
+   scales linearly with the unit margin (p − c). Between two cities with
+   the same energy outcomes it differs only by the ratio of their unit
+   margins.
+
+**Proof.**
+1. M_a − M_b = (p − c)(E_a − E_b), and p − c > 0, so the two differences
+   have the same sign. Means are linear, so M̄_a − M̄_b =
+   (p − c)(Ē_a − Ē_b) and the argument repeats.
+2. Divide M̄_AFAP − M̄_b = (p − c)(Ē_AFAP − Ē_b) by
+   M̄_AFAP = (p − c)Ē_AFAP. The factor (p − c) cancels.
+3. Read directly from the expression in step 2, before dividing. ∎
+
+**What the proposition does not cover.**
+- *A cost that varies over the day.* With a two-band option, the margin is
+  M = p·E − c_peak·E_peak − c_off·E_off. This depends on when the energy is
+  delivered, not only on how much, so ranking invariance is no longer
+  guaranteed (S7.7).
+- *Price-responsive control.* Any arm whose actions depended on p or c
+  would also break step 1. No arm in this project does.
+
+**Status of earlier statements.** Three earlier statements are
+**implications of Proposition 7.1, not findings**:
+- the 48/48 identical rankings of S7.5;
+- the identical 0.47% in both cities;
+- the constant 0.900 ratio.
+
+They remain valid as checks that the code implements the economics.
+
 
 ## S7.4 Demand transfer
 
@@ -165,6 +224,10 @@ At 50 seeds × 2 days per setting, that is about 27 minutes per setting on
 one process, and about 10 minutes with 3 parallel workers as used in
 Objective 4. Not run, per the brief.
 
+*Update (2026-10-06, closure brief D3).* Lower-demand runs at 0.5× and
+0.733× were made in the closure (S7.8). The 0.4/0.7/0.9× proposal is
+superseded by them.
+
 ## S7.5 Grid-enabled rows
 
 The same tariff transfer was applied to the 2,500 Objective 4 grid rows,
@@ -182,29 +245,207 @@ against AFAP in COP per day (n_clusters = 50):
 
 The three Axis 2 settings are identical, because the feeder does not feed
 back on the station's energy (06 S6.4). The ratio between the two cities is
-the constant 0.900 in every row. **Ranking invariance holds in all 6
-datasets × 8 price scenarios** (48 checks, all identical rankings,
-`results/week7_ranking_invariance.csv`). The Objective 4 guidelines carry
-their economic cost to Medellín unchanged in relative terms: under 1% of
-daily margin at every growth level.
+the constant 0.900 in every row. Ranking invariance holds in all 6
+datasets × 8 price scenarios (48 checks, all identical rankings,
+`results/week7_ranking_invariance.csv`). These 48 checks are the
+implementation check of Proposition 7.1. They are not 48 independent
+pieces of evidence, because the proposition makes each of them certain.
+The Objective 4 guidelines carry their economic cost to Medellín unchanged
+in relative terms (proposition, part 2): under 1% of daily margin at every
+growth level, under a flat tariff.
+
+## S7.7 Every categoría especial municipality (closure brief D2)
+
+**City list (official source).** Ley 617 de 2000, Art. 6, defines
+categoría especial as a population of at least 500,001 and annual
+unrestricted current revenue (ICLD) above 400,000 SMMLV. The Contaduría
+General de la Nación's categorisation workbook gives the category of every
+municipality. Its "Vigencia 2026" column records the 2025
+self-categorisation decrees. It lists six municipalities as ESP:
+- Bogotá D.C. (Decreto 523, 2025-10-28);
+- Medellín (Decreto 837, 2025-10-08);
+- Cali (Decreto 725, 2025-09-30);
+- Barranquilla (Decreto 646, 2025-10-02);
+- Cartagena (Decreto 2000, 2025-08-26);
+- Bucaramanga (Decreto 710, 2025-09-02).
+
+The workbook is saved as
+`thesis_docs/sources/municipal_categories/cgn_categorizacion_historicos_hasta_2025.xlsx`
+(accessed 2026-10-06), and the law as `ley_617_2000.pdf`. The CGN's own
+Res. 338/2025, which categorises only the entities that did not
+categorise themselves, is saved too. It is a scanned PDF with no text
+layer, so it was not used to extract the list.
+
+**Operators and sheets.** Each city's network operator is the one whose
+regulated tariff sheet covers it: Enel Colombia, EPM, EMCALI, Air-e
+(intervened by Superservicios), Afinia (Grupo EPM) and ESSA (Grupo EPM).
+Values are transcribed in `ev2gym_thesis/prices/cities.py`, each with its
+saved sheet. The Air-e and Afinia sheets have no usable text layer and
+were read from rendered images. Tables:
+`results/closure_multicity_tariffs.csv` and
+`results/closure_multicity_rr_cost.csv`, with `.xlsx` versions.
+
+| City | Operator, sheet month | Nivel 2 CU without contribution | Flat cost with 20% contribution | Two-band option (with contribution), peak / off-peak | Spread | Generation share of CU | Invariants |
+|---|---|---:|---:|---|---:|---:|---|
+| Bogotá | Enel, Aug 2026 | 721.47 | 865.76 (published) | Opciones horarias 9–12, 18–21 h: 877.57 / 864.02 | 1.57% | 52.0% | both pass |
+| Medellín | EPM, Sep 2026 | 767.30 (monomial) | 920.76 (derived ×1.20) | Tarifa horaria 9–12, 18–21 h: 923.92 / 917.58 | 0.69% | 52.1% | both pass (Week 7) |
+| Cali | EMCALI, **Jan 2026** | 625.75 | 750.89 (derived ×1.20) | Doble horaria 9–12, 18–21 h: 755.84 / 748.91 (derived) | 0.92% | 49.4% | sum passes; factor 1.20 checked on the Nivel 1 commercial line |
+| Barranquilla | Air-e, Sep 2026 | 746.55 | 895.85 (published) | Doble tipo 1, 17–22 h: **956.74 / 869.52** | **10.03%** | 60.2% | both pass |
+| Cartagena | Afinia, Sep 2026 | 859.76 (CU with COT) | 1,031.71 (derived ×1.20) | Doble tipo 1, 17–22 h: 1,031.46 / 1,031.22 | 0.02% | 50.6% | both pass (sum against the with-COT CU) |
+| Bucaramanga | ESSA, Sep 2026 | 855.67 | 1,026.80 (published) | none published | — | 56.1% | both pass |
+
+**Unavailable, listed rather than filled in.**
+- *EMCALI after January 2026.* The latest sheet retrievable on 2026-10-06
+  is January 2026, and Cali's row uses it, labelled.
+- *Time-of-use option in Bucaramanga.* ESSA publishes none.
+- *A per-kWh public charging price* from EPM, Air-e, Afinia and ESSA:
+  - EPM, Air-e and Afinia: no price located.
+  - ESSA prices per "Unidad de Recarga Vehicular", about 1,500 COP fast
+    and 1,200 COP normal (Vanguardia, 2026-06-01). The unit is not defined
+    in kWh.
+- *EMCALI's price.* The 2,500 COP/kWh comes from a press report (El País
+  Cali, 2025-04-30), not an EMCALI page, and is labelled secondary.
+- *Afinia's Nivel 2 row.* The Afinia sheet does not label its Nivel 2
+  two-band row directly. It was identified through the residential
+  >173 kWh row, which pays the full CU (labelled assumption).
+
+**Unit margin and the cost of the transformer limit** (non-grid statistical
+rows, 100 paired runs, n_clusters = 50). "Flat" uses the flat cost column
+above. "Two-band" applies the city's option to each run's 15-minute station
+power profile. Each profile is checked to reproduce the registry energy
+exactly (maximum difference 0.000000 kWh over 2,200 runs).
+
+| City | Unit margin at 1,450 | Unit margin at the operator's price | Round Robin's cost vs. AFAP, flat (COP/day) | Same, two-band option (COP/day) |
+|---|---:|---:|---|---|
+| Bogotá | 584.2 | 584.2 (1,450 is Enel's price) | 551.9 [274.3, 874.2] | 775.1 [487.5, 1,108.4] |
+| Medellín | 529.2 | not published | 500.0 [248.5, 791.9] | 606.6 [353.8, 901.0] |
+| Cali | 699.1 | 1,749.1 (2,500, press) | 660.4 [328.2, 1,046.1]; at 2,500: 1,652.3 [821.2, 2,617.2] | 775.5 [444.7, 1,161.1] |
+| Barranquilla | 554.1 | not published | 523.5 [260.2, 829.2] | **1,878.4 [1,425.7, 2,358.5]** |
+| Cartagena | 418.3 | not published | 395.1 [196.4, 625.9] | 399.3 [200.4, 630.2] |
+| Bucaramanga | 423.2 | not published | 399.8 [198.7, 633.2] | — |
+
+Under the flat cost, the relative cost is 0.47% of AFAP's margin in every
+city, as Proposition 7.1 requires. Medellín's flat figure here (500.0)
+uses the monomial ×1.20 so that the definition is the same in every city.
+Week 7's 497.0 used the higher Punta rate, the conservative choice, and
+both are reported.
+
+**Headline: is the spread small everywhere? No.**
+- **Four cities are small.** In Bogotá, Medellín, Cali and Cartagena the
+  published two-band spread is at most 1.57%.
+- **Bucaramanga publishes no option.**
+- **Barranquilla is the exception.** Air-e's Nivel 2 "doble tipo 1"
+  option charges 10.03% more from 17:00 to 22:00.
+
+Round Robin places more of its energy in the 17–22 h band than AFAP:
+27.6% against 20.2%. In the 9–12, 18–21 h bands it places 43.8% against
+36.1%. Round Robin spreads charging over each EV's stay, so more of it
+falls in the evening. Under the Air-e option, its cost of the 100 kW limit
+therefore rises from 523 to 1,878 COP/day. That is still under 2% of
+margin, but 3.6 times the flat figure.
+
+The margin ranking under the two-band options differs from the energy
+ranking:
+- *Bogotá, Medellín and Cali:* in 3 of 22 positions, all among arms whose
+  energy differs by tenths of a kWh (Round Robin, MPC_TrackingG2V,
+  Optimal_Oracle_Tracking).
+- *Cartagena:* in 2 positions (AFAP and MPC_EnergyMaxG2V).
+- *Barranquilla:* in 12 positions. The RL arms move up, because they
+  deliver less energy in the evening band
+  (`results/closure_multicity_tou_ranking.csv`).
+
+Two consequences follow:
+1. An operator choosing a two-band option should check where the
+   charging falls in the day. In Barranquilla, the flat (monomial) option
+   keeps Proposition 7.1 exact.
+2. The recommendation of Round Robin rests on overload and demand not
+   served, not on margin, so the ranking shifts do not change it.
+
+## S7.8 Lower demand (closure brief D3)
+
+The closure runs at 0.5× and 0.733× the Week 1 demand (06 S6.4; the
+spawn multiplier 22 gives 0.733×, not 0.75×) answer S7.4's open question
+directly. They replace the proposed 0.4/0.7/0.9× runs, which were not run.
+
+Under Round Robin, paired by seed and day, with n_clusters = 50
+(`results/closure_lower_demand_monotonicity.csv`):
+- **Overload.** It is 0.0 kWh at 0.5×, 0.733× and 1.0×, so lower demand
+  never worsens it.
+- **Demand not served (lower bound)**, going down from each level to the
+  next lower one:
+  - from 1.0× to 0.733×: falls by 18.8 points [15.8, 21.8];
+  - from 0.733× to 0.5×: falls by 11.7 points [9.2, 14.4].
+
+  So lower demand never worsens it on average. Cell by cell, the
+  relationship is not strictly monotone: 18 of 100 cells have higher DNS
+  at 0.5× than at 0.733×, because the arrival draws differ between levels.
+- **Satisfaction.** Differences are within ±0.1 point, and the CIs include
+  zero or nearly so.
+
+**Statement.** Below 0.733× the Bogotá demand, the guideline holds. The
+transformer limit is never exceeded, and demand not served is under 15%
+with its CI: at 0.5× it is 4.1% [2.6, 5.8]. At 0.733× it is already
+15.8% [12.6, 19.1]. **The tested level at which the guideline holds is
+0.5×, and the threshold lies between 0.5× and 0.733×.**
+
+**City mapping: not made.** No source gives EVs per station per day for
+any of the six cities (S7.4), so no city is placed on this axis. The
+statement is conditional on a station's demand relative to the Week 1
+sizing.
+
+## S7.9 What does not transfer (closure brief D4)
+
+Three physical inputs are the same declared stand-ins in every city. The
+physical results therefore do not transfer as city-specific findings.
+1. **Climate.** Battery thermal behaviour and ambient temperature are not
+   modelled. The cities range from Bogotá's highland climate (about
+   2,600 m) to the Caribbean coast (Barranquilla, Cartagena), and that
+   difference is not represented. It is declared, not estimated.
+2. **Arrivals.** Arrival times, stay durations and requested energy come
+   from EV2Gym's Dutch data in every city. Two further points:
+   - The per-port arrival model also ties demand to the port count (06
+     S6.4, C2).
+   - No Colombian charging-session dataset was available.
+3. **Feeder.** Every result on the grid uses EV2Gym's 34-node network,
+   with the station on bus 27. None of the six operators' feeders is
+   public. Three further points:
+   - The 34-node feeder is out of band at bus 27 with the station idle
+     (06 S6.2).
+   - EV2Gym has no feedback from the feeder to the station (06 S6.4).
+   - EV2Gym's 123-bus network is in band when idle, and it was used for
+     the voltage check (06, Guideline 3). It is a test network too, not a
+     Colombian feeder.
+
+The economic layer transfers by Proposition 7.1 under a flat tariff. Under
+a two-band tariff it transfers with the corrections measured in S7.7.
 
 ## S7.6 Answer to Objective 5
 
 The Bogotá station study transfers to Medellín as follows:
-- **Ranking and strategy recommendation: transfer fully.** The margin
-  ranking is tariff-invariant under any flat price with retail above cost
-  (verified across 8 scenarios). The recommendation does not depend on any
-  price, so Round Robin remains the recommended strategy.
-- **Relative cost of the transformer limit: transfers exactly** (0.47% of
-  margin in both cities).
+- **Ranking and strategy recommendation: transfer fully under a flat
+  tariff.** The margin ranking is tariff-invariant under any flat price
+  with retail above cost (Proposition 7.1; the 8-scenario check verifies
+  the implementation). The recommendation does not depend on any price, so
+  Round Robin remains the recommended strategy. Under a two-band option
+  the ranking can shift among arms with near-equal energy (S7.7).
+- **Relative cost of the transformer limit: identical in every city under
+  a flat tariff** (0.47% of margin), by Proposition 7.1, part 2.
 - **Absolute peso margins: transfer only through the tariff.** They scale
   with the unit margin, which is 9.95% lower in Medellín under the cost
   data that is available. The Medellín retail price is not published, so
   the absolute margin is a sensitivity, not a claim.
 - **Physical results do not transfer, because their inputs are not
-  city-specific in either city.** These are overload, satisfaction,
-  energy-not-served and voltage. The arrival model, the demand level and
-  the feeder are the same declared stand-ins in both cities.
+  city-specific in any city.** These are overload, satisfaction, demand
+  not served and voltage. The arrival model, the demand level, the feeder
+  and the climate are the same declared stand-ins in every city (S7.9).
+- **Six cities, not one** (closure, S7.7). The spread is small in four
+  cities. Bucaramanga publishes no option. Barranquilla's 10% two-band
+  option is the exception: under it, Round Robin's cost of the limit
+  rises from 523 to 1,878 COP/day and the margin ranking shifts. The flat
+  option keeps Proposition 7.1 exact there.
+- **Lower demand** (S7.8). Below 0.733× the Bogotá demand, the guideline
+  holds; 0.5× is the tested level. No city is mapped onto the demand axis,
+  because no per-station source exists.
 
 Replicating the study in a second city is therefore immediate for the
 economic layer and conditional, not established, for the physical layer.

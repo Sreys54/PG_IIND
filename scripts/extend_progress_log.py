@@ -790,13 +790,110 @@ def build_week7_o5_section(doc):
 # doc:end week7_progress_log
 
 
+# doc:begin closure_progress_log
+CLOSURE_TITLE = "15. Closure -- Corrections, Capacity Threshold and Colombian Replicability"
+
+
+def build_closure_section(doc):
+    """Closure brief (2026-10-06). Appended after section 14; earlier
+    paragraphs are corrected by reference (15.1), never edited."""
+    import pandas as pd
+    brk = pd.read_csv("results/closure_c1_breaking_levels.csv").set_index("algorithm")
+    c2 = pd.read_csv("results/closure_c2_options.csv")
+    tc = pd.read_csv("results/closure_target_compliance.csv").set_index("algorithm")
+    cost = pd.read_csv("results/closure_multicity_rr_cost.csv")
+    tar = pd.read_csv("results/closure_multicity_tariffs.csv").set_index("city")
+    vc = pd.read_csv("results/closure_voltage_contribution.csv").set_index("setting")
+    add_heading(doc, CLOSURE_TITLE)
+
+    add_heading(doc, "15.1. Corrections to Earlier Sections (dated 2026-10-06)")
+    add_bullet(doc, "Section 8.1.4 (Week 1 parameters), 'one 60 kWh battery profile': the configured battery is 70 kWh "
+                    "(station_v0_bogota.yaml, ev.battery_capacity). 60 kWh was never simulated.")
+    add_bullet(doc, "Section 8.3.11 (Week 3 corrected experiment), AFAP overload '5.33 kWh' and the RandomPolicy comparison: these "
+                    "are values from the superseded 5-seed grid. The current grid gives AFAP 14.22 kWh/day [9.58, 19.28] "
+                    "and the random control 3.32 kWh/day [1.75, 5.17], n_clusters = 50.")
+    add_bullet(doc, "Section 10.16 (Week 5), '503.9 COP/day': the current value is 551.9 COP/day [274.3, 874.2] "
+                    "(regenerated from the analysis rows; the 503.9 came from a stale CSV).")
+    add_bullet(doc, "Sections 9.7 and 10.15 (success targets) and 13.3-13.4 (Week 7), 'satisfaction met / unchanged' and "
+                    "'ENS met by every arm': withdrawn as statements about the station's users. EV2Gym silently "
+                    "drops arrivals at occupied ports, so these metrics cover served EVs only (15.2).")
+    add_bullet(doc, "Section 14.2-14.3 (Week 7), ranking invariance and the equal relative cost in both cities: "
+                    "these are consequences of a proposition (15.4), not empirical findings.")
+
+    add_heading(doc, "15.2. Arrivals at Full Ports")
+    add_body(doc,
+        "EV2Gym draws arrivals per port and never creates an EV whose port is occupied (utils.py, EV_spawner). "
+        "A replay of the spawner's random draws, from outside the library, counts these rejected arrivals. "
+        "Demand not served (rejected energy plus shortfall, over total requested) for Round Robin at the reference "
+        "demand is 34.6% [30.8, 38.4] (lower bound, n_clusters = 50). The 8 ports, not the transformer or the "
+        "policy, are the binding constraint.")
+
+    add_heading(doc, "15.3. Capacity Threshold and What Closes It")
+    for arm, label in [("RoundRobin", "Round Robin"), ("ChargeAsFastAsPossible", "AFAP"),
+                       ("TD3_vanilla_extended_ts102", "Final RL model")]:
+        r = brk.loc[arm]
+        unit = "kW" if r.first_criterion_broken == "peak" else "%"
+        v = (r.value, r.ci_low, r.ci_high) if unit == "kW" else (100 * r.value, 100 * r.ci_low, 100 * r.ci_high)
+        add_bullet(doc, f"{label}: breaks at {r.breaking_level_label} on {r.first_criterion_broken} "
+                        f"({v[0]:.2f} {unit} [{v[1]:.2f}, {v[2]:.2f}], n_clusters = {int(r.n_clusters)}).")
+    for lvl, ports in [(0.75, 10), (1.0, 12)]:
+        r = c2[(c2.level == lvl) & (c2.algorithm == "RoundRobin") & (c2.ports == ports)
+               & c2.station_demand.str.startswith("constant") & (c2.transformer_kw == 100.0)].iloc[0]
+        add_bullet(doc, f"At {r.level_label}: {ports} ports with Round Robin on the 100 kW transformer (constant "
+                        f"station demand) give demand not served {100 * r.dns_lower_mean:.2f}% "
+                        f"[{100 * r.dns_lower_ci_low:.2f}, {100 * r.dns_lower_ci_high:.2f}] and "
+                        f"+{r.delta_gross_margin_cop:,.0f} COP/day of margin. A larger transformer changes nothing "
+                        f"for Round Robin.")
+
+    add_heading(doc, "15.4. Replicability Across the Six Categoria Especial Cities")
+    add_body(doc,
+        "Proposition: under a flat tariff, margin = energy x (retail - cost), so the margin ranking equals the energy "
+        "ranking and the relative cost of the transformer limit equals the relative energy foregone, whatever the "
+        "price. Cities (CGN, vigencia 2026): Bogota, Medellin, Cali, Barranquilla, Cartagena, Bucaramanga.")
+    for city, t in tar.iterrows():
+        c = cost[(cost.city == city) & (cost.retail_price_label == "1450_reference")].iloc[0]
+        sp = "none published" if pd.isna(t.intraday_spread) else f"{100 * t.intraday_spread:.2f}%"
+        tou = "" if pd.isna(c.conceded_tou_cop_day) else f", two-band {c.conceded_tou_cop_day:,.0f}"
+        add_bullet(doc, f"{city} ({t.operator}, {t.sheet_month}): Nivel 2 flat cost {t.flat_cost_con_contribucion:,.2f} "
+                        f"COP/kWh, spread {sp}, unit margin at 1,450 = {t.unit_margin_at_1450:,.1f}; Round Robin's "
+                        f"cost of the limit {c.conceded_flat_cop_day:,.0f} COP/day flat{tou}.")
+    add_body(doc, "The spread is not small everywhere: Air-e (Barranquilla) publishes a 10% two-band option, under which "
+                  "Round Robin's cost of the limit is about 3.6 times the flat value. Below 0.733x the Bogota demand the "
+                  "guideline holds (0.5x tested); no city is mapped onto the demand axis.")
+
+    add_heading(doc, "15.5. Voltage")
+    b = vc.loc["base"]
+    v123 = pd.read_csv("results/closure_ieee123_voltage.csv")
+    rr123 = v123[(v123.level == 1.0) & (v123.algorithm == "RoundRobin")].iloc[0]
+    add_body(doc,
+        f"EV2Gym has no feeder-to-station feedback (source-confirmed). On the 34-node feeder, which is out of band "
+        f"with the station idle, Round Robin lowers the feeder's daily minimum voltage {100 * b.rr_reduction_vs_afap:.1f}% "
+        f"less than AFAP [{100 * b.reduction_ci_low:.1f}, {100 * b.reduction_ci_high:.1f}] at the base setting. Of "
+        f"EV2Gym's shipped feeders only node_123 is in band with the station idle; AFAP and Round Robin rerun on it "
+        f"(50 seeds, weekday only, 1.0-1.6x) leave the +/-5% band in {int(v123.cells_out_of_band.sum())} cells "
+        f"(lowest bus {v123.min_voltage_pu_worst.min():.4f} p.u.), and Round Robin's reduction there is "
+        f"{100 * rr123.rr_reduction_vs_afap:.1f}% [{100 * rr123.reduction_ci_low:.1f}, {100 * rr123.reduction_ci_high:.1f}] "
+        f"at 1.0x. node_123 is a test network, not a Colombian feeder.")
+
+    add_heading(doc, "15.6. Final Target Compliance (reference demand, n_clusters = 50)")
+    for arm, r in tc.iterrows():
+        yn = lambda x: "met" if bool(x) else "not met"
+        add_bullet(doc, f"{arm}: satisfaction (served EVs) {yn(r.sat_served_met)}; satisfaction counting rejected "
+                        f"arrivals {100 * r.sat_all_arrivals_mean:.1f}% ({yn(r.sat_all_arrivals_met)}); ENS_rel "
+                        f"{yn(r.ens_rel_met)}; demand not served {100 * r.dns_lower_mean:.1f}% ({yn(r.dns_met)}); "
+                        f"transformer {yn(r.transformer_met)}; voltage {r.voltage_status}.")
+    add_body(doc, "Full argument: thesis_docs/Closure_Parameter_Method_and_Implementation_Justification.docx and "
+                  "chapters 06-08.")
+# doc:end closure_progress_log
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--section", choices=["week5", "week6_part0", "week7"], required=True,
+    ap.add_argument("--section", choices=["week5", "week6_part0", "week7", "closure"], required=True,
                     help="which section to append (each runs once; nothing already in the file is modified)")
     args = ap.parse_args()
-    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7") else PROGRESS_LOG_PATH
+    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7", "closure") else PROGRESS_LOG_PATH
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"{path!r} not found relative to the current working directory. Run this script with "
@@ -808,6 +905,10 @@ if __name__ == "__main__":
         # Week 3, Week 4, and the Week 4 correction were already appended in
         # earlier sessions; Week 5 was appended as "2.4. Week 5".
         build_week5_section(doc)
+    elif args.section == "closure":
+        if any(p.text.strip() == CLOSURE_TITLE for p in doc.paragraphs):
+            raise SystemExit(f"{CLOSURE_TITLE!r} already present in {path} -- not appending twice.")
+        build_closure_section(doc)
     elif args.section == "week7":
         if any(p.text.strip() in (WEEK7_O4_TITLE, WEEK7_O5_TITLE) for p in doc.paragraphs):
             raise SystemExit(f"Week 7 sections already present in {path} -- not appending twice.")

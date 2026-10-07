@@ -1,0 +1,4 @@
+algorithm,breaking_level,breaking_level_label,highest_level_not_broken,first_criterion_broken,all_criteria_broken_at_level,value,ci_low,ci_high,n_clusters,levels_tested
+ChargeAsFastAsPossible,0.5,0.5x,,peak,peak,133.12735595922774,122.23681203745873,156.31291439397967,50,"0.5,0.75,1,1.3,1.6,2,2.5"
+RoundRobin,0.75,0.733x (spawn 22),0.5,dns,dns,0.15803475927582628,0.12555089023050542,0.19133879667997566,50,"0.5,0.75,1,1.3,1.6,2,2.5"
+TD3_vanilla_extended_ts102,0.5,0.5x,,peak,peak,137.59151091030705,121.56669878576726,156.49900096622125,50,"0.5,0.75,1,1.3,1.6,2,2.5"

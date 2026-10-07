@@ -16,30 +16,51 @@
 ### The result
 
 **`ChargeAsFastAsPossible` (AFAP) has the highest mean gross margin of
-every algorithm in the registry — 114,913 COP, above Round Robin
-(114,824), above both oracle variants (114,774 / 114,320), and above every
-trained RL arm (100,079–110,127).** AFAP is also the only algorithm that
-routinely overloads the station's transformer (mean 5.33 kWh/day, 95% CI
-excluding zero — `01_baseline.md`, `03_algorithms.md`). Stated plainly,
+every causal (deployable) algorithm — 118,084 COP/day, above Round Robin
+(117,532), above both oracle variants (117,507 Tracking / 117,963
+Balanced), and above every trained RL arm (106,340–112,474). Only the
+non-causal `MPC_EnergyMaxG2V` exceeds it, by 3.1 COP/day [2.1, 4.2].**
+AFAP is also the causal algorithm that routinely overloads the station's
+transformer: a mean of 14.22 kWh/day, 95% cluster-bootstrap CI [9.58,
+19.28], n_clusters = 50, in 28 of 50 scenario seeds (S5.6).
+
+*Correction (2026-10-06, closure brief A.2):* this paragraph originally
+gave the superseded 5-seed grid's values. Those were AFAP 114,913, Round
+Robin 114,824, oracles 114,774 / 114,320, RL 100,079–110,127, and an
+overload of 5.33 kWh/day. It also said AFAP had the highest margin of
+*every* algorithm, which is false on the current grid. The current values
+come from `results/week5_margin_vs_overload.csv`, now regenerated from the
+analysis rows by `scripts/regenerate_margin_vs_overload.py`. Stated plainly,
 because it is the central result of this chapter and must not be left for
 a reader to notice on their own: **under Colombia's flat-tariff economics,
 the algorithm that violates the transformer's rating is the most
 profitable one.**
 
-### Is this station meaningfully capacity-constrained, or is 5.33 kWh/day mostly noise?
+### Is this station meaningfully capacity-constrained, or is the overload mostly noise?
 
-Checked directly on the 50-cell main grid, not inferred from the reference
-cell alone (2026-09-08 review, item 4) — because the reference cell itself
-(seed=42, 0.132 kWh) turns out to be one of the *quietest* cells in the
-grid, and reading the mean off that context alone would understate the
-real picture:
+*Correction (2026-10-06, closure brief A.2).* The original version of this
+subsection was computed on the superseded 5-seed × 10-day grid: mean 5.330,
+median 0.000 and maximum 37.323 kWh, with overload in 10 of 50 cells (20%),
+all of them from seed 0. On the current grid (50 seeds × 2 day types,
+`analysis_row = True`):
 
 | | value |
 |---|---:|
-| mean | 5.330 kWh |
-| median | **0.000 kWh** |
-| max | 37.323 kWh |
-| cells with any overload (of 50) | **10 (20%)** |
+| mean | **14.225 kWh** (95% cluster-bootstrap CI [9.58, 19.28], n_clusters = 50) |
+| median (per cell) | 0.000 kWh |
+| max (per cell) | 120.802 kWh |
+| cells with any overload (of 100) | **35 (35%)**: 21 weekday, 14 weekend |
+| scenario seeds with any overload (of 50) | **28 (56%)** |
+
+The old text's "1-in-5" and "only seed 0" findings were artefacts of the
+small grid, and are withdrawn. The conclusion they supported, that the
+station is genuinely capacity-constrained, holds more strongly. The
+historical analysis follows unchanged, for the record.
+
+Original text, superseded grid: checked directly on the 50-cell main grid,
+not inferred from the reference cell alone (2026-09-08 review, item 4),
+because the reference cell itself (seed=42, 0.132 kWh) turns out to be one
+of the *quietest* cells in the grid.
 
 **The distribution is sharply bimodal, and the split is not by day — it is
 entirely by scenario seed.** Broken down by `(seed, eval_day)`: every one
@@ -56,7 +77,7 @@ specific stochastic draw, not of EV count, day of week, or season as such.
 **Conclusion: this station is genuinely, substantially capacity-constrained
 — not "barely constrained" — but the risk is concentrated in a minority
 (1-in-5, 20%) of stochastic arrival patterns, not spread evenly across
-all days.** A mean of 5.33 kWh/day is the correct summary statistic for
+all days.** A mean of 5.33 kWh/day (superseded 5-seed grid) is the correct summary statistic for
 exactly this kind of tail risk (it is what a mean does when 80% of mass
 sits at zero and 20% sits at 10.6–37.3), and Round Robin's own value is
 real precisely because it reliably neutralizes this recurring, if
@@ -168,6 +189,12 @@ rather than the degenerate "who earns more" question. Computed on the
 | TD3_vanilla_ts101 | 13,172.4 | 2.676 | 4,921.9 | 97.89% |
 | TD3_TrackingOnly_ts101 | 12,995.3 | 1.164 | 11,166.9 | 98.00% |
 
+*Correction (2026-10-06, closure brief A.2).* The table above and the
+paragraph below are historical: they use the superseded 5-seed grid (88.6
+COP/day, 16.6 COP/kWh, 5.33 kWh). The current values are in the corrected
+table further down: Round Robin concedes **551.9 COP/day**, CI [274.3,
+874.2], n_clusters = 50, which is 38.8 COP per kWh of overload avoided.
+
 **Reading this table is the actual Objective 4 finding this chapter needs,
 not a robustness check attached to one:** Round Robin eliminates 100% of
 AFAP's overload for 88.6 COP/day of foregone margin — effectively free,
@@ -194,25 +221,35 @@ grid, since superseded — recomputed on the real 50-seed grid below, same
 metric, same interpretation, now on a properly-powered sample and
 including the two MPC arms.**
 
-| Algorithm | Margin foregone vs. AFAP (COP) | Overload avoided vs. AFAP (kWh) | COP per kWh overload avoided | Avg. satisfaction |
+*Correction (2026-10-06, closure brief A.2).* The 50-seed table that
+originally stood here (Round Robin 503.9 COP/day, 38.0 COP/kWh, AFAP
+overload 13.25 kWh) came from the stale, pre-Gate-4
+`results/week5_margin_vs_overload.csv`. That file is now regenerated from
+the current analysis rows (`scripts/regenerate_margin_vs_overload.py`), and
+the table below gives the regenerated values. The CIs for margin foregone
+and overload avoided are paired cluster-bootstrap CIs against AFAP, with
+n_clusters = 50, from `results/closure_margin_vs_overload_ci.csv`.
+
+| Algorithm | Margin foregone vs. AFAP (COP/day) [95% CI] | Overload avoided vs. AFAP (kWh/day) [95% CI] | COP per kWh overload avoided | Avg. satisfaction |
 |---|---:|---:|---:|---:|
-| **MPC_EnergyMaxG2V** | **−23.2 (earns *more* than AFAP)** | 13.25 | — | 100.0% |
-| RandomPolicy | 259.7 | 10.22 | 25.4 | 100.0% |
-| Optimal_Oracle_Balanced | 328.7 | 13.25 | 24.8 | 100.0% |
-| Round Robin | 503.9 | 13.25 | **38.0** | 99.90% |
-| MPC_TrackingG2V | 551.8 | 13.25 | 41.6 | 100.0% |
-| Optimal_Oracle_Tracking | 783.2 | 13.25 | 59.1 | 100.0% |
-| TD3_TrackingOnly_ts100 | 5,750.3 | 2.97 | 1,935.2 | 99.09% |
-| TD3_TrackingOnly_ts102 | 7,604.5 | 8.94 | 850.1 | 98.73% |
-| TD3_vanilla_ts102 | 9,913.0 | 8.84 | 1,122.0 | 98.40% |
-| TD3_TrackingOnly_ts101 | 10,742.7 | 3.97 | 2,704.0 | 98.26% |
-| TD3_vanilla_ts101 | 11,696.6 | 9.05 | 1,293.2 | 98.02% |
-| TD3_vanilla_ts100 | 12,354.8 | 8.72 | 1,417.2 | 97.93% |
+| **MPC_EnergyMaxG2V** | **−3.1 [−4.2, −2.1] (earns *more* than AFAP)** | 14.22 [9.58, 19.28] | — | 100.0% |
+| RandomPolicy | 52.9 [48.8, 57.5] | 10.91 [6.81, 15.15] | 4.9 | 100.0% |
+| Optimal_Oracle_Balanced | 121.1 [114.6, 127.8] | 14.22 [9.58, 19.28] | 8.5 | 100.0% |
+| Round Robin | 551.9 [274.3, 874.2] | 14.22 [9.58, 19.28] | **38.8** | 99.91% |
+| MPC_TrackingG2V | 571.8 [550.6, 593.1] | 14.22 [9.58, 19.28] | 40.2 | 100.0% |
+| Optimal_Oracle_Tracking | 576.6 [555.6, 598.1] | 14.22 [9.58, 19.28] | 40.5 | 100.0% |
+| TD3_TrackingOnly_ts100 | 5,609.8 [4,009.4, 7,346.0] | 3.35 [−3.50, 10.16] | 1,675.1 | 99.09% |
+| TD3_TrackingOnly_ts102 | 7,280.4 [5,517.6, 9,157.7] | 9.59 [4.55, 15.02] | 759.4 | 98.74% |
+| TD3_vanilla_ts102 | 9,925.4 [7,959.9, 11,976.9] | 9.52 [4.81, 14.71] | 1,042.2 | 98.34% |
+| TD3_TrackingOnly_ts101 | 10,211.2 [7,758.1, 12,960.2] | 4.95 [−0.03, 10.28] | 2,062.8 | 98.30% |
+| TD3_vanilla_ts101 | 11,402.2 [9,258.2, 13,699.1] | 9.74 [4.97, 14.82] | 1,170.5 | 98.07% |
+| TD3_vanilla_ts100 | 11,743.6 [9,414.8, 14,304.6] | 9.24 [5.31, 13.41] | 1,270.8 | 97.98% |
 
 **The 50-seed grid sharpens every part of this finding, and adds a new
 one.** Round Robin's cost of eliminating AFAP's overload is still
-negligible in absolute terms — 503.9 COP against a ~118,000 COP daily
-gross revenue, well under 1% — but no longer literally "cheapest": at
+negligible in absolute terms: 551.9 COP against a ~118,000 COP daily gross
+revenue, well under 1% (corrected 2026-10-06; previously 503.9). It is no
+longer literally "cheapest", though. At
 this sample size, `MPC_EnergyMaxG2V` **dominates AFAP outright** (higher
 mean margin, essentially zero overload), and `Optimal_Oracle_Balanced`/
 `RandomPolicy` show a lower COP/kWh ratio than Round Robin. This does not
@@ -222,11 +259,12 @@ non-causal departure-time and near-horizon-arrival knowledge) and is not
 a deployable strategy today, and `RandomPolicy`'s favorable ratio is the
 same coincidence-not-a-strategy problem noted in the original table. Round
 Robin remains the cheapest arm that is both fully causal and a real
-control policy. **Every trained RL arm is still 20×–70× more expensive per
+control policy. **Every trained RL arm is still 20×–53× more expensive per
 kWh of overload avoided than Round Robin**, and still does not fully
-eliminate the overload (avoiding only 2.97–9.05 of AFAP's 13.25 kWh, vs.
-Round Robin's full 13.25) — this conclusion strengthens, not weakens, on
-the larger sample. Full data: `results/week5_margin_vs_overload.csv`.
+eliminate the overload. The RL arms avoid only 3.35–9.74 of AFAP's 14.22
+kWh, against Round Robin's full 14.22. The figures were corrected on
+2026-10-06; the stale file gave 20×–70×, 2.97–9.05 and 13.25. The
+conclusion strengthens, rather than weakens, on the larger sample. Full data: `results/week5_margin_vs_overload.csv`.
 
 ## S5.2 Week 1 reference cell — reconciled
 
@@ -580,7 +618,7 @@ with 50 independent scenario draws, transformer overload under AFAP is
 not a rare tail event, it is the **majority-case outcome**: on 56% of
 independent arrival realizations, unmanaged charging exceeds the
 transformer's rating, at a mean magnitude (14.22 kWh) roughly 2.7× larger
-than the earlier 5-seed estimate (5.33 kWh) suggested. Full distribution:
+than the earlier, superseded 5-seed estimate (5.33 kWh) suggested. Full distribution:
 `results/week5_seed_overload_distribution.csv`.
 
 ### Optimality gap vs. the oracle — `MPC_TrackingG2V` closes the gap Week 4 called unclosed
@@ -694,7 +732,8 @@ this chapter, on the three declared axes:
   — 56% of independent arrival scenarios (S5.6), not a rare edge case.
   It does this with no forecast, no training, and no information
   advantage over what a real Bogotá operator has today.
-- **Economic cost of that compliance is negligible.** 503.9 COP/day
+- **Economic cost of that compliance is negligible.** 551.9 COP/day
+  (corrected 2026-10-06; previously 503.9, see the note below) of
   foregone margin against a ~118,000 COP/day gross revenue base (S5.1) —
   under 1%. Gross margin itself is retired as a ranking metric (S5.1) for
   the reason this number illustrates: under Colombia's flat tariff, margin

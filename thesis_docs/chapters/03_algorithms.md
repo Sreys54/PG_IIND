@@ -63,6 +63,8 @@ know what "unmanaged" costs.
 | Average user satisfaction | 1.0 [1.0, 1.0] |
 | Profits | -45.73 [-53.8, -37.66] |
 
+> **Correction (2026-10-06, closure brief A.2).** The table above is from the superseded 5-seed x 10-day grid (non-independent days, pre-Gate-4 setpoints; see 05 S5.0). On the current statistical grid (`analysis_row=True`, 50 seeds x 2 day types, 100 runs, cluster bootstrap over the scenario seed, n_clusters = 50) AFAP gives: EVs served 13.44 [13.07, 13.80]; energy charged 202.1 kWh [192.9, 211.7]; transformer overload **14.22 kWh [9.58, 19.28]**; average user satisfaction 1.000 [1.000, 1.000]. EV2Gym's `total_profits` is not a profit figure (ENTSO-E-priced purchase cost, see `registry.py`); the COP gross margin is 118,084 COP/day [112,673, 123,672] (`results/economics_cop.csv`). Cite the current-grid values, not the table.
+
 Supporting figures: `figures/f01_power_profile.png` (reference-day power
 trace, shows two clear excursions above the 100 kW transformer limit),
 `figures/f02_metrics_bars.png`, `figures/f04_distributions.png` (shows the
@@ -74,8 +76,9 @@ port count under a fixed transformer).
 ### Conclusions
 
 At this station's 4:1 oversubscription ratio, unmanaged charging produces
-a measurable transformer overload (mean 5.33 kWh/day, 95% CI excluding
-zero) without any corresponding benefit in EVs served, energy delivered,
+a measurable transformer overload (mean 5.33 kWh/day on the superseded
+5-seed grid; **14.22 kWh/day [9.58, 19.28], n_clusters = 50, on the current
+grid — correction 2026-10-06, closure brief A.2**; CI excluding zero in both) without any corresponding benefit in EVs served, energy delivered,
 or user satisfaction relative to Round Robin (see the paired comparison
 below) — i.e., the naive strategy buys nothing except the emergency
 capacity risk. `figures/f04_distributions.png` shows this is not a uniform
@@ -188,6 +191,8 @@ evaluated on the exact same 50 scenarios):
 | `tracking_error` | -76.18% [-77.41%, -74.77%] |
 | `power_tracker_violation` | -100% [-100%, -100%] (essentially eliminated) |
 
+> **Correction (2026-10-06, closure brief A.2).** Both tables above are from the superseded 5-seed grid. Current grid (100 paired runs, `paired_cluster_bootstrap_ci`, n_clusters = 50), Round Robin vs. AFAP: EVs served +0.00% [+0.00%, +0.00%]; energy charged **-0.47% [-0.75%, -0.23%]** (replaces -0.08%); transformer overload **-14.22 kWh [-19.28, -9.58]** (replaces -5.33); average user satisfaction -0.09% [-0.16%, -0.04%]; COP gross margin -0.47% [-0.75%, -0.23%] (551.9 COP/day, see 05 S5.8; replaces the ENTSO-E `total_profits` -2.52%, which is not a margin); `tracking_error` **-75.50% [-76.69%, -74.25%]** (replaces -76.18%); `power_tracker_violation` -100% [-100%, -100%]. Round Robin's own overload is 0.0 kWh in all 100 current runs.
+
 Supporting figures: `figures/f01_power_profile.png`, `figures/f02_metrics_bars.png`,
 `figures/f03_tradeoff_pareto.png` (satisfaction-vs-overload trade-off —
 both algorithms are non-dominated in this sample, since neither one beats
@@ -200,10 +205,12 @@ across every tested port count and both transformer policies).
 ### Conclusions
 
 Round Robin **eliminates all measured transformer overload** at this
-station (0.0 kWh across all 50 evaluation runs, vs. AFAP's 5.33 kWh mean
-with a 95% CI that excludes zero) and cuts power-setpoint tracking error
-by 76%, at a statistically real but modest cost in profit (-2.52%,
-95% CI excluding zero) and with no measurable change in how many EVs are
+station (0.0 kWh across all 100 current-grid evaluation runs, vs. AFAP's 14.22 kWh
+mean [9.58, 19.28], n_clusters = 50 — correction 2026-10-06, closure brief
+A.2; the superseded 5-seed grid gave 5.33 kWh over 50 runs) and cuts
+power-setpoint tracking error by 75.5%, at a statistically real but modest
+cost in COP gross margin (-0.47% [-0.75%, -0.23%]; the superseded figure
+was -2.52% of ENTSO-E `total_profits`, which is not a margin) and with no measurable change in how many EVs are
 served, how much energy is delivered, or user satisfaction. This directly
 answers this algorithm's rationale question: at this station's 4:1
 oversubscription ratio, a zero-forecasting, negligible-compute heuristic

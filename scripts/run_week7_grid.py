@@ -201,7 +201,7 @@ def _target_config(module, name, path):
 
 
 # doc:begin run_cell
-def run_cell(arm, cfg_name, cfg_path, seed, day, commit):
+def run_cell(arm, cfg_name, cfg_path, seed, day, commit, require_voltage=True):
     LAST_VOLTAGE.clear()
     if arm == "ChargeAsFastAsPossible":
         row = heuristic_run_single(cfg_name, cfg_path, 8, 100, ChargeAsFastAsPossible, arm, "heuristic", seed, day, commit)
@@ -221,8 +221,11 @@ def run_cell(arm, cfg_name, cfg_path, seed, day, commit):
     else:
         raise ValueError(arm)
     row = _with_week5_fields(row, seed, day)
-    row["simulate_grid"] = True
     v = LAST_VOLTAGE.get("v")
+    if not require_voltage:  # closure brief Part C: non-grid configs
+        row["simulate_grid"] = False
+        return row, None
+    row["simulate_grid"] = True
     if v is None:
         raise RuntimeError(f"{row['run_id']}: no grid voltage captured -- was the env built with simulate_grid=True?")
     return row, v

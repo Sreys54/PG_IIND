@@ -140,7 +140,16 @@ class TestRegistryGridFlag(unittest.TestCase):
         self.assertEqual(self.df.columns[-1], "simulate_grid")
         nongrid = self.df[~self.df.config_name.str.contains("grid")]
         self.assertTrue(nongrid.simulate_grid.astype(str).eq("False").all())
-        self.assertEqual(int((nongrid.analysis_row.astype(str) == "True").sum()), 2200)
+        # Corrected 2026-10-06 (closure brief): the closure's Part C appended
+        # 6,000 non-grid analysis rows (4,400 C1/C2 + 1,600 C2 constant-
+        # demand), marked "closure_part=" in notes. The
+        # pre-closure count stays pinned at 2,200 and the closure count is
+        # pinned separately, so neither assertion gets weaker.
+        closure = nongrid.notes.fillna("").str.contains("closure_part=")
+        is_analysis = nongrid.analysis_row.astype(str) == "True"
+        self.assertEqual(int((is_analysis & ~closure).sum()), 2200)
+        self.assertEqual(int((is_analysis & closure).sum()), 6000)
+        self.assertEqual(int(closure.sum()), 6000)
 
     def test_grid_rows_flagged(self):
         grid = self.df[self.df.config_name.str.contains("grid")]

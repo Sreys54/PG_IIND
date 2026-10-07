@@ -494,6 +494,62 @@ is the following.
   - the S5.11 point-3 interpretation (the training reward *improved*).
 - **Consolidated limitations:** `thesis_docs/chapters/08_limitations.md`.
 
+**Update, 2026-10-06: Closure brief (fixes, capacity threshold, Colombian
+replicability). Branch `semana-7`. Uncommitted: the user commits.** The
+decision log is the closure section at the top of
+`thesis_docs/overnight_report.md`. The handback is
+`thesis_docs/Closure_Parameter_Method_and_Implementation_Justification.{md,docx}`.
+
+Standing facts (do not lose them):
+- **EV2Gym silently drops arrivals at occupied ports**
+  (`utils.py::EV_spawner`, lines 490 and 531–537).
+  - Satisfaction, `ENS_rel` and EVs served therefore cover **served EVs
+    only**.
+  - Use **demand not served (DNS)**, from
+    `ev2gym_thesis/demand/censoring.py` (post-processing, never a registry
+    column). The lower bound is primary.
+  - Round Robin DNS at 1.0× is **34.6% [30.8, 38.4]**. The 8 ports bind,
+    not the transformer.
+  - Never again write that satisfaction "is unchanged" or "met" as a claim
+    about the station's users.
+- **Capacity thresholds** (`results/closure_c1_breaking_levels.csv`):
+  - Round Robin breaks at 0.733× (DNS);
+  - AFAP and the final RL model break at 0.5× (P95 peak > 100 kW).
+- **What closes the gap is ports** (constant station demand):
+  - 10 ports at 0.733× and 12 ports at 1.0× (`results/closure_c2_options.csv`);
+  - a larger transformer changes nothing for Round Robin.
+- **EV2Gym draws arrivals per port.** More ports at the same
+  `spawn_multiplier` also means more demand. Compare port counts with spawn
+  × 8/P. `spawn_multiplier` 22 is 0.733×, not 0.75×.
+- **Power factor and ratings.** pf 0.894 is derived from CREG 015/2018,
+  with a caveat in `thesis_docs/sources/SOURCES_closure.md`. Standard
+  ratings come from Enel ET-013. AFAP needs **225 kVA** at either power
+  factor.
+- **Six categoría especial cities** (CGN workbook, vigencia 2026):
+  Bogotá, Medellín, Cali, Barranquilla, Cartagena, Bucaramanga. Their
+  tariffs are in `ev2gym_thesis/prices/cities.py`.
+  - Air-e (Barranquilla) has a **10.03%** two-band Nivel 2 option.
+  - EMCALI's latest retrievable sheet is January 2026.
+- **Proposition 7.1** (07 S7.3a). Under a flat tariff, the margin ranking
+  equals the energy ranking and the relative cost is ΔE/E_AFAP. The 48/48
+  check and the equal 0.47% are its consequences, not findings. It does
+  not hold exactly under a two-band tariff.
+- **Voltage.**
+  - EV2Gym has no feedback from the feeder to the station
+    (source-confirmed, `test_closure.TestNoFeederFeedback`).
+  - The 34-node feeder is out of band when idle.
+  - **node_123 is in band when idle** (`results/closure_feeder_probe_summary.csv`).
+    The AFAP and RR voltage runs on it are weekday only, because EV2Gym's
+    load generator stalls for 123 buses on the weekend day
+    (`scripts/closure_ieee123_voltage.py` docstring).
+  - The "37%" is 36.4% [22.3, 47.0] at base only.
+- **Registry.** It gained 6,000 closure rows (`notes` contain
+  `closure_part=`; `analysis_row=True`, `simulate_grid=False`). The
+  non-grid statistics set is still `config_name == 'station_v0_bogota'`
+  (2,200 rows).
+- **Laptop limits.** At most 2 parallel EV2Gym workers. Three workers plus
+  the test suite overloaded the machine.
+
 ## Useful Commands (reference, don't re-derive these each time)
 
 ```bash

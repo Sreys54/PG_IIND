@@ -1,5 +1,303 @@
 # Lab Log
 
+## 2026-10-06 21:16 (UTC−5) — Closure brief completed; nothing committed (branch `semana-7`)
+
+All parts done; no hard stop. Decision rules, Part A corrections (with the Overleaf passages), the Part B finding, thresholds and C3 sentences, the six-city answer, the voltage outcome (node_123 in band; AFAP and RR met the ±5% band there, weekday only), the final compliance table, the full test summary (139 tests, OK) and the grouped commit plan are at the top of `thesis_docs/overnight_report.md`.
+
+## 2026-10-06 21:01 (UTC−5) — Closure brief, CHECKPOINT E: voltage (branch `semana-7`)
+
+**E1. No feeder-to-station feedback (source-confirmed).** In
+`ev2gym/models/ev2gym_env.py::step`, the stations act and update their
+transformers first (`cs.step(...)` at line 365; `transformers[...].step`
+at line 378). Only after that does `self.grid.step(...)` run the power
+flow (line 392). The resulting voltage is stored only in
+`self.node_voltage` (line 397).
+
+`node_voltage` is read only by:
+- three V2G grid reward functions, `reward.py` lines 108, 117 and 270,
+  none of them used by this project's arms;
+- the statistics, `utils.py` lines 69–75;
+- the plots.
+
+It appears in none of `ev_charger.py`, `transformer.py`, `ev.py`,
+`heuristics.py` or `state.py`, which is pinned by
+`test_closure.TestNoFeederFeedback`.
+- Chapter 06 calls Axis 2's null effect a simulator property.
+- Chapter 08 lists it as a limitation (L4 item 20).
+
+**E2. Shipped feeders** (idle station, nominal load, no parameter tuned;
+`results/closure_feeder_probe_summary.csv`):
+- *node_34:* out of band, as Week 7 found.
+- *node_25 and node_69:* not runnable as shipped, because their bus files
+  have no PD/QD nominal loads.
+- **node_123:** in band in all 20 idle cells
+  (lowest 0.9738 p.u.).
+
+**Decision rule, as written.** "If one exists, rerun voltage for AFAP and
+RR at 1.0/1.3/1.6× (50 seeds, or 20 if time is short)." The rule fired:
+- 50 seeds were run, with the station on bus 115, the
+  electrically farthest bus.
+- **Weekday only (judgement call, labelled).** EV2Gym's load generator
+  (`data_augment.py::sample_data`) loops until a 123-bus sample has no NaN.
+  On the weekend day a single build ran for more than 240 s without
+  finishing (stack sampled in `multicopula.sample`). The first two workers
+  stalled there and were stopped. Making it terminate would mean changing
+  EV2Gym's load model.
+
+| Demand | Arm | Cells out of band | Lowest bus V (p.u.) | Drop in feeder min. V vs. idle (p.u.) [95% CI] |
+|---|---|---|---|---|
+| 1× | ChargeAsFastAsPossible | 0/50 | 0.9736 | -0.00009 [-0.00011, -0.00007] |
+| 1× | RoundRobin | 0/50 | 0.9737 | -0.00006 [-0.00006, -0.00005] |
+| 1.3× | ChargeAsFastAsPossible | 0/50 | 0.9720 | -0.00011 [-0.00014, -0.00008] |
+| 1.3× | RoundRobin | 0/50 | 0.9722 | -0.00007 [-0.00008, -0.00006] |
+| 1.6× | ChargeAsFastAsPossible | 0/50 | 0.9728 | -0.00011 [-0.00014, -0.00009] |
+| 1.6× | RoundRobin | 0/50 | 0.9728 | -0.00008 [-0.00010, -0.00007] |
+
+**Correction made during the run.** A first analysis shared one idle run
+across demand levels. EV2Gym draws the EVs from the same random stream
+before it samples the background load (`ev2gym_env.py`, lines 252, 294
+and 316), so the idle run must match the level. 100 per-level idle runs
+were added, and the duplicated cells from the restart were verified
+identical (200 rows).
+
+**Result: no run leaves the ±5% band (0/50 cells for every arm and
+level).** The station's drop is about 0.0001 p.u.
+
+n_clusters = 50. Round Robin's reduction of the drop against AFAP on
+node_123: 1×: 39.2% [18.6, 53.7]; 1.3×: 36.6% [14.6, 51.7]; 1.6×: 24.5% [4.3, 39.2].
+
+**E3. The "37%".** It is the drop in the feeder-wide daily minimum voltage
+(all buses and steps) relative to the idle run of the same cell. The
+reduction is Round Robin against AFAP, as a ratio of means over the 100
+paired base runs on the 34-node feeder:
+- **36.4% [22.3, 47.0]**;
+- paired difference +0.00030 p.u. [+0.00015, +0.00046];
+- lowest bus = station bus 27 in all 100 AFAP runs;
+- at 1.3× and 1.6× the reduction is 24.7% and
+  22.7%.
+
+On node_123 the same reduction is 39.2% [18.6, 53.7] at 1.0×, which
+independently corroborates it.
+
+The result is kept, with this definition (`results/closure_voltage_contribution.csv`).
+
+## 2026-10-06 18:27 (UTC−5) — Closure brief, CHECKPOINT C: capacity threshold and what closes it (branch `semana-7`)
+
+**Timing rule (brief: if C1 + C2 exceeds 6 h, drop 0.5/0.75 first, then
+5.0; never drop RR).** The estimate was about 35 min on 3 workers, so
+nothing was dropped.
+- The adaptive C1 rule (first level where RR breaks, plus one beyond)
+  gave {2.0, 2.5} above the reference, because RR already breaks DNS at
+  1.0× (Checkpoint B).
+- 0.5× and 0.733× were run for Part D.
+- 3.0, 4.0 and 5.0 were not needed. Their policy-independent DNS is in
+  the censoring table.
+
+**Runs.**
+- 4,400 cells (C1: 3 arms × 4 levels × 100; C2: 2 arms × 16 options ×
+  100).
+- Plus 1,600 constant-demand C2 cells, added after the first C2 results
+  showed the per-port demand confound.
+- Worker 1 crashed once on a shared-config race. It was fixed by
+  generating every config once (`--prepare`), and the partial shards were
+  verified.
+- After the relaunch the workers took 1,031–1,137 s each. The
+  constant-demand cells took a further 441–443 s per worker.
+- At the user's request the run was paused for a time (the laptop was
+  overloaded), and work resumed afterwards with a single process.
+- Merged as 6,000 rows, `analysis_row=True`, `simulate_grid=False`.
+- **Every prior registry byte was unchanged at both merges**, verified
+  against `master_results_before_closure.csv` and
+  `master_results_before_cd.csv` in the scratchpad.
+
+**Thresholds** (`results/closure_c1_breaking_levels.csv`; criteria are
+judged on the CI side that is hardest to claim, a labelled assumption):
+
+| Arm | Breaking level | First criterion broken | Value [95% CI] | n_clusters |
+|---|---|---|---|---:|
+| Round Robin | 0.733× (holds at 0.5×) | demand not served | 15.80% [12.56, 19.13] | 50 |
+| AFAP | 0.5× (lowest tested) | P95 peak > 100 kW | 133.1 kW [122.2, 156.3] | 50 |
+| Final RL model | 0.5× (lowest tested) | P95 peak > 100 kW | 137.6 kW [121.6, 156.5] | 50 |
+
+**C2.** At constant station demand:
+- *At 0.733×:* 10 ports close the gap, with DNS 4.72% [3.04, 6.74] and
+  +12,159 COP/day [+5,638, +18,600].
+- *At 1.0×:* 12 ports are needed, with DNS 7.94% [5.64, 10.54] and
+  +28,225 COP/day [+20,593, +35,721]. 10 ports give 14.93% [12.06, 18.05],
+  so they are not enough.
+- *Larger transformer:* 112.5 or 150 kVA changes nothing for Round Robin,
+  whose P95 peak is ≤ 83 kW. It reduces AFAP's overload without removing
+  it.
+- *RL:* excluded from C2, because its spaces are fixed at 8 ports
+  (declared).
+
+**C3** sentences are in 06, Guideline 2 / C3. Above 1.0×, the port count
+needed is not simulated and not stated.
+
+**Decision.** Chapter 06's capacity guideline is rewritten on DNS (the
+Checkpoint B rule). The transformer guideline is unchanged: Round Robin
+on the 100 kW unit, with zero overload up to 2.5×.
+
+### CHECKPOINT D — replicability across categoría especial cities (same entry)
+
+**D1.** Proposition 7.1, with proof, is in 07 S7.3a. Under a flat tariff
+the margin ranking is the energy ranking, and the relative cost of the
+limit is ΔE/E_AFAP, independent of price. These are rewritten as
+implications, not findings:
+- the 48/48 ranking checks;
+- the identical 0.47% in both cities;
+- the 0.900 ratio.
+
+Passages rewritten: 07 S7.3, S7.5 and S7.6, plus dated notes in the
+Week 7 handback and this report.
+
+**D2.** Six cities, from the CGN workbook (vigencia 2026), with Ley 617
+de 2000 Art. 6 saved. Tariff sheets were saved for Enel, EPM, EMCALI
+(**January 2026**, the latest retrievable), Air-e, Afinia and ESSA.
+- **Invariants.** Both pass where checkable. Medellín's component sum
+  uses the hourly lines (Week 7). Cali's contribution factor is checked
+  on the Nivel 1 line.
+- **Headline: the spread is not small everywhere.** It is at most 1.57%
+  in four cities. ESSA publishes no option. Air-e (Barranquilla)
+  publishes a **10.03%** two-band option (17–22 h).
+- **Effect in Barranquilla.** Round Robin puts more of its energy in the
+  evening (27.6% against AFAP's 20.2%). Under the Air-e option its cost
+  of the limit rises from 523 [260, 829] to **1,878 [1,426, 2,359]**
+  COP/day, n_clusters = 50. That is still under 2% of margin.
+- **Ranking.** The margin ranking shifts in 2–12 of 22 positions under
+  the two-band options, mostly among near-equal-energy arms. The
+  recommendation, which rests on overload and DNS, is unchanged.
+- **Unit margin at 1,450 COP/kWh:** 418–699 COP/kWh across the cities.
+- **Unit margin at the operator's own price:** Bogotá 584 (Enel 1,450)
+  and Cali 1,749 (EMCALI 2,500, press source, labelled secondary).
+- **Not published:** EPM, Air-e and Afinia publish no charging price.
+  ESSA prices per URV, a unit not defined in kWh.
+
+**D3.** Under Round Robin, lower demand never worsens overload (0
+everywhere) or mean DNS (both steps lower, CIs exclude zero). Per cell
+the relationship is not strictly monotone (18/100 cells). **Below 0.733×
+the guideline holds; 0.5× is the tested level.** No city is mapped onto
+this axis, because there is no per-station demand source.
+
+**D4.** Climate, arrivals and the feeder are listed as non-transferable in
+07 S7.9 and 08 L6.
+
+**Judgement calls (conservative, labelled):**
+- the Afinia Nivel 2 row identified through the residential >173 kWh line;
+- Cali derived ×1.20 from a factor verified at Nivel 1;
+- the EMCALI price used only as a labelled secondary-source sensitivity;
+- Medellín's flat cost taken as the monomial ×1.20 for uniformity, with
+  Week 7's Punta-based 497.0 also reported.
+
+## 2026-10-06 15:14 (UTC−5) — Closure brief, CHECKPOINT B: arrivals at full ports (branch `semana-7`)
+
+**Mechanism (source, read-only).** EV2Gym never lets an EV arrive at an
+occupied port. `ev2gym/utilities/utils.py`:
+- `EV_spawner` draws `arrival_probabilities = np.random.rand(ports, steps)`
+  (line 490), one row per port.
+- At each step, an arrival is created on a port only when that port was free
+  at t, t−1 and t−2 (lines 531–535) and the draw passes
+  `ap*100 < tau*mult*(timescale/60)*spawn_multiplier` (line 537).
+- A draw on an occupied port creates nothing: no EV object, no counter, no
+  stat.
+- Independently, `spawn_single_EV` returns `None` when a stay would run past
+  the horizon (`empty_ports_at_end_of_simulation`, default `True`,
+  `ev2gym_env.py` line 52; utils lines 255–258).
+
+`ev_charger.spawn_ev` asserts that the port is free (line 271), so no queue
+exists anywhere. Every registry metric (`total_ev_served`, satisfaction,
+`ENS_rel`) is computed over **spawned EVs only**. The rejected arrivals are
+invisible to all of them.
+
+**Metric (post-processing, never a registry column).**
+`ev2gym_thesis/demand/censoring.py` wraps `EV_spawner` from outside the
+library. It snapshots the RNG state, replays the same draws, and re-walks
+the loop. It asserts that the replay reproduces every spawned EV exactly
+before it counts anything. Two bounds:
+- `rejected_upper`: every passing draw on a blocked port, each counted as a
+  separate customer;
+- `rejected_lower`: per step, max(0, blocked passing draws − free ports left
+  unused). This assumes a driver turned away from a full port would have
+  taken any port still free.
+
+The energy of a rejected arrival is the day's mean requested energy, capped
+at the battery size (min(max(req_mean, 5), 70) kWh).
+
+Demand not served:
+
+DNS = (E_rejected + R_served − E_delivered) / (E_rejected + R_served)
+
+The R_served − E_delivered term is the shortfall of the EVs that were served.
+Tables:
+- `results/closure_censoring_by_cell.csv`: per level × seed × day, 1,100
+  cells, levels 0.25–5.0×;
+- `results/closure_demand_not_served.csv` and `_by_run.csv`: per arm.
+
+**Finding (lower bound, mean [95% CI], cluster bootstrap over the scenario
+seed, n_clusters = 50):**
+
+| Demand level | Spawned EVs | Rejected, lower | Rejected, upper | Round Robin DNS, lower | Round Robin DNS, upper | AFAP DNS, lower | Final RL DNS, lower |
+|---|---:|---:|---:|---|---|---|---|
+| 1.0× (reference) | 13.44 | 8.90 | 34.93 | **34.58% [30.75, 38.38]** | 71.93% [70.72, 73.09] | 34.29% [30.45, 38.08] | 35.83% [32.02, 39.51] |
+| 1.3× | 14.75 | 19.88 | 49.72 | 53.08% [49.90, 56.06] | 76.74% [75.73, 77.69] | 52.81% [49.64, 55.80] | 53.48% [50.41, 56.37] |
+| 1.6× | 15.59 | 32.91 | 65.16 | 64.98% [62.99, 66.91] | 80.24% [79.45, 80.99] | 64.83% [62.82, 66.77] | 65.17% [63.22, 67.05] |
+
+Across the arms at a given level, DNS differs by at most 1.6 percentage
+points (1.0×: final RL 35.83% vs. AFAP 34.29%). Nearly all of it is rejected energy: shortfall on served EVs is
+0.05–4.3 kWh/day, against 125–472 kWh/day rejected. **The binding
+constraint is the 8 ports, not the 100 kW transformer and not the control
+policy.**
+
+Policy-independent demand alone (no arm involved; censoring table, lower
+bound, DNS if every served EV were fully charged):
+0.25× 0% · 0.5× 3.8% · 0.733× 15.4% · 1.0× 34.3% · 2.0× 73.6% · 5.0× 90.8%.
+
+The horizon-end drop (`dropped_late_horizon`, 11.2 EVs/day at 1.0×) is a
+separate simulator artefact. Those EVs are excluded from DNS: a later stay
+is not a rejection by the station.
+
+**Decision rule, as written:** "if rejections are non-zero, chapter 06's
+capacity guideline is rewritten on demand not served, and the 'satisfaction
+never drops' claim is withdrawn wherever it appears."
+
+**Rejections are non-zero at every level from 0.5× upward, so the rule
+fires.**
+- Chapter 06's capacity guideline (Guideline 2) is rewritten on DNS in Part F.
+- The "satisfaction unchanged / ≥ 99.89% / never below 90% up to 1.6×" claim
+  is withdrawn, with dated notes, in:
+  - chapter 06 (S6.4 trade-off paragraph, S6.5 compliance row, conclusion);
+  - the Week 7 handback (md and docx);
+  - this report's Week 7 FINAL REPORT and Step 2 table;
+  - the lab log is not edited: this entry withdraws its 00:45 Step 2 table
+    row;
+  - CLAUDE.md;
+  - chapter 08 (new limitation);
+  - the Progress Log, through a new appended corrections section, not by
+    editing section 13.
+- The satisfaction number itself was correctly computed. What is withdrawn
+  is its reading as "the station keeps its users satisfied": it is
+  satisfaction **of the EVs that got a port**.
+
+**Consequence for Part C (applied).**
+- Round Robin already breaks the DNS > 15% criterion at the reference
+  demand (lower bound, CI entirely above 15%).
+- The policy-independent threshold lies between 0.5× (3.8%) and 0.733×
+  (15.4%).
+- By the adaptive rule (first breaking level plus one beyond), the
+  above-reference sweep is reduced to 2.0× and 2.5×. The other criteria
+  (satisfaction, P95 peak) can still be located. 3.0×, 4.0× and 5.0× are
+  not run, because the DNS break is already established far below them; the
+  censoring table still gives their policy-independent demand.
+- C2 is run at the breaking level (0.75× → spawn 22 = **0.733×**, since
+  `round(22.5)` = 22; declared) and, as a labelled addition, at the
+  reference 1.0×.
+- 0.5× and 0.733× are also Part D's lower-demand runs.
+- Estimate: 4,400 cells, about 35 min on 3 workers, far under the 6 h
+  limit. Nothing was dropped.
+
+**Hard stops:** none. No library file was edited. The registry was not
+touched in Part B, which is post-processing only.
+
 ## 2026-10-06 00:50 (UTC−5) — Final brief completed; nothing committed (branch `semana-7`)
 
 All steps done, no hard stop. Decision rules and their outcomes, the headline answers to Objectives 4 and 5, the compliance table and the grouped commit plan are at the top of `thesis_docs/overnight_report.md`. Deliverables: chapters 06, 07 and 08 (new consolidated limitations); `Week7_Objectives4_5_Parameter_Method_and_Implementation_Justification.{md,docx}`; Progress Log sections 13 and 14; 18 Week 7 workbooks; figures f15–f18 (visual QA fixes logged in the handback); `test_week6_infra.py` (17 tests) and `test_replicability.py` (9 tests), all passing; `thesis_docs/DELIVERABLES_INDEX.md`; `CLAUDE.md` updated.

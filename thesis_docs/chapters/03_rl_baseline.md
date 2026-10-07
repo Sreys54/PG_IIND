@@ -301,6 +301,8 @@ S3.11; do not cite the pre-correction numbers this table used to hold**:
 | TD3 (seed 102) | 13.44 | -42.64 | 0.991 | 85.49 | 0.96 [0.13,1.81] |
 | RandomPolicy (control) | 13.44 | -46.14 | 1.000 | 100.00 | 0.22 [0.00,0.52] |
 
+> **Correction (2026-10-06, closure brief A.2).** This table (and the 5.33 kWh AFAP value quoted below and in S3.11) is from the superseded 5-seed x 10-day grid. On the current statistical grid (100 runs, n_clusters = 50) AFAP's overload is **14.22 kWh [9.58, 19.28]**, Round Robin's 0.0, and the random-policy control's 3.32 kWh [1.75, 5.17]; the Week 3 checkpoints re-evaluated on that grid are the `TD3_vanilla_ts*` arms in `05_algorithm_comparison.md`. The qualitative conclusion of this paragraph and of S3.11 item 4 (the random control's overload is lower than AFAP's, so a low overload alone does not prove learning) is unchanged on the current grid; the numbers are not, and the current-grid values are the ones to cite.
+
 Full 9-metric table and the paired-bootstrap comparisons against AFAP and
 Round Robin are in `00_lab_log.md`'s 2026-08-18 correction entry and
 `results/rl_vs_baseline_bootstrap.csv`.
@@ -447,7 +449,7 @@ old-vs-corrected table):
    originally reported.
 4. **The random-policy control's argument — the most consequential
    reversal.** Originally: control shows worse overload (12.74 kWh) than
-   AFAP (5.33 kWh), proving TD3's near-zero overload is learned, not
+   AFAP (5.33 kWh, superseded 5-seed grid; 14.22 kWh on the current grid), proving TD3's near-zero overload is learned, not
    incidental. Corrected: control shows **significantly lower** overload
    than AFAP (0.22 kWh, 95% CI [-8.76,-1.91] vs. AFAP) and is
    **statistically indistinguishable** from TD3 (seed 100) (CI
