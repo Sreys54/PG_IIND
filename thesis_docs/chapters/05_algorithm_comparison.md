@@ -22,7 +22,16 @@ Its rankings describe long-dwell sessions. In particular, Round Robin's
 zero overload is a property of EV2Gym's power setpoint under long stays,
 not of a transformer-aware policy. Under 42-minute DC sessions, Round Robin
 exceeds 100 kW from the lowest demand tested (06 S6.6.4; 08 L7, items
-35 and 39).*
+35 and 39).
+
+EV2Gym's Round Robin follows a median-smoothed setpoint and never reads the
+transformer limit:
+- `ev2gym/baselines/heuristics.py`, lines 54–93; the budget is
+  `env.power_setpoints`, line 58;
+- `ev2gym/utilities/utils.py::generate_power_setpoints`, lines 664–772:
+  ×1.8 at lines 696–697, median filter at line 772.
+
+The full statement is in 03 (RoundRobin, Implementation).*
 
 ## S5.1 Colombian gross margin: what it does and does not measure
 

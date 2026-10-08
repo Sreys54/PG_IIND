@@ -1,4 +1,4 @@
-# Chapter 8 — Consolidated Limitations (Weeks 1–7 and final capacity brief)
+# Chapter 8 — Consolidated Limitations (Weeks 1–7, final capacity brief and last run)
 
 This chapter is the single list of the thesis's declared limitations, for
 the final document. **Labelled assumption (2026-10-05):** no consolidated
@@ -265,7 +265,7 @@ items marked **[corrected]** replace an earlier statement that was wrong.
       crash. This affects the tracking target and EV2Gym's Round Robin.
 39. **EV2Gym's Round Robin follows the power setpoint, not the
     transformer.** It charges ceil(setpoint / port power) EVs
-    (`heuristics.py`, lines 58–77). The setpoint is each EV's requested
+    (`ev2gym/baselines/heuristics.py`, lines 54–93: budget = `env.power_setpoints`, line 58; ceil at lines 76–77; setpoint from `utils.py::generate_power_setpoints`, lines 664–772, median filter at line 772). The setpoint is each EV's requested
     energy × 1.8, spread over its stay and median-smoothed over 5 steps.
     - **Under Dutch durations** the setpoint stays below 100 kW. That is
       why Round Robin showed zero overload in Weeks 1–7, and why it
@@ -275,10 +275,11 @@ items marked **[corrected]** replace an earlier statement that was wrong.
     - **The Weeks 1–7 statement "Round Robin keeps the 100 kW transformer
       within its rating" is therefore conditional on long stays.** It is a
       property of the setpoint, not of a transformer-aware policy.
-    - The diagnostic `RoundRobin_TransformerCapped`
-      (`ev2gym_thesis/heuristics.py`) is the same allocation with the
-      rating as its budget. It was added by this brief and was not part of
-      the Weeks 1–7 comparison.
+    - `RoundRobin_TransformerCapped` ("Round Robin, transformer-aware";
+      `ev2gym_thesis/heuristics.py`) is the same allocation with the rating
+      as its budget. It was added by the final capacity brief as a
+      diagnostic, is now the recommended operating strategy, and was not
+      part of the Weeks 1–7 comparison.
 40. **The final RL model is out of its training distribution under DC
     durations.** It was trained on Dutch durations. It was evaluated under
     the transform without retraining, and every row is labelled
@@ -297,6 +298,38 @@ items marked **[corrected]** replace an earlier statement that was wrong.
     simultaneously, with eight 30 kW hoses and two of up to 75 kW (Blu
     Radio, 2026). What remains an assumption is the uniform 50 kW per port,
     not the port count (01 §1.1).
+
+## L8. Last run: bounds, voltage and tariffs under DC sessions [last run, 2026-10-07]
+
+43. **The non-causal bounds track EV2Gym's setpoint, not demand.**
+    - MPC_TrackingG2V (`tracking_mpc.py` line 100) and
+      Optimal_Oracle_Tracking (`tracking_error.py` lines 167–170) both
+      minimise deviation from the same median-smoothed setpoint as EV2Gym's
+      Round Robin.
+    - Under DC sessions they deliver 34.9–46.5 points more demand not
+      served than the transformer-aware Round Robin (06 S6.7.2).
+    - **The Weeks 4–5 optimality-gap results** (Round Robin close to the
+      oracle) **are Dutch-duration results**, and the oracle is not an
+      upper bound on demand served.
+44. **MPC is infeasible in 37.7% of its steps under DC sessions.** EV2Gym's
+    MPC base class requires each departing EV to reach its desired energy
+    (`mpc.py`, lines 297–305 and 375–378). When that is impossible, the
+    wrapper applies zero power. This is a property of the shipped
+    formulation, not a tuning choice. It was not relaxed, because that
+    would mean writing a different controller.
+45. **Voltage under DC sessions is evaluated on a test feeder only.**
+    node_123 is weekday only (EV2Gym's load generator stalls on the weekend
+    day) and covers AFAP and the transformer-aware Round Robin only. The
+    other four arms are "not evaluated". The reduction of the drop includes
+    zero at 1.6× (06 S6.7.3).
+46. **The transformer-aware Round Robin's budget margin is 0.1%** (0.999 ×
+    rating, labelled), so that float rounding cannot register as overload.
+    Its allocation is EV2Gym's: whole-port turns at full power, not equal
+    sharing among all connected EVs.
+47. **The cost of the limit grows under DC profiles**, to about
+    10,000 COP/day in Bogotá against 551.9 under Dutch durations. It
+    remains under 3% of margin. Air-e's two-band option no longer changes
+    it materially (07 S7.11).
 
 **References for L7 (APA 7).**
 - Blu Radio. (2026, May 13). *Conductores en Bogotá podrán cargar hasta el 50 % de batería de su carro eléctrico en menos tiempo* (C. Durán, Author). https://www.bluradio.com/motor/conductores-en-boogta-podran-cargar-hasta-el-50-de-bateria-de-su-carro-electrico-en-menos-tiempo-so35

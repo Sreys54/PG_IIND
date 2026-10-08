@@ -954,13 +954,77 @@ def build_dwell_section(doc):
 # doc:end dwell_progress_log
 
 
+# doc:begin last_progress_log
+LAST_TITLE = "17. Last Run -- Recommended Strategy, Bounds, Voltage and Tariffs Under DC Sessions"
+
+
+def build_last_section(doc):
+    """Last run (2026-10-07). Appended after section 16; earlier sections are
+    corrected by reference (17.1), never edited."""
+    import pandas as pd
+    b = pd.read_csv("results/dwell_last_bounds_vs_rrta.csv")
+    v = pd.read_csv("results/dwell_last_voltage_node123.csv")
+    c = pd.read_csv("results/dwell_last_final_compliance.csv")
+    t = pd.read_csv("results/dwell_multicity_dc_cost.csv").set_index("city")
+    add_heading(doc, LAST_TITLE)
+
+    add_heading(doc, "17.1. Corrections to Earlier Sections (dated 2026-10-07)")
+    add_bullet(doc, "Sections 10-16, 'Round Robin' as the recommended strategy: the recommendation is the transformer-aware "
+                    "Round Robin (round-robin load management with the transformer rating as its budget). EV2Gym's own "
+                    "RoundRobin follows a median-smoothed power setpoint (heuristics.py lines 54-93) and never reads the "
+                    "transformer limit.")
+    add_bullet(doc, "Sections 10-11 (Weeks 4-5), oracle and MPC as bounds on Round Robin: these hold under Dutch session "
+                    "durations only. Under DC sessions both track the same setpoint and are not upper bounds on service (17.2).")
+    add_bullet(doc, "Section 15.4, Air-e's two-band option changes the cost of the limit materially: under DC load profiles "
+                    "it does not (17.4).")
+
+    add_heading(doc, "17.2. Non-Causal Bounds Under DC Sessions")
+    for _, r in b[b.algorithm != "RoundRobin_TransformerCapped"].iterrows():
+        add_bullet(doc, f"{r.level:g}x, {r.algorithm}: demand not served {100 * r.dns_lower_mean:.1f}%, "
+                        f"{100 * r.diff_dns_lower_vs_rrta:+.1f} points vs the transformer-aware Round Robin "
+                        f"[{100 * r.diff_dns_lower_ci_low:+.1f}, {100 * r.diff_dns_lower_ci_high:+.1f}]; margin "
+                        f"{r.diff_gross_margin_cop_vs_rrta:+,.0f} COP/day (n_clusters = {int(r.n_clusters)}).")
+    inf = b[b.algorithm == "MPC_TrackingG2V"].mpc_infeasible_share_of_steps.iloc[0]
+    add_body(doc, f"Both enforce the transformer limit but minimise deviation from EV2Gym's median-smoothed setpoint. MPC "
+                  f"is also infeasible in {100 * inf:.1f}% of its decision steps (the shipped formulation requires each "
+                  f"departing EV to reach its desired energy) and applies zero power there.")
+
+    add_heading(doc, "17.3. Voltage on node_123 Under DC Sessions")
+    for _, r in v.iterrows():
+        extra = ("" if pd.isna(r.rrta_reduction_vs_afap) else
+                 f"; reduction vs AFAP {100 * r.rrta_reduction_vs_afap:.1f}% [{100 * r.reduction_ci_low:.1f}, "
+                 f"{100 * r.reduction_ci_high:.1f}]")
+        add_bullet(doc, f"{r.level:g}x, {r.algorithm}: {int(r.cells_out_of_band)}/50 cells out of band; lowest bus "
+                        f"{r.min_voltage_pu_worst:.4f} p.u.; drop vs idle {-1000 * r.delta_min_v_mean:.2f} milli-p.u.{extra}.")
+    add_body(doc, "Weekday only, 50 seeds, station on bus 115; node_123 is a test network, not a Colombian feeder.")
+
+    add_heading(doc, "17.4. Tariffs Under DC Load Profiles")
+    bq = t.loc["Barranquilla"]
+    bo = t.loc["Bogota"]
+    if isinstance(bo, pd.DataFrame):
+        bo = bo.iloc[0]
+    add_body(doc, f"Margin conceded by the transformer-aware Round Robin vs AFAP at 1.0x: Bogota {bo.conceded_flat_cop_day:,.0f} "
+                  f"COP/day; Barranquilla flat {bq.conceded_flat_cop_day:,.0f}, Air-e two-band {bq.conceded_tou_cop_day:,.0f} "
+                  f"COP/day. The two-band option no longer changes the cost materially (it was 3.6 times the flat value "
+                  f"under Dutch profiles). Proposition 7.1 holds unchanged under flat tariffs.")
+
+    add_heading(doc, "17.5. Final Target Compliance (DC 42 min, 8 ports, 100 kW, n_clusters = 50)")
+    for _, r in c.iterrows():
+        add_bullet(doc, f"{r.level:g}x, {r.label}: satisfaction counting rejected {r.sat_all_arrivals_status}; ENS_rel "
+                        f"{r.ens_rel_served_status}; demand not served {r.dns_status} ({100 * r.dns_lower_mean:.1f}%); "
+                        f"transformer {r.transformer_status}; voltage {r.voltage_status}.")
+    add_body(doc, "Answers to Objectives 4 and 5 in final form: chapters 06 (S6.7.5) and 07 (S7.11); full record in "
+                  "thesis_docs/Final_Parameter_Method_and_Implementation_Justification.docx.")
+# doc:end last_progress_log
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--section", choices=["week5", "week6_part0", "week7", "closure", "dwell"], required=True,
+    ap.add_argument("--section", choices=["week5", "week6_part0", "week7", "closure", "dwell", "last"], required=True,
                     help="which section to append (each runs once; nothing already in the file is modified)")
     args = ap.parse_args()
-    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7", "closure", "dwell") else PROGRESS_LOG_PATH
+    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7", "closure", "dwell", "last") else PROGRESS_LOG_PATH
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"{path!r} not found relative to the current working directory. Run this script with "
@@ -972,6 +1036,10 @@ if __name__ == "__main__":
         # Week 3, Week 4, and the Week 4 correction were already appended in
         # earlier sessions; Week 5 was appended as "2.4. Week 5".
         build_week5_section(doc)
+    elif args.section == "last":
+        if any(p.text.strip() == LAST_TITLE for p in doc.paragraphs):
+            raise SystemExit(f"{LAST_TITLE!r} already present in {path} -- not appending twice.")
+        build_last_section(doc)
     elif args.section == "dwell":
         if any(p.text.strip() == DWELL_TITLE for p in doc.paragraphs):
             raise SystemExit(f"{DWELL_TITLE!r} already present in {path} -- not appending twice.")

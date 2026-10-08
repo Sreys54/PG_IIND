@@ -425,6 +425,8 @@ a two-band tariff it transfers with the corrections measured in S7.7.
 
 ## S7.6 Answer to Objective 5
 
+*[Dated note 2026-10-07, last run.] Under 42-minute DC load profiles (S7.11), Air-e's two-band option no longer changes the cost of the transformer limit materially. The final answer is in S7.11's last paragraph.*
+
 The Bogotá station study transfers to Medellín as follows:
 - **Ranking and strategy recommendation: transfer fully under a flat
   tariff.** The margin ranking is tariff-invariant under any flat price
@@ -474,7 +476,7 @@ rejected arrivals' mean requested energy).
 
 **Transfer rule.** Another city, or another site, applies the guideline
 from its own **arrivals per day and kWh requested per day** at the station,
-not from a multiplier. Under 42-minute DC sessions and the transformer-capped
+not from a multiplier. Under 42-minute DC sessions and the transformer-aware
 round-robin load manager (06 S6.6.6):
 
 | Station's own demand | Configuration that meets all three criteria | Evidence (n_clusters = 50) |
@@ -492,6 +494,51 @@ operator records and reads the row. If its sessions are longer (the
 station per day for Bogotá, Medellín or the other four categoría especial
 cities (S7.4, S7.8). Enel's Unicentro site, sized for up to 10 simultaneous
 vehicles (Blu Radio, 2026), gives a site size, not a demand.
+
+## S7.11 Tariff transfer under DC load profiles (last run, 2026-10-07)
+
+Closure D2's two-band computation is recomputed from the DC runs' 15-minute
+station power profiles. The comparison is AFAP against the transformer-aware
+Round Robin at 1.0×, 50 seeds × 2 days, for the six categoría especial
+cities (`scripts/dwell_multicity_dc.py`, reusing
+`analyze_closure_multicity.city_tables` unchanged;
+`results/dwell_multicity_dc_cost.csv`).
+
+| City | Margin conceded to keep 100 kW, flat cost (COP/day) | Two-band cost (COP/day) | Share of AFAP margin, two-band |
+|---|---|---|---|
+| Bogotá | 10,141 [7,816, 12,623] | 10,053 [7,759, 12,506] | 2.84% |
+| Medellín | 9,187 [7,080, 11,434] | 9,187 [7,082, 11,429] | 2.84% |
+| Cali (1,450 COP/kWh) | 12,135 [9,352, 15,104] | 12,109 [9,331, 15,066] | 2.84% |
+| **Barranquilla (Air-e, 10.03% option)** | 9,619 [7,413, 11,972] | **9,230 [7,161, 11,439]** | 2.76% |
+| Cartagena | 7,261 [5,596, 9,037] | 7,267 [5,600, 9,045] | 2.84% |
+| Bucaramanga | 7,346 [5,661, 9,143] | no two-band option published | — |
+
+n_clusters = 50 for every row.
+
+**Air-e's 10.03% option no longer changes the cost materially.**
+- Under DC profiles the two-band cost is within 4% of the flat cost, and
+  slightly below it.
+- Under Dutch profiles it was 3.6 times the flat cost (S7.7).
+- Both arms place about 37% of their energy in Air-e's 17–22 h peak band
+  (AFAP 37.2%, transformer-aware Round Robin 36.7%). Short sessions leave no
+  room to move energy out of the peak, so the cost difference is the energy
+  difference.
+- The cost of the limit is about 18 times its Dutch-duration value in every
+  city, but it remains under 3% of daily margin.
+
+Proposition 7.1 (flat tariff) holds unchanged and was not recomputed.
+
+**Answer to Objective 5 (final).**
+- The guideline transfers to the six categoría especial cities through two
+  inputs only: the station's own arrivals per day (S7.10) and the operator's
+  Nivel 2 tariff.
+- Under a flat tariff the ranking of strategies is tariff-invariant
+  (Proposition 7.1).
+- Under the only material two-band option found (Air-e), the cost of
+  keeping the 100 kW limit with the transformer-aware Round Robin is still
+  about 2.8% of daily margin under DC load profiles.
+- No city's demand is mapped onto the axis, because no per-station demand
+  source exists.
 
 ### References for S7.10 (APA 7)
 

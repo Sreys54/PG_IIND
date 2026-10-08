@@ -61,12 +61,12 @@ full argument.
 | Search for (in your LaTeX) | Change |
 |---|---|
 | Any statement that Round Robin "keeps the 100 kW transformer within its rating", "zero overload up to 2.5×", or "removes the overload" | Add: "under EV2Gym's Dutch session durations (mean 300.6 min). EV2Gym's Round Robin follows a median-smoothed power setpoint, not the transformer; under 42-minute DC sessions it overloads in 65/100 runs at the reference demand." |
-| "34.6%" demand not served / "the 8 ports bind" / "12 ports at 1.0×" / "10 ports at 0.733×" | Mark as a Dutch-duration sensitivity. Under 42-minute DC sessions: lower-bound rejections 0.9/day (not 8.9), DNS 2.4% (AFAP) and 5.0% (transformer-capped Round Robin) at the same spawn multiplier; **the binding constraint is power, not ports.** |
-| Capacity guideline stated in multiples ("below 0.733× the guideline holds", "1.3–1.6× demand growth") | Restate in physical units: "8 ports and 112.5 kVA under a transformer-capped round-robin load manager serve up to 47 arrivals/day (763 kWh/day) with demand not served ≤ 15%; at 57 arrivals/day (911 kWh/day) 10 ports on the same unit." |
+| "34.6%" demand not served / "the 8 ports bind" / "12 ports at 1.0×" / "10 ports at 0.733×" | Mark as a Dutch-duration sensitivity. Under 42-minute DC sessions: lower-bound rejections 0.9/day (not 8.9), DNS 2.4% (AFAP) and 5.0% (transformer-aware Round Robin) at the same spawn multiplier; **the binding constraint is power, not ports.** |
+| Capacity guideline stated in multiples ("below 0.733× the guideline holds", "1.3–1.6× demand growth") | Restate in physical units: "8 ports and 112.5 kVA under a transformer-aware round-robin load manager serve up to 47 arrivals/day (763 kWh/day) with demand not served ≤ 15%; at 57 arrivals/day (911 kWh/day) 10 ports on the same unit." |
 | Round Robin as "the recommended strategy" for Objective 4 | Qualify: "a load manager that reads the transformer rating (round-robin allocation capped at the rating); EV2Gym's setpoint-following Round Robin does not meet the criteria under DC sessions." |
 | Any description of the simulated sessions as DC fast-charging sessions, or of arrival/energy data without a source | Add: "EV2Gym's session durations are ElaadNL Dutch public-charging data (mean 300.6 min, minimum 225 min); the DC model uses an external, non-Colombian reference of 42 min (U.S. DOE, 2023), bracket 32–78 min." |
 | "No single Enel site has 8 DC ports" or similar | Replace with: "Enel's upgraded Unicentro Bogotá site serves up to 10 vehicles simultaneously (Blu Radio, 2026)." |
-| The final compliance table | Replace with the DC table (handback `Dwell_Capacity_...docx`, Part 1): only the transformer-capped Round Robin meets every evaluable target at 1.0× and 1.3×; at 1.6× no arm meets the satisfaction target counting rejected arrivals. |
+| The final compliance table | Replace with the DC table (handback `Dwell_Capacity_...docx`, Part 1): only the transformer-aware Round Robin meets every evaluable target at 1.0× and 1.3×; at 1.6× no arm meets the satisfaction target counting rejected arrivals. |
 | Final RL model results presented without qualification in a capacity context | Add: "trained on Dutch durations; out of its training distribution under DC sessions." |
 
 **Add to the LaTeX bibliography (APA 7):**
@@ -74,4 +74,16 @@ full argument.
 - Enel Colombia. (2024, May). *Avances en infraestructura de recarga de vehículos eléctricos.* https://www.enel.com.co/es/historias/archive/2024/05/infraestructura-de-recarga-de-vehiculos-electricos.html
 - Hardman, S. (2026). Exploring electric vehicle driver activities and expenditure while using DC fast chargers. *Findings.* https://doi.org/10.32866/001c.162484
 - U.S. Department of Energy, Vehicle Technologies Office. (2023, December 4). *FOTW #1319: EV charging at paid DC fast charging stations average 42 minutes per session* [Fact of the Week]. https://www.energy.gov/cmei/vehicles/articles/fotw-1319-december-4-2023-ev-charging-paid-dc-fast-charging-stations-average
+
+## Last run (2026-10-07): passages the final results change
+
+| Search for (in your LaTeX) | Change |
+|---|---|
+| "Round Robin" as the recommended strategy (any chapter) | Replace with "**Round Robin, transformer-aware**: round-robin load management whose power budget is the transformer rating (EV2Gym's own `RoundRobin` follows a median-smoothed power setpoint, `heuristics.py` lines 54–93, and never reads the transformer limit)". |
+| Any statement that the oracle or MPC bounds Round Robin's performance, or "optimality gap" results | Add: "under EV2Gym's Dutch session durations. Under 42-minute DC sessions both track the same setpoint and leave 39.9% / 48.5% of demand unserved at the reference demand, against 5.0% for the transformer-aware Round Robin; they bound setpoint tracking, not service. MPC is infeasible in 37.7% of its steps." |
+| Voltage results on node_123 | Add the DC-session result: "0/50 cells out of band for AFAP and the transformer-aware Round Robin at 1.0–1.6× (lowest bus 0.9733 p.u.; weekday only; test network)". |
+| Barranquilla / Air-e two-band "3.6×" or "1,878 COP/day" | Mark as a Dutch-duration result. Under DC load profiles: 9,230 COP/day two-band against 9,619 flat, no longer material. |
+| Cost of the transformer limit "551.9 COP/day" | Mark as Dutch-duration. Under DC sessions: 10,141 COP/day [7,816, 12,623] in Bogotá (2.8% of margin). |
+| The final compliance table | Replace with the 6-arm × 3-level table in Chapter 6 S6.7.4 (`results/dwell_last_final_compliance.csv`). Only the transformer-aware Round Robin meets every evaluated target at 1.0× and 1.3×. |
+| The answers to Objectives 4 and 5 | Replace with Chapter 6 S6.7.5 and Chapter 7 S7.11 (last paragraph). |
 

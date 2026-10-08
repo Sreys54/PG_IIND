@@ -577,12 +577,12 @@ Standing facts (do not lose them):
   - Its zero overload in Weeks 1–7 is a long-stay artefact.
   - Under DC sessions it fails at every demand level.
   - `ev2gym_thesis/heuristics.py::RoundRobinTransformerCapped` is a
-    DIAGNOSTIC arm: the same allocation, with a budget of 0.999 × rating.
+    added as a diagnostic and **promoted to the recommended operating strategy on 2026-10-07**, with the display name "Round Robin, transformer-aware": the same allocation, with a budget of 0.999 × rating.
 - **Results:**
   - Runs are in `results/dwell_registry.csv` (23,200 rows, master schema).
     `master_results.csv` was NOT touched; its pins are unchanged.
   - The binding constraint under DC is power, not ports.
-  - The capped Round Robin holds through 1.3×, which is 47 offered
+  - The transformer-aware Round Robin holds through 1.3×, which is 47 offered
     arrivals/day (763 kWh/day), on 8 ports and the 100 kW unit. At 1.6×
     (57/day, 911 kWh/day) it needs 10 ports.
   - The closure's 34.6% DNS was largely a duration artefact.
@@ -593,6 +593,32 @@ Standing facts (do not lose them):
   sessions.** Never present its DC results as RL evidence.
 - **Enel Unicentro Bogotá serves up to 10 vehicles simultaneously** (Blu
   Radio 2026). The "8 ports exceed any Enel site" limitation is withdrawn.
+
+**Update, 2026-10-07: Last run (the practical part is CLOSED). Branch
+`semana-7`, uncommitted.** The decision log is the last-run section at the
+top of `thesis_docs/overnight_report.md`. The handback is
+`thesis_docs/Final_Parameter_Method_and_Implementation_Justification.{md,docx}`.
+- **Recommended operating strategy: "Round Robin, transformer-aware"**
+  (`ev2gym_thesis/heuristics.py::RoundRobinTransformerCapped`; budget 0.999
+  × rating; pinned by `test_dwell.TestTransformerAwareBudget`). EV2Gym's
+  `RoundRobin` is NOT the recommendation: it follows the median-smoothed
+  setpoint (`heuristics.py` lines 54–93, line 58; `utils.py` lines 664–772).
+- **Under DC sessions the non-causal bounds are not upper bounds on
+  service.**
+  - MPC_TrackingG2V and Optimal_Oracle_Tracking track the same setpoint.
+  - At 1.0× their DNS is 48.5% / 39.9%, against 5.0% for the
+    transformer-aware Round Robin.
+  - MPC is infeasible in 37.7% of its steps (it applies zero power there).
+  - Never call them bounds on demand served.
+- **Voltage under DC on node_123** (weekday, 50 seeds): AFAP and the
+  transformer-aware Round Robin have 0/50 cells out of band at 1.0/1.3/1.6×
+  (lowest bus 0.9733 p.u.). The other arms are not evaluated.
+- **Barranquilla under DC profiles:** the two-band cost is within 4% of the
+  flat cost; no longer material. The cost of the limit is about
+  10,000 COP/day in Bogotá (2.8% of margin).
+- **Runs:** `results/dwell_registry.csv` has 23,800 rows (+600 bounds
+  rows). The voltage runs are in `results/dwell_ieee123_voltage_by_run.csv`.
+  `master_results.csv` is untouched.
 
 ## Useful Commands (reference, don't re-derive these each time)
 

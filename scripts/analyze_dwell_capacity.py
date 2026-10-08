@@ -50,7 +50,7 @@ from ev2gym_thesis.stats_utils import paired_cluster_bootstrap_ci
 REG = "results/dwell_registry.csv"
 CENS = "results/dwell_censoring_by_cell.csv"
 RL = "TD3_vanilla_extended_ts102"
-RR_CAPPED = "RoundRobin_TransformerCapped"  # diagnostic arm, ev2gym_thesis/heuristics.py
+RR_CAPPED = "RoundRobin_TransformerCapped"  # "Round Robin, transformer-aware", ev2gym_thesis/heuristics.py
 ARMS = ["ChargeAsFastAsPossible", "RoundRobin", RL, RR_CAPPED]
 SAT_MIN, DNS_MAX = 0.90, 0.15
 PF = 0.894
@@ -288,7 +288,7 @@ def compliance(m):
                 "voltage_reason": ("not rerun under DC sessions; the 34-node feeder is out of band with the station idle, "
                                    "and the node_123 result (closure E2) used Dutch durations"),
                 "note": ("out of its training distribution (trained on Dutch durations)" if arm == RL else
-                         "diagnostic arm added by this brief (budget = transformer rating)" if arm == RR_CAPPED else ""),
+                         "recommended operating strategy (round-robin load management, budget = transformer rating)" if arm == RR_CAPPED else ""),
             })
     out = pd.DataFrame(rows)
     out.to_csv("results/dwell_e_target_compliance.csv", index=False)

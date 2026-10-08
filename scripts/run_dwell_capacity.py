@@ -75,6 +75,7 @@ SHARD_DIR = "experiments/phase3_infra_replicability/results/dwell_shards"
 BASE_SPAWN = 30
 CV = 0.5
 C1_ARMS = ["ChargeAsFastAsPossible", "RoundRobin", w7.FINAL_RL_NAME]
+BOUND_ARMS = ("MPC_TrackingG2V", "Optimal_Oracle_Tracking")  # last run, Part 2: non-causal upper bounds
 RR_CAPPED = "RoundRobin_TransformerCapped"  # diagnostic arm (ev2gym_thesis/heuristics.py), plan dwell_diag.json
 
 
@@ -156,6 +157,10 @@ def run_spec(part, mean_min, level, ports, kw, cd, arm, seed, day, commit):
         elif arm == "RoundRobin":
             row = _with_week5_fields(heuristic_run_single(name, path, ports, kw, RoundRobin, arm, "heuristic",
                                                           seed, day, commit), seed, day)
+        elif arm in BOUND_ARMS:
+            assert ports == 8 and kw == 100.0, "bounds are run on the reference station only"
+            row, _ = w7.run_cell(arm, name, path, seed, day, commit, require_voltage=False)
+            row["notes"] += ",upper_bound_noncausal=knows_departure_times,tracks_ev2gym_power_setpoint=True"
         else:
             assert ports == 8 and kw == 100.0, "the RL policy is tied to 8 ports / the trained 100 kW station"
             row, _ = w7.run_cell(arm, name, path, seed, day, commit, require_voltage=False)

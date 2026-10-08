@@ -271,5 +271,45 @@ class TestDwellRegistry(unittest.TestCase):
         self.assertFalse(reg.config_name.str.contains("_dc").any())
 
 
+# doc:begin test_transformer_aware_budget
+class TestTransformerAwareBudget(unittest.TestCase):
+    """Last run, Part 1.4: the recommended arm (Round Robin, transformer-aware)
+    never draws more than BUDGET_FRACTION x the transformer rating, at any
+    step: 10 seeds x 2 days at 1.6x, 42-minute DC sessions, 8 ports, 100 kW."""
+
+    def test_aggregate_power_never_exceeds_budget(self):
+        _price_cache()
+        from ev2gym_thesis.demand import dc_sessions
+        from ev2gym_thesis.eval_protocol import EVAL_DAYS, SEEDS
+        from ev2gym_thesis.heuristics import BUDGET_FRACTION, RoundRobinTransformerCapped
+        from ev2gym_thesis.rl.env_factory import make_env, reset_for_evaluation
+        from scripts.run_dwell_capacity import variant_config
+        _, path = variant_config(1.6, 42)
+        model = dc_sessions.model_for_config(path)
+        worst, steps = -1.0, 0
+        for seed in SEEDS[:10]:
+            for day in EVAL_DAYS:
+                dc_sessions.enable(model)
+                try:
+                    env = make_env(path, day, seed, day_config_dir=_tmp("budget"))
+                    reset_for_evaluation(env, seed)
+                finally:
+                    dc_sessions.disable()
+                agent = RoundRobinTransformerCapped(env)
+                for t in range(env.simulation_length):
+                    rating = min(tr.max_power[env.current_step] for tr in env.transformers)
+                    _, _, done, _, _ = env.step(agent.get_action(env))
+                    agg = sum(tr.current_power for tr in env.transformers)
+                    self.assertLessEqual(agg, BUDGET_FRACTION * rating + 1e-9, (seed, day, t))
+                    self.assertLessEqual(env.current_power_usage[t], BUDGET_FRACTION * rating + 1e-9, (seed, day, t))
+                    worst = max(worst, agg / rating)
+                    steps += 1
+                    if done:
+                        break
+        self.assertEqual(steps, 10 * 2 * 96)
+        self.assertGreater(worst, 0.9)  # the budget actually binds at 1.6x (not a vacuous pass)
+# doc:end test_transformer_aware_budget
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -587,6 +587,8 @@ first two rows are superseded by the table above.
 
 ## S6.5 Answer to Objective 4
 
+*[Dated note 2026-10-07, last run.] The final answer to Objective 4 is S6.7.5, which supersedes this section and the dated note below.*
+
 *[Dated note 2026-10-07, final capacity brief.] Points 1 and 2 below rest on
 EV2Gym's Dutch session durations. Under DC session durations (S6.6):
 - **Point 1 does not hold as stated.** EV2Gym's Round Robin keeps the
@@ -700,7 +702,7 @@ Five arguments support the central value, each with its source.
 4. **Sensitivity bracket.** The low (32 min) and high (78 min) variants
    bound the result, so the guideline does not hinge on the exact central
    value.
-   - Under the transformer-capped Round Robin, the threshold is the same at
+   - Under the transformer-aware Round Robin, the threshold is the same at
      32 and 42 min: it holds at 1.3× and breaks at 1.6×. It moves down one
      tested level at 78 min: it holds at 1.0× and breaks at 1.3×.
    - In physical units, the highest offered demand met falls from about 49
@@ -749,7 +751,7 @@ The criteria are judged on the hardest CI side
 | Round Robin, EV2Gym | none tested (fails at 0.267×) | below 13.9 offered arrivals/day (223 kWh/day) | all three at 0.267×: DNS 48.7% (CI high 53.0%), P95 peak 102.9 kW (CI high 122.8) |
 | AFAP | none tested | below 13.9 arrivals/day | peak at 0.267×: 146.0 kW [126.9, 159.9]. DNS holds to 1.6× (10.5%) |
 | Final RL model (out of its training distribution) | none tested | below 13.9 arrivals/day | DNS 33.1% [30.1, 36.1] and peak at 0.267× |
-| Round Robin, transformer-capped (diagnostic) | **1.3×** | **47.3 offered arrivals/day [46.0, 48.6]; 762.6 kWh/day; 95.3 kWh per port per day; 17% occupancy** | 1.6×: satisfaction 88.6% [87.2, 90.0], DNS 14.2% (CI high 15.7%) |
+| Round Robin, transformer-aware | **1.3×** | **47.3 offered arrivals/day [46.0, 48.6]; 762.6 kWh/day; 95.3 kWh per port per day; 17% occupancy** | 1.6×: satisfaction 88.6% [87.2, 90.0], DNS 14.2% (CI high 15.7%) |
 
 **The binding constraint is power, not ports.** Every arm that does not
 read the transformer rating exceeds 100 kW from the lowest demand tested.
@@ -757,7 +759,7 @@ AFAP's P95 peak is 146 kW at 0.267× and 206 kW at 1.0×. Its demand not
 served, by contrast, stays at or below 15% up to 1.6×.
 
 **EV2Gym's Round Robin does not manage the transformer.** It charges
-ceil(setpoint / port power) EVs (`heuristics.py`, lines 58–77). The
+ceil(setpoint / port power) EVs (`ev2gym/baselines/heuristics.py`, lines 54–93: budget = `env.power_setpoints`, line 58; ceil at lines 76–77; setpoint from `utils.py::generate_power_setpoints`, lines 664–772, median filter at line 772). The
 setpoint is each EV's requested energy × 1.8, spread over its stay and
 median-smoothed over 5 steps:
 - With 5-hour stays the setpoint is smooth and stays below 100 kW. This,
@@ -767,8 +769,10 @@ median-smoothed over 5 steps:
   Robin then delivers less (DNS 24.8% at 1.0×) and still overloads, in
   65/100 runs.
 
-**The capped diagnostic.** `RoundRobinTransformerCapped` is the same
-allocation with the transformer rating as its budget, added by this brief.
+**Round Robin, transformer-aware.** `RoundRobinTransformerCapped` is the
+same allocation with the transformer rating as its budget. It was added by
+the final capacity brief as a diagnostic and is now the recommended
+operating strategy (S6.7).
 It keeps the peak at 99.9 kW by construction. Its binding constraint is
 then demand served, from 1.6×.
 
@@ -779,7 +783,7 @@ transformer at ET-013 classes and pf 0.894
 (`results/dwell_c2_minimal_configs.csv`, full grid in
 `results/dwell_c2_growth_options.csv`; figure f24):
 
-| Level (offered demand) | Round Robin, EV2Gym (brief's arm) | Round Robin, capped (diagnostic) | AFAP (labelled addition) |
+| Level (offered demand) | Round Robin, EV2Gym (brief's arm) | Round Robin, transformer-aware | AFAP (labelled addition) |
 |---|---|---|---|
 | 1.3× (47 arrivals/day, 763 kWh/day) | **none in the grid**. Best: 16 ports + 400 kVA, DNS 14.1% (CI high 15.4%) | **8 ports, 100 kW unit**: DNS 9.0% (CI high 10.2%), 0 overload, 403,586 COP/day [393,933, 413,810] | **8 ports, 300 kVA**: DNS 5.5%, P95 226.7 kW (CI high 253.2), 419,622 COP/day [408,410, 431,338] |
 | 1.6× (57 arrivals/day, 911 kWh/day) | **14 ports, 400 kVA**: DNS 13.1% (CI high 14.3%), P95 233.5 kW, 512,630 COP/day [496,839, 528,413] | **10 ports, 100 kW unit**: DNS 9.0% (CI high 9.9%), 0 overload, 483,951 COP/day [474,602, 493,444] (+30,667 [+22,008, +39,400] vs 8 ports) | **10 ports, 300 kVA**: DNS 3.2%, P95 237.6 kW (CI high 258.2), 515,102 COP/day [504,443, 525,948] |
@@ -793,10 +797,10 @@ is excluded, as in the closure run.
   transformer rating. EV2Gym's setpoint-following Round Robin, unmanaged
   charging and the final RL model all exceed 100 kW from the lowest demand
   tested.
-- **Sizing, in physical units, with a transformer-capped round-robin load
+- **Sizing, in physical units, with a transformer-aware round-robin load
   manager.**
   - **"A station of 8 ports and 112.5 kVA (the 100 kW unit) under
-    transformer-capped Round Robin serves up to 47 arrivals/day (763 kWh/day)
+    transformer-aware Round Robin serves up to 47 arrivals/day (763 kWh/day)
     with demand not served ≤ 15%"** (9.0%, CI high 10.2%).
   - **At 57 arrivals/day (911 kWh/day) it needs 10 ports** on the same
     unit.
@@ -815,8 +819,175 @@ is excluded, as in the closure run.
 These statements are conditional on: the DC session model (an external,
 non-Colombian reference); EV2Gym's per-port arrival process and its 3-step
 port cooldown; the energy per session not being rescaled; and a load
-manager that is a diagnostic arm, not part of the Weeks 1–7 comparison
+manager (Round Robin, transformer-aware) that was not part of the Weeks 1–7 comparison
 (08, L7).
+
+## S6.7 Recommended operating strategy, bounds, voltage and final compliance under DC sessions (last run, 2026-10-07)
+
+This section supersedes S6.5 as the answer to Objective 4. The decision log
+is in `thesis_docs/overnight_report.md` (last-run section).
+
+### S6.7.1 The recommended strategy: Round Robin, transformer-aware
+
+The thesis recommended round-robin load management from Week 5 onward. Its
+operational content was always that the transformer's rating is shared, in
+turn, among the vehicles connected. EV2Gym's `RoundRobin` implements the
+turn-taking but takes its power budget from the power setpoint
+(`ev2gym/baselines/heuristics.py`, lines 54–93; budget
+`env.power_setpoints[env.current_step]` at line 58). That setpoint is
+median-smoothed (`utils.py`, lines 664–772), so the rating appears nowhere
+in the class.
+
+`RoundRobinTransformerCapped` (`ev2gym_thesis/heuristics.py`), displayed as
+**Round Robin, transformer-aware**, keeps the same buffer, rotation and
+per-port action, and sets the budget to 0.999 × the transformer rating.
+It is therefore the natural implementation of the recommendation:
+- the rating is what a station operator knows and must respect;
+- it is fully causal, since it reads only the connected EVs and the rating;
+- it needs no departure time, forecast or setpoint;
+- a unit test pins it: over 10 seeds × 2 days at 1.6×, its aggregate power
+  never exceeds 0.999 × the rating at any step
+  (`test_dwell.TestTransformerAwareBudget`).
+
+It was added as a diagnostic in the final capacity brief and is now the
+recommended operating strategy.
+
+### S6.7.2 The non-causal bounds under DC sessions
+
+`MPC_TrackingG2V` and `Optimal_Oracle_Tracking` were run at 1.0×, 1.3× and
+1.6× (50 seeds × 2 days; `results/dwell_last_bounds_vs_rrta.csv`). Both know
+departure times in advance and are labelled upper bounds, not competitors.
+
+**From the source, before the runs.** Both enforce the transformer limit:
+- MPC through a hard constraint (`ev2gym_thesis/mpc/tracking_mpc.py`,
+  lines 112–123);
+- the oracle through a current limit (`tracking_error.py`, lines 186–191).
+
+Both minimise squared deviation from **the same median-smoothed setpoint**
+that EV2Gym's Round Robin follows:
+- MPC: `tracking_mpc.py` line 100;
+- the oracle: `tracking_error.py` lines 167–170, with the setpoint taken
+  from `replay.power_setpoints` = `env.power_setpoints`, `replay.py`
+  line 32.
+
+**MPC also inherits an infeasibility.** EV2Gym's MPC base class requires
+every EV departing within the horizon to reach its desired energy
+(`mpc.py`, lines 297–305 and 375–378). With 1–3-step sessions on a shared
+100 kW unit this is often unreachable, and the wrapper then applies zero
+power (`tracking_mpc.py`, lines 141–142). This happened in 10,851 of 28,800
+MPC decision steps (37.7%), and in 0 steps on the same cell under Dutch
+durations.
+
+**Measured** (paired difference = bound minus transformer-aware Round
+Robin, n_clusters = 50):
+
+| Level | Arm | Demand not served | Paired difference | Margin, COP/day | Paired difference |
+|---|---|---|---|---|---|
+| 1.0× | Round Robin, transformer-aware | 5.0% (CI high 6.1%) | — | 346,391 | — |
+| 1.0× | MPC_TrackingG2V | 48.5% | +43.5 pp [38.9, 47.8] | 183,950 | −162,441 [−181,030, −143,458] |
+| 1.0× | Optimal_Oracle_Tracking | 39.9% | +34.9 pp [32.7, 37.1] | 220,975 | −125,416 [−132,157, −118,523] |
+| 1.3× | Round Robin, transformer-aware | 9.0% (CI high 10.2%) | — | 403,586 | — |
+| 1.3× | MPC_TrackingG2V | 54.4% | +45.4 pp [41.2, 49.6] | 200,390 | −203,197 [−223,767, −182,229] |
+| 1.3× | Optimal_Oracle_Tracking | 39.2% | +30.2 pp [28.4, 32.0] | 270,811 | −132,775 [−139,854, −125,936] |
+| 1.6× | Round Robin, transformer-aware | 14.2% (CI high 15.7%) | — | 453,284 | — |
+| 1.6× | MPC_TrackingG2V | 60.6% | +46.5 pp [42.6, 50.3] | 206,698 | −246,586 [−269,181, −224,535] |
+| 1.6× | Optimal_Oracle_Tracking | 41.3% | +27.1 pp [25.5, 28.7] | 311,292 | −141,992 [−149,752, −134,304] |
+
+**Reading.**
+- Under DC sessions the bounds are dominated by the causal
+  transformer-aware Round Robin on every demand-side metric.
+- They remain bounds on their own objective, tracking EV2Gym's setpoint,
+  and that objective under-asks when sessions are short.
+- The Weeks 4–5 optimality-gap framing, under which Round Robin
+  approaches the oracle, is therefore a Dutch-duration result (08 L8).
+- The MPC "overloads" (7–11 of 100 runs) are solver tolerance: at most
+  0.0001 kWh/day, with a P95 peak of 100.0006 kW.
+
+### S6.7.3 Voltage on node_123 under DC sessions
+
+Protocol: the closure E2 protocol, on node_123 as shipped, with the station
+on bus 115. It is weekday only, because EV2Gym's background-load generator
+stalls on the weekend day for 123 buses. There are 50 seeds, and the idle
+station is matched per level (`results/dwell_last_voltage_node123.csv`;
+figure f25). Station energy equals the non-grid DC rows exactly (0.0 kWh
+difference): there is no feeder feedback.
+
+| Level (offered/day) | Cells out of band, AFAP / RR transformer-aware | Lowest bus (p.u.) | Drop in the feeder daily minimum vs. idle, AFAP / RR-TA (milli-p.u.) | RR-TA reduction vs. AFAP |
+|---|---|---|---|---|
+| 1.0× (39) | 0/50 / 0/50 | 0.9738 | 0.13 [0.10, 0.16] / 0.12 [0.09, 0.14] | 10.6% [2.8, 19.0] |
+| 1.3× (47) | 0/50 / 0/50 | 0.9734 | 0.15 [0.12, 0.19] / 0.14 [0.11, 0.17] | 8.4% [0.2, 15.7] |
+| 1.6× (57) | 0/50 / 0/50 | 0.9733 | 0.18 [0.15, 0.22] / 0.17 [0.14, 0.20] | 6.9% [−0.9, 13.5] |
+
+- **The ±5% band is met on node_123 by both arms at every level.**
+- The station-attributable drop is small, because the feeder's daily
+  minimum is set by its background load.
+- The transformer-aware Round Robin reduces the drop by 7–11%. The CI
+  includes zero at 1.6×.
+- node_123 is a test network, not a Colombian feeder. The other arms were
+  not rerun there and stay "not evaluated".
+
+### S6.7.4 Final target compliance under DC sessions (42 min, 8 ports, 100 kW; n_clusters = 50)
+
+Each target is judged on the CI side that is hardest to claim
+(`results/dwell_last_final_compliance.csv`).
+
+| Level | Arm | Satisfaction > 90%, served | Satisfaction > 90%, counting rejected | ENS_rel < 15% | DNS < 15% | Transformer within rating | Voltage ±5% |
+|---|---|---|---|---|---|---|---|
+| 1× | AFAP | met (CI low 99.8%) | met (97.9%, CI low 97.2%) | met (0.0%) | met (2.4%, CI high 3.2%) | **not met** (97/100 runs overload) | met on node_123 (0/50 cells out of band) |
+| 1× | Round Robin (EV2Gym, setpoint) | met (CI low 94.4%) | met (93.0%, CI low 92.2%) | **not met** (22.9%) | **not met** (24.8%, CI high 26.8%) | **not met** (65/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+| 1× | **Round Robin, transformer-aware (recommended)** | met (CI low 99.1%) | met (97.3%, CI low 96.5%) | met (2.7%) | met (5.0%, CI high 6.1%) | met (0/100 runs overload) | met on node_123 (0/50 cells out of band) |
+| 1× | MPC_TrackingG2V (upper bound, non-causal) | **not met** (CI low 87.7%) | **not met** (87.2%, CI low 85.8%) | **not met** (47.3%) | **not met** (48.5%, CI high 53.1%) | **not met** (7/100 runs overload, solver tolerance ≤ 0.0001 kWh/day) | not evaluated (not rerun on node_123 under DC) |
+| 1× | Optimal_Oracle_Tracking (upper bound, non-causal) | met (CI low 90.8%) | **not met** (89.5%, CI low 88.7%) | **not met** (38.4%) | **not met** (39.9%, CI high 41.9%) | met (0/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+| 1× | Final RL model (out of distribution) | met (CI low 93.7%) | met (92.2%, CI low 91.5%) | **not met** (26.3%) | **not met** (28.1%, CI high 29.6%) | **not met** (81/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+| 1.3× | AFAP | met (CI low 99.8%) | met (94.7%, CI low 93.7%) | met (0.0%) | met (5.5%, CI high 6.5%) | **not met** (100/100 runs overload) | met on node_123 (0/50 cells out of band) |
+| 1.3× | Round Robin (EV2Gym, setpoint) | met (CI low 95.1%) | **not met** (90.6%, CI low 89.6%) | **not met** (19.0%) | **not met** (23.5%, CI high 25.2%) | **not met** (83/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+| 1.3× | **Round Robin, transformer-aware (recommended)** | met (CI low 98.9%) | met (93.9%, CI low 92.8%) | met (3.7%) | met (9.0%, CI high 10.2%) | met (0/100 runs overload) | met on node_123 (0/50 cells out of band) |
+| 1.3× | MPC_TrackingG2V (upper bound, non-causal) | **not met** (CI low 86.7%) | **not met** (83.3%, CI low 81.9%) | **not met** (51.7%) | **not met** (54.4%, CI high 58.7%) | **not met** (7/100 runs overload, solver tolerance ≤ 0.0001 kWh/day) | not evaluated (not rerun on node_123 under DC) |
+| 1.3× | Optimal_Oracle_Tracking (upper bound, non-causal) | met (CI low 91.3%) | **not met** (87.0%, CI low 86.1%) | **not met** (35.6%) | **not met** (39.2%, CI high 40.8%) | met (0/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+| 1.3× | Final RL model (out of distribution) | met (CI low 94.0%) | **not met** (89.4%, CI low 88.4%) | **not met** (24.8%) | **not met** (29.0%, CI high 30.4%) | **not met** (95/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+| 1.6× | AFAP | met (CI low 99.8%) | **not met** (89.5%, CI low 88.0%) | met (0.0%) | met (10.5%, CI high 11.8%) | **not met** (100/100 runs overload) | met on node_123 (0/50 cells out of band) |
+| 1.6× | Round Robin (EV2Gym, setpoint) | met (CI low 95.8%) | **not met** (86.1%, CI low 84.8%) | **not met** (16.6%) | **not met** (25.3%, CI high 26.9%) | **not met** (96/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+| 1.6× | **Round Robin, transformer-aware (recommended)** | met (CI low 98.8%) | **not met** (88.6%, CI low 87.2%) | met (4.2%) | **not met** (14.2%, CI high 15.7%) | met (0/100 runs overload) | met on node_123 (0/50 cells out of band) |
+| 1.6× | MPC_TrackingG2V (upper bound, non-causal) | **not met** (CI low 85.8%) | **not met** (77.8%, CI low 76.2%) | **not met** (56.0%) | **not met** (60.6%, CI high 64.6%) | **not met** (11/100 runs overload, solver tolerance ≤ 0.0001 kWh/day) | not evaluated (not rerun on node_123 under DC) |
+| 1.6× | Optimal_Oracle_Tracking (upper bound, non-causal) | met (CI low 91.7%) | **not met** (82.5%, CI low 81.2%) | **not met** (34.4%) | **not met** (41.3%, CI high 42.8%) | met (0/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+| 1.6× | Final RL model (out of distribution) | met (CI low 94.5%) | **not met** (84.9%, CI low 83.5%) | **not met** (22.5%) | **not met** (30.6%, CI high 32.1%) | **not met** (98/100 runs overload) | not evaluated (not rerun on node_123 under DC) |
+
+**Only the transformer-aware Round Robin meets every evaluated target at
+1.0× and 1.3×.** At 1.6× it holds the transformer and voltage targets and
+ENS_rel, but misses satisfaction counting rejected arrivals (88.6%, CI low
+87.2%) and demand not served (CI high 15.7%). There, 10 ports on the same
+unit meet every criterion (S6.6.5).
+
+### S6.7.5 Answer to Objective 4 (final)
+
+For a public 8-port DC station with one 100 kW (112.5 kVA) transformer in
+Bogotá, under 42-minute DC sessions (an external, non-Colombian reference):
+
+1. **Control.** Operate it with round-robin load management whose power
+   budget is the transformer rating: the transformer-aware Round Robin. It
+   is causal and keeps every run within the rating.
+   - At 1.0× it serves 95.0% of requested energy, against 97.6% for
+     unmanaged charging, which overloads in 97/100 runs.
+   - The cost of the limit is 10,141 COP/day [7,816, 12,623] at Bogotá
+     prices.
+   - EV2Gym's setpoint-following Round Robin, the final RL model and the
+     non-causal MPC and oracle all fail it under DC sessions.
+2. **Capacity, in physical units.** The 8-port, 100 kW station meets every
+   criterion up to **47 offered arrivals/day (763 kWh/day)**. At 57
+   arrivals/day (911 kWh/day) it needs **10 ports on the same unit**.
+   Unmanaged charging would need 300 kVA (S6.6).
+3. **Voltage.** On EV2Gym's node_123 test feeder, both AFAP and the
+   transformer-aware Round Robin stay within ±5% at 1.0–1.6× (lowest bus
+   0.9733 p.u.; weekday only). On the 34-node feeder no compliance claim is
+   made (S6.2).
+4. **Connectors.** CCS Combo 1 is required by Res. 40223 de 2021, Art. 4.
+
+These statements are conditional on:
+- the DC session model, with its 32/78-minute bracket;
+- EV2Gym's per-port arrival model and 15-minute step;
+- test feeders, not a Colombian operator's network;
+- demand stated per station per day, with no Colombian city mapped (07
+  S7.10).
 
 ### References for S6.6 (APA 7)
 

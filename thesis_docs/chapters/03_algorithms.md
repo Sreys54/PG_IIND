@@ -136,6 +136,28 @@ complexity.
 
 ### Implementation
 
+*[Dated note 2026-10-07, last run.] **EV2Gym's Round Robin follows a
+median-smoothed power setpoint and never reads the transformer limit.**
+- `ev2gym/baselines/heuristics.py::RoundRobin.get_action` (lines 54–93)
+  sets its power budget from `env.power_setpoints[env.current_step]`
+  (line 58). It charges ceil(budget / per-port power) EVs (lines 60 and
+  76–77).
+- The setpoint comes from `ev2gym/utilities/utils.py::generate_power_setpoints`
+  (lines 664–772). Each EV's requested energy × (100 +
+  `power_setpoint_flexiblity`)/100 = × 1.8 (lines 696–697) is spread
+  randomly over [arrival + 1, departure) (lines 715–718). The result is
+  median-smoothed over 5 steps (line 772, `median_smoothing`, lines
+  652–661).
+- No line of the class reads `transformer.max_power`.
+
+Under EV2Gym's 5-hour Dutch sessions this setpoint stays below 100 kW,
+which is why Round Robin showed zero overload in Weeks 1–7. Under 42-minute
+DC sessions it overloads and under-delivers (06 S6.6.4). The recommended
+strategy is the transformer-aware Round Robin
+(`ev2gym_thesis/heuristics.py::RoundRobinTransformerCapped`): the same
+allocation, with the transformer rating as its budget (06 S6.7).*
+
+
 - **Location:** `ev2gym.baselines.heuristics.RoundRobin` (ships with
   EV2Gym; nothing written for this thesis).
 - **Mechanism (not a plain "reduce everyone's power" heuristic — worth

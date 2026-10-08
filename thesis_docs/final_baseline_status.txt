@@ -1,0 +1,5 @@
+# git status at start of the Last Run (promote capped RR, bounds, voltage under DC)
+# captured: 2026-10-07 17:03 Bogota (UTC-5)
+# branch: semana-7  HEAD: dad3f3e
+?? thesis_docs/final_baseline_status.txt
+# (empty above = clean tree)

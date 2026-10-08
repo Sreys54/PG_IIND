@@ -17,8 +17,11 @@ both under-delivers and, where spikes survive, overloads.
 This class keeps EV2Gym's Round Robin allocation unchanged (same buffer, same
 rotation, same per-port action) and replaces only the power budget with
 0.999 x the transformer's rated power at the current step (0.1% margin so
-float rounding cannot register as overload; labelled). It is a DIAGNOSTIC
-arm added by this brief, separating "round-robin load management" from
+float rounding cannot register as overload; labelled). Display name:
+"Round Robin, transformer-aware". It was added by the final capacity brief as
+a diagnostic and promoted to the RECOMMENDED OPERATING STRATEGY in the last
+run (2026-10-07). It is round-robin load management whose power budget is
+the transformer rating, separating "round-robin load management" from
 "EV2Gym's setpoint-coupled implementation"; it was not part of the Weeks 1-7
 comparison, and the brief's thresholds are reported for EV2Gym's Round Robin
 first.
@@ -30,7 +33,7 @@ BUDGET_FRACTION = 0.999
 
 # doc:begin rr_capped
 class RoundRobinTransformerCapped(RoundRobin):
-    algo_name = "Round Robin, transformer-capped (diagnostic)"
+    algo_name = "Round Robin, transformer-aware"
 
     def get_action(self, env):
         budget_kw = BUDGET_FRACTION * min(tr.max_power[env.current_step] for tr in env.transformers)

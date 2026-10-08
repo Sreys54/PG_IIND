@@ -1,5 +1,142 @@
 # Lab Log
 
+## 2026-10-07 17:50 (UTC−5) — Last run completed; nothing committed (branch `semana-7`)
+
+All five parts are done, with no hard stop. The transformer-aware Round Robin is promoted to the recommended strategy. Under DC sessions MPC and the oracle are setpoint-tracking bounds that leave 48.5% / 39.9% of demand unserved at 1.0×, and MPC is infeasible in 37.7% of its steps. node_123 voltage: 0/50 cells out of band for AFAP and the transformer-aware Round Robin at 1.0–1.6×. Barranquilla's two-band option is no longer material under DC profiles. The final 6-arm × 3-level compliance table is in place. Test suite: `Ran 155 tests in 531.197s`, `OK`. Details and the commit plan are at the top of `thesis_docs/overnight_report.md`.
+
+## 2026-10-07 17:45 (UTC−5) — Last run, CHECKPOINT Parts 1–4: promotion, bounds, voltage and Barranquilla under DC sessions (branch `semana-7`)
+
+Every result below uses 42-minute DC sessions, 8 ports and 100 kW, with
+n_clusters = 50. The baseline was HEAD `dad3f3e` with a clean tree
+(`thesis_docs/final_baseline_status.txt`).
+
+**Part 1, the arm is promoted.** `RoundRobinTransformerCapped` is now
+labelled "Round Robin, transformer-aware" in:
+- `ev2gym_thesis/figures.py` and `heuristics.py`;
+- figures f19dc, f20dc, f23–f25;
+- the analysis notes;
+- chapters 06–08, the dwell handback, CLAUDE.md and the LaTeX passages.
+
+The lab log and the report keep their history as written. The setpoint
+coupling of EV2Gym's own Round Robin is now stated with file and lines in
+03 (RoundRobin, Implementation), in the 05 note, and in 06 S6.6.4:
+- the budget is `env.power_setpoints`, `heuristics.py` line 58;
+- ceil at lines 76–77;
+- the setpoint is built in `utils.py`, lines 664–772, with ×1.8 at lines
+  696–697 and the median filter at line 772.
+
+A budget unit test was added (`TestTransformerAwareBudget`, 10 seeds × 2
+days at 1.6×). It runs in the end-to-end suite.
+
+**Part 2, the bounds under DC sessions** (600 runs, 50 seeds × 2 days).
+
+*Timing rule* (> 4 h → 20 seeds): **did not fire.** One run took about
+4–8 s, and the plan finished in 11.4 min of worker time per worker.
+
+*From the source, before the runs:*
+- **MPC_TrackingG2V** (`ev2gym_thesis/mpc/tracking_mpc.py`):
+  - **It enforces the transformer limit** as a hard constraint, at lines
+    112–123.
+  - **It tracks the same EV2Gym setpoint** as Round Robin:
+    `env.power_setpoints`, line 100, in a squared-deviation objective at
+    lines 125–130.
+  - **It inherits a second problem.** EV2Gym's MPC base class requires
+    every EV departing within the horizon to reach its desired energy:
+    `XF = x_final`, `ev2gym/baselines/mpc/mpc.py` lines 297–305, enforced
+    through `AU·u ≤ bU` at lines 375–378. With 1–3-step sessions on a
+    shared 100 kW unit, that target is often unreachable. The problem is
+    then infeasible, and the wrapper applies zero power
+    (`tracking_mpc.py`, lines 141–142).
+  - **Measured:** 10,851 infeasible steps out of 28,800 MPC decision
+    steps (37.7%). On the same cell under Dutch durations: 0.
+- **Optimal_Oracle_Tracking** (`ev2gym/baselines/gurobi_models/tracking_error.py`):
+  - **It enforces the transformer** through a current limit,
+    `tra_max_amps`, at lines 186–191.
+  - **It minimises squared deviation from the same setpoint**:
+    `replay.power_setpoints`, which is `env.power_setpoints`
+    (`replay.py` line 32), in the objective at lines 167–170.
+- **Both are upper bounds on tracking EV2Gym's setpoint, not on serving
+  demand.** Both know departure times in advance (non-causal).
+
+*Measured against the transformer-aware Round Robin*
+(`results/dwell_last_bounds_vs_rrta.csv`; paired difference = bound minus
+transformer-aware Round Robin):
+
+| Level | Arm | DNS [CI high] | Paired DNS difference | Margin COP/day | Paired margin difference | Overload runs |
+|---|---|---|---|---|---|---|
+| 1.0× | Round Robin, transformer-aware | 5.0% [6.1] | — | 346,391 | — | 0/100 |
+| 1.0× | MPC_TrackingG2V | 48.5% [53.1] | +43.5 pp [38.9, 47.8] | 183,950 | −162,441 [−181,030, −143,458] | 7/100* |
+| 1.0× | Optimal_Oracle_Tracking | 39.9% [41.9] | +34.9 pp [32.7, 37.1] | 220,975 | −125,416 [−132,157, −118,523] | 0/100 |
+| 1.3× | Round Robin, transformer-aware | 9.0% [10.2] | — | 403,586 | — | 0/100 |
+| 1.3× | MPC_TrackingG2V | 54.4% [58.7] | +45.4 pp [41.2, 49.6] | 200,390 | −203,197 [−223,767, −182,229] | 7/100* |
+| 1.3× | Optimal_Oracle_Tracking | 39.2% [40.8] | +30.2 pp [28.4, 32.0] | 270,811 | −132,775 [−139,854, −125,936] | 0/100 |
+| 1.6× | Round Robin, transformer-aware | 14.2% [15.7] | — | 453,284 | — | 0/100 |
+| 1.6× | MPC_TrackingG2V | 60.6% [64.6] | +46.5 pp [42.6, 50.3] | 206,698 | −246,586 [−269,181, −224,535] | 11/100* |
+| 1.6× | Optimal_Oracle_Tracking | 41.3% [42.8] | +27.1 pp [25.5, 28.7] | 311,292 | −141,992 [−149,752, −134,304] | 0/100 |
+
+\* Solver-tolerance overload: at most 0.0001 kWh/day mean, with a P95 peak
+of 100.0006 kW. The strict rule (zero overload in every run) still counts
+it as not met.
+
+**Finding (reported as found).** Under DC sessions, the non-causal
+"bounds" are dominated by the causal transformer-aware Round Robin on every
+demand-side metric:
+- energy delivered is −279 / −215 kWh/day (MPC / oracle) at 1.0×;
+- satisfaction counting rejected arrivals is lower: 87.2% / 89.5% against
+  97.3%.
+
+They are bounds on their own objective (tracking the median-smoothed
+setpoint), and that objective under-asks under short sessions. Perfect
+information about the wrong target is not an upper bound on service. The
+Weeks 4–5 optimality-gap framing is therefore a Dutch-duration result.
+
+**Part 3, voltage on node_123 under DC sessions**
+(`results/dwell_last_voltage_node123.csv`; weekday, 50 seeds, idle baseline
+matched per level). Station energy equals the non-grid DC rows exactly
+(max difference 0.0 kWh), confirming that the feeder gives no feedback.
+
+| Level (offered/day) | Cells out of band, AFAP / RR transformer-aware | Lowest bus (p.u.) | Station drop in the daily minimum, AFAP / RR-TA (milli-p.u.) | RR-TA reduction vs. AFAP |
+|---|---|---|---|---|
+| 1.0× (39) | 0/50 / 0/50 | 0.9738 | 0.13 [0.10, 0.16] / 0.12 [0.09, 0.14] | 10.6% [2.8, 19.0] |
+| 1.3× (47) | 0/50 / 0/50 | 0.9734 | 0.15 [0.12, 0.19] / 0.14 [0.11, 0.17] | 8.4% [0.2, 15.7] |
+| 1.6× (57) | 0/50 / 0/50 | 0.9733 | 0.18 [0.15, 0.22] / 0.17 [0.14, 0.20] | 6.9% [−0.9, 13.5] |
+
+- The ±5% band is **met on node_123 by both arms at every level**. The idle
+  station has 0/50 cells out of band.
+- The station-attributable drop is small. The feeder's daily minimum is set
+  by its background load, and the lowest bus is identical for both arms in
+  the worst cell.
+- The reduction is significant at 1.0× and 1.3× and includes zero at 1.6×.
+- node_123 is a test network, not a Colombian feeder.
+
+**Part 4, Barranquilla under DC load profiles**
+(`results/dwell_multicity_dc_cost.csv`; AFAP vs. transformer-aware Round
+Robin, 1.0×). The margin conceded to keep the 100 kW limit:
+
+| City | Flat cost, COP/day | Two-band cost, COP/day |
+|---|---|---|
+| Bogotá | 10,141 [7,816, 12,623] | 10,053 |
+| Barranquilla (Air-e, 10.03%) | 9,619 [7,413, 11,972] | **9,230 [7,161, 11,439]** |
+
+**Air-e's 10.03% option no longer changes the cost materially.**
+- Under DC profiles the two-band cost is within 4% of the flat cost, and
+  slightly lower: 2.76% against 2.84% of AFAP's margin.
+- Under Dutch profiles it was 3.6 times the flat cost (closure D2).
+- Both arms put about 37% of their energy in Air-e's 17–22 h peak band
+  (AFAP 37.2%, transformer-aware Round Robin 36.7%). The cost is
+  therefore driven by the energy difference, not by timing.
+- The cost of the limit is about 18 times the Dutch-duration value (551.9
+  COP/day in Bogotá), because short sessions leave less room to shift
+  energy.
+
+Proposition 7.1 (flat tariff) holds unchanged and is not recomputed.
+
+**Hard stops:** none.
+- The Gurobi academic licence works (it expires 2027-08-14).
+- No library file was edited.
+- Runs were written to `results/dwell_registry.csv` (+600 rows, now
+  23,800); `master_results.csv` was untouched.
+
 ## 2026-10-07 02:15 (UTC−5) — Final capacity brief completed; nothing committed (branch `semana-7`)
 
 All parts done; no hard stop. The rules that fired, the duration table, the 42-minute justification, the thresholds in multipliers and physical units, the minimal growth configurations, the final compliance table, the test summary (154 tests; 1 failure in a new test's arbitrary coverage bound, fixed; `test_dwell` 15/15 OK on rerun) and the grouped commit plan are at the top of `thesis_docs/overnight_report.md`. The Enel Colombia (2024) page could not be saved: bot-blocked, and the Internet Archive was offline. It is cited from the brief's details.

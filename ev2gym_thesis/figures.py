@@ -70,12 +70,13 @@ ALGORITHM_STYLE = {
     "TD3_vanilla_new60k_ts100": {"color": "#bcbd22", "marker": "^", "label": "TD3 new run @60k (seed 100)"},
     "TD3_vanilla_new60k_ts101": {"color": "#dbdb8d", "marker": "v", "label": "TD3 new run @60k (seed 101)"},
     "TD3_vanilla_new60k_ts102": {"color": "#7a7b16", "marker": "D", "label": "TD3 new run @60k (seed 102)"},
-    # Final capacity (dwell) brief addition (append only): the diagnostic
-    # Round Robin whose budget is the transformer rating
+    # Final capacity (dwell) brief addition (append only): the Round Robin
+    # whose budget is the transformer rating -- added as a diagnostic, promoted
+    # to the recommended operating strategy in the last run (2026-10-07)
     # (ev2gym_thesis/heuristics.py) -- a lighter shade of Round Robin's blue
     # (same allocation logic), distinguished by marker.
     "RoundRobin_TransformerCapped": {"color": "#6baed6", "marker": "P",
-                                     "label": "Round Robin, transformer-capped (diagnostic)"},
+                                     "label": "Round Robin, transformer-aware"},
     # Append new algorithms here as they're added -- never reassign an
     # existing entry's color/marker once a figure has used it.
 }

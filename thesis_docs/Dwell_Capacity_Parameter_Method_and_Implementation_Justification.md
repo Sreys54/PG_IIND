@@ -24,7 +24,7 @@ fired).**
 artefact.** At the same spawn multiplier, DC sessions give:
 - rejected arrivals of 0.9/day instead of 8.9;
 - port occupancy of 14% instead of 35%;
-- demand not served of 2.4% (AFAP) and 5.0% (capped Round Robin).
+- demand not served of 2.4% (AFAP) and 5.0% (transformer-aware Round Robin).
 
 **3. EV2Gym's Round Robin follows a median-smoothed power setpoint, not the
 transformer.**
@@ -35,8 +35,8 @@ transformer.**
   exceed 100 kW from the lowest level.
 - **The binding constraint is power, not ports.**
 
-**4. Threshold with a transformer-capped round-robin load manager**
-(diagnostic arm, this brief):
+**4. Threshold with a transformer-aware round-robin load manager**
+(added as a diagnostic in this brief; promoted to the recommended strategy, 2026-10-07):
 - **8 ports and the 100 kW (112.5 kVA) unit serve up to 47 arrivals/day
   (763 kWh/day) with DNS ≤ 15%** (9.0%, CI high 10.2%; n_clusters = 50).
 - The threshold is the same at 32 min and falls to 35 arrivals/day at
@@ -44,13 +44,13 @@ transformer.**
 
 **5. Growth scenario (42 min).**
 
-| Level | Round Robin (EV2Gym) | Capped Round Robin | AFAP |
+| Level | Round Robin (EV2Gym) | Transformer-aware Round Robin | AFAP |
 |---|---|---|---|
 | 1.3× (47 arrivals/day) | none | 8 ports, 100 kW | 8 ports, 300 kVA |
 | 1.6× (57 arrivals/day) | 14 ports, 400 kVA | **10 ports, 100 kW** | 10 ports, 300 kVA |
 
 **6. Final compliance (DC 42 min, 8 ports, 100 kW).**
-- Only the capped Round Robin meets every evaluable target at 1.0× and
+- Only the transformer-aware Round Robin meets every evaluable target at 1.0× and
   1.3×.
 - At 1.6× no arm meets the satisfaction target counting rejected arrivals.
 - Voltage is not evaluable under DC sessions.
@@ -69,7 +69,7 @@ transformer.**
 | Breaking criteria | satisfaction counting rejected arrivals CI low ≥ 90%; DNS CI high ≤ 15%; P95 peak CI high ≤ rating (kW) | brief; hardest CI side (conservative) | The same as the closure run; the peak is judged against the candidate's own rating in C2 | `analyze_dwell_capacity.py` |
 | Transformer ratings | 100 kW reference; 150 / 225 / 300 / 400 kVA at pf 0.894 | standard classes | Enel ET-013 Table 1; pf from CREG 015/2018 (closure run) | `SOURCES_closure.md` |
 | Port variants | 8–16 at constant station demand (spawn × 8/P) | closure convention | EV2Gym draws arrivals per port | closure run |
-| Diagnostic arm | Round Robin, budget 0.999 × rating | labelled judgement call | Separates round-robin load management from EV2Gym's setpoint coupling | `ev2gym_thesis/heuristics.py` |
+| Round Robin, transformer-aware (added as a diagnostic; recommended from 2026-10-07) | Round Robin, budget 0.999 × rating | labelled judgement call | Separates round-robin load management from EV2Gym's setpoint coupling | `ev2gym_thesis/heuristics.py` |
 
 **The 42-minute justification (as written in chapter 06, S6.6.2).**
 1. **Payment model.** Enel's public charging in Bogotá is paid: users
@@ -87,7 +87,7 @@ transformer.**
    stopping before 100%. The older 1 h 30 min figure (Enel Colombia, 2024)
    is a full charge on earlier equipment, so it is used only as the rule's
    ceiling.
-4. **Sensitivity bracket.** The capped Round Robin's threshold is the same
+4. **Sensitivity bracket.** The transformer-aware Round Robin's threshold is the same
    at 32 and 42 min (holds at 1.3×) and moves down one level at 78 min
    (holds at 1.0×): about 49 / 47 / 35 arrivals per day. EV2Gym's Round
    Robin meets the criteria at no level under any duration.
@@ -105,15 +105,15 @@ DNS are judged on the hardest CI side.
 | 1.0× | AFAP | met | met (97.9%) | met (0.0%) | met (2.4%) | **not met** (97/100) | not evaluable |
 | 1.0× | Round Robin (EV2Gym) | met | met (93.0%) | **not met** (22.9%) | **not met** (24.8%) | **not met** (65/100) | not evaluable |
 | 1.0× | Final RL (out of distribution) | met | met (92.2%) | **not met** (26.3%) | **not met** (28.1%) | **not met** (81/100) | not evaluable |
-| 1.0× | Round Robin, capped (diagnostic) | met | met (97.3%) | met (2.7%) | met (5.0%) | met (0/100) | not evaluable |
+| 1.0× | Round Robin, transformer-aware | met | met (97.3%) | met (2.7%) | met (5.0%) | met (0/100) | not evaluable |
 | 1.3× | AFAP | met | met (94.7%) | met | met (5.5%) | **not met** (100/100) | not evaluable |
 | 1.3× | Round Robin (EV2Gym) | met | **not met** (90.6%, CI low 89.6%) | **not met** (19.0%) | **not met** (23.6%) | **not met** (83/100) | not evaluable |
 | 1.3× | Final RL | met | **not met** (89.4%) | **not met** (24.8%) | **not met** (29.0%) | **not met** (95/100) | not evaluable |
-| 1.3× | Round Robin, capped | met | met (93.9%) | met (3.7%) | met (9.0%) | met (0/100) | not evaluable |
+| 1.3× | Round Robin, transformer-aware | met | met (93.9%) | met (3.7%) | met (9.0%) | met (0/100) | not evaluable |
 | 1.6× | AFAP | met | **not met** (89.5%) | met | met (10.5%) | **not met** (100/100) | not evaluable |
 | 1.6× | Round Robin (EV2Gym) | met | **not met** (86.1%) | **not met** (16.6%) | **not met** (25.3%) | **not met** (96/100) | not evaluable |
 | 1.6× | Final RL | met | **not met** (84.9%) | **not met** (22.5%) | **not met** (30.6%) | **not met** (98/100) | not evaluable |
-| 1.6× | Round Robin, capped | met | **not met** (88.6%) | met (4.2%) | **not met** (14.2%, CI high 15.7%) | met (0/100) | not evaluable |
+| 1.6× | Round Robin, transformer-aware | met | **not met** (88.6%) | met (4.2%) | **not met** (14.2%, CI high 15.7%) | met (0/100) | not evaluable |
 
 The voltage reason applies to every row: the arms were not rerun on a
 feeder under DC sessions. The 34-node feeder is out of band when idle, and
@@ -231,7 +231,7 @@ Post-processing only. It computes:
 - Every dwell table has an `.xlsx` twin produced through
   `export_formatted_xlsx`.
 - Figures f22–f24 were added (`--only f22,f23,f24`).
-- The diagnostic arm's style was appended without reassigning any existing
+- The transformer-aware Round Robin's style was appended without reassigning any existing
   colour.
 
 ### `scripts/extend_progress_log.py` (extended)
