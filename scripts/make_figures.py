@@ -22,7 +22,7 @@ from ev2gym_thesis.figures import (
     FIGURES_DIR, ALGORITHM_STYLE, style_for, write_caption, assert_total_reward_comparable,
 )
 from ev2gym_thesis.stats_utils import mean_ci, paired_bootstrap_ci
-from ev2gym_thesis.registry_analysis import load_registry, main_grid_rows
+from ev2gym_thesis.registry_analysis import load_registry, main_grid_rows, NON_GRID_NOTES_MARKERS
 from ev2gym_thesis.config_utils import make_day_config
 from ev2gym_thesis.eval_protocol import REFERENCE_DAY, SEEDS, EVAL_DAYS
 
@@ -457,20 +457,42 @@ POLICY_A_CONFIGS = [("station_n02_tx100", 2), (REFERENCE_CONFIG, 8), ("station_n
 POLICY_B_CONFIGS = [("station_n02_tx025", 2), (REFERENCE_CONFIG, 8), ("station_n16_tx200", 16)]
 
 
+F06_ALGOS = ["ChargeAsFastAsPossible", "RoundRobin"]
+T_975_DF4 = 2.776  # two-sided 95% Student t, 4 degrees of freedom (5 seed clusters)
+
+
+def _week2_sweep_rows(rows, config_name):
+    # Fixed 2026-10-14: since the Week 5 schema migration (Gate 4) this figure
+    # read main_grid_rows(), which keeps only analysis_row=True rows. The size
+    # sweep was never part of the Gate 4 regeneration, so every sweep row is
+    # superseded and the figure rendered empty from 2026-09-09 on. It now
+    # reads the superseded Week 2 grid explicitly, for ALL five configs
+    # including the n=8 reference, so the three points of each line come from
+    # the same grid. The figure title and caption say so.
+    return [r for r in rows
+            if r["config_name"] == config_name and str(r.get("superseded")) == "True"
+            and r["algorithm"] in F06_ALGOS and r["notes"] not in NON_GRID_NOTES_MARKERS]
+
+
+def _seed_cluster_mean_ci(grid, algo, metric):
+    # The Week 2 grid's 10 EVAL_DAYS collapse to 2 day types in EV2Gym (05
+    # S5.0), so the 50 rows are not independent. The interval is taken over
+    # the 5 seed-level means, with a Student t critical value.
+    by_seed = {}
+    for r in grid:
+        if r["algorithm"] == algo and r[metric] is not None:
+            by_seed.setdefault(r["seed"], []).append(r[metric])
+    seed_means = np.array([np.mean(v) for v in by_seed.values()])
+    m = float(np.mean(seed_means))
+    half = T_975_DF4 * float(np.std(seed_means, ddof=1)) / np.sqrt(len(seed_means))
+    return m, m - half, m + half, len(seed_means)
+
+
 def make_f06_size_sensitivity(rows):
-    # Week 3: restricted to algorithms actually run across the port-count
-    # sweep (checked via presence on a non-reference sweep config), not
-    # every algorithm in the whole registry. TD3/RandomPolicy only ran on
-    # the 8-port reference config (declared Week 3 scope limitation -- the
-    # CPU budget didn't cover training across the size sweep too, see
-    # thesis_docs/chapters/03_rl_baseline.md), so without this filter they
-    # showed up as disconnected single dots at n=8 with no actual
-    # sensitivity trend to show -- misleading in a figure whose whole point
-    # is the trend across sizes. Caught by this figure's own visual QA
-    # (Entregable 7).
-    non_reference_sweep_config = POLICY_A_CONFIGS[0][0]  # station_n02_tx100
-    swept_grid = main_grid_rows(rows, non_reference_sweep_config)
-    algos = [a for a in _algos_present(main_grid_rows(rows)) if _values_for(swept_grid, a, HEADLINE_METRIC).size > 0]
+    # Week 3: restricted to the algorithms run across the port-count sweep
+    # (AFAP and Round Robin); TD3/RandomPolicy only ran on the 8-port
+    # reference config (declared Week 3 scope limitation).
+    algos = F06_ALGOS
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), sharey=True)
 
     for ax, (policy_name, policy_configs) in zip(
@@ -479,14 +501,15 @@ def make_f06_size_sensitivity(rows):
         for algo in algos:
             n_ports_list, means, los, his = [], [], [], []
             for config_name, n_ports in policy_configs:
-                grid = main_grid_rows(rows, config_name)
+                grid = _week2_sweep_rows(rows, config_name)
                 values = _values_for(grid, algo, HEADLINE_METRIC)
                 if len(values) == 0:
                     continue
-                m, lo, hi = mean_ci(values)
+                m, lo, hi, n_clusters = _seed_cluster_mean_ci(grid, algo, HEADLINE_METRIC)
+                assert n_clusters == 5, (config_name, algo, n_clusters)
                 n_ports_list.append(n_ports)
                 means.append(m)
-                los.append(m - lo)
+                los.append(m - max(lo, 0.0))  # overload cannot be negative: lower bound clipped at 0
                 his.append(hi - m)
             sty = style_for(algo)
             ax.errorbar(n_ports_list, means, yerr=[los, his], fmt=sty["marker"] + "-",
@@ -497,8 +520,10 @@ def make_f06_size_sensitivity(rows):
 
     axes[0].set_ylabel(METRIC_LABELS[HEADLINE_METRIC])
     axes[0].legend(fontsize=8)
-    fig.suptitle(f"Station-size sensitivity: {METRIC_LABELS[HEADLINE_METRIC]} vs. port count", fontsize=10)
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    fig.suptitle(f"Station-size sensitivity: {METRIC_LABELS[HEADLINE_METRIC]} vs. port count\n"
+                 "Week 2 grid (5 seeds x 10 days, superseded; long-dwell regime). "
+                 "Point = mean; bar = 95% t-interval over the 5 seed means", fontsize=10)
+    fig.tight_layout(rect=[0, 0, 1, 0.9])
     _save(fig, "f06_size_sensitivity")
 
     configs_used = sorted({c for c, _ in POLICY_A_CONFIGS + POLICY_B_CONFIGS})
@@ -509,9 +534,19 @@ def make_f06_size_sensitivity(rows):
             "algorithm, two panels for the two transformer policies (Policy A: fixed at "
             "100 kW; Policy B: scaled to hold the reference case's 4:1 oversubscription "
             "ratio constant). station_v0_bogota (n=8) is the shared middle point in both "
-            "panels since it sits at both 100 kW and the 4:1 ratio simultaneously."
+            "panels since it sits at both 100 kW and the 4:1 ratio simultaneously. "
+            "HISTORICAL DATA (regenerated 2026-10-14): every point, including n=8, comes from the "
+            "superseded Week 2 grid (5 seeds x 10 EVAL_DAYS, superseded=True), because the size "
+            "sweep was not part of the Week 5 Gate 4 regeneration. Two caveats follow. (1) The 10 "
+            "days collapse to 2 day types in EV2Gym, so the interval is a Student t interval over "
+            "the 5 seed means, not over 50 rows; its lower bound is clipped at 0, since overload cannot be negative. (2) Round Robin's power budget is the pre-fix "
+            "setpoint generator (ENTSO-E price-weighted); AFAP ignores the setpoint and is "
+            "unaffected. The n=8 AFAP value (5.33 kWh) is the superseded-grid value; the current "
+            "grid gives 14.22 kWh (05 S5.6). EV2Gym's native session durations (long-dwell regime). "
+            "From 2026-09-09 to 2026-10-14 this figure rendered empty (it filtered on "
+            "analysis_row=True, which no sweep row has)."
         ),
-        n_runs=sum(len(main_grid_rows(rows, c)) for c in configs_used),
+        n_runs=sum(len(_week2_sweep_rows(rows, c)) for c in configs_used),
         configs=configs_used,
         algorithms=[style_for(a)["label"] for a in algos],
     )
@@ -582,9 +617,9 @@ def make_f07_metric_heatmap(rows):
             "across algorithms) with direction corrected so green always means 'better "
             "performance', not just 'higher raw number' -- total_transformer_overload is "
             "inverted since lower is better there. Raw mean value annotated in each cell. "
-            "A single-glance summary of the cumulative experiment history -- with only 2 "
-            "algorithms so far, each column is necessarily 0/1; this becomes more "
-            "informative as more algorithms are added in later weeks."
+            "A single-glance summary of the algorithms compared on the current grid. "
+            "Colours are relative within each column, not absolute: a red cell is the "
+            "worst arm in that column, which can still be close to the best in raw value."
         ),
         n_runs=len(grid),
         configs=[REFERENCE_CONFIG],
@@ -2093,6 +2128,7 @@ if __name__ == "__main__":
         # Week 6 Part 0: regenerate only the named figures, leaving the rest
         # (and their captions' git commit/timestamp) untouched.
         _fns = {"f08": lambda: make_f08_learning_curves(load_registry()),
+                "f06": lambda: make_f06_size_sensitivity(load_registry()),
                 "f12": make_f12_extended_training_reward, "f13": make_f13_extended_validation,
                 "f14": make_f14_all_models_comparison, "f15": make_f15_grid_growth,
                 "f16": make_f16_transformer_sizing, "f17": make_f17_voltage_attribution,
