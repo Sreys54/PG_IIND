@@ -350,6 +350,50 @@ comparison and the RL training exist only for the long-dwell regime.*
     remains under 3% of margin. Air-e's two-band option no longer changes
     it materially (07 S7.11).
 
+## L9. RL design and the DC capacity figure [added 2026-10-14]
+
+48. **The RL agent treats the transformer limit as a penalty, not a
+    constraint.** The training reward (`SqTrError_TrPenalty_UserIncentives`,
+    `ev2gym/rl_agent/reward.py`) combines three terms:
+    - the squared deviation from min(setpoint, charge potential,
+      transformer rating);
+    - −100 per kW of overload;
+    - −1000 × (1 − satisfaction) per departing EV.
+
+    Nothing prevents the actions from exceeding the rating, so every TD3
+    arm overloads in some runs (05 S5.6). The heuristic arms it is compared
+    with either ignore the rating (AFAP) or never exceed it in practice
+    (Round Robin). The standard alternative is a safety layer that rescales
+    the actions so their total never exceeds the rating, which would let the
+    agent learn only the allocation. It was not built.
+
+    Three further limits apply:
+    - the hyperparameters are SB3 defaults or reductions declared for the
+      CPU budget, with no tuning (03 S3.7);
+    - the `PublicPST` state exposes no remaining energy per EV, only whether
+      each EV is full;
+    - the agent was never trained in the DC fast-charging regime (item 40).
+
+    **The RL conclusion is therefore bounded to this design.** TD3 with
+    this reward, state, budget and penalty-only treatment of the
+    transformer, in the long-dwell regime, does not outperform Round Robin.
+    No claim is made about RL with a hard capacity constraint, or about RL
+    for DC fast charging. Those are future work.
+49. **The DC capacity threshold in arrivals per day is optimistic.** Under
+    the DC model the energy requested per session is 16.1 kWh, against the
+    22.0 kWh paid-DC reference (item 37), so each arrival requests about 27%
+    less energy than the reference suggests. A station whose drivers
+    request the reference energy would reach the same energy load with
+    fewer arrivals. The "47 arrivals/day" threshold (06 S6.6.6) is therefore
+    an upper estimate in arrivals.
+    - The threshold in energy, **763 kWh/day**, is the less biased of the
+      two statements.
+    - It is not exact either. Larger sessions also take longer to complete
+      within a 42-minute stay, which this project did not simulate.
+
+    Other cities and sites should apply the guideline from their own
+    kWh/day first, and use arrivals/day only as a cross-check (07 S7.10).
+
 **References for L7 (APA 7).**
 - Blu Radio. (2026, May 13). *Conductores en Bogotá podrán cargar hasta el 50 % de batería de su carro eléctrico en menos tiempo* (C. Durán, Author). https://www.bluradio.com/motor/conductores-en-boogta-podran-cargar-hasta-el-50-de-bateria-de-su-carro-electrico-en-menos-tiempo-so35
 - Enel Colombia. (2024, May). *Avances en infraestructura de recarga de vehículos eléctricos.* https://www.enel.com.co/es/historias/archive/2024/05/infraestructura-de-recarga-de-vehiculos-electricos.html

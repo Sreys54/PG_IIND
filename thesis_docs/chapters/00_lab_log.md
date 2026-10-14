@@ -1,5 +1,57 @@
 # Lab Log
 
+## 2026-10-14 (UTC−5, later) — Review fixes: f06, stale numbers, two new limitations, f07/f11 notes (uncommitted)
+
+**f06 was empty, and now has data.** Every size-sweep row is
+`superseded = True`, and since 2026-09-09 the figure filtered on
+`analysis_row = True`. It now reads the Week 2 grid explicitly for all five
+configs, including n = 8, so each line comes from one grid.
+- The CI is a Student t interval (df = 4) over the 5 seed means, since the
+  10 days collapse to 2 day types. Its lower bound is clipped at 0.
+- The title and caption state the superseded grid and the pre-fix Round
+  Robin setpoint.
+- Added to `--only` as `f06`; visually checked.
+- Mean AFAP overload: 2 / 8 / 16 ports at 100 kW give 0.0 / 5.33 / 74.0
+  kWh/day; with the 4:1 ratio held, 98.7 / 5.33 / 0.0. Round Robin's is at
+  most 1.64 kWh/day.
+
+01 §1.4 and 03 now point to these rows instead of the nonexistent
+`size_sensitivity.csv`.
+
+**05, stale numbers.**
+- S5.1: the heading "both oracle variants lose to AFAP and Round Robin on
+  margin" no longer holds on the current grid. Optimal_Oracle_Balanced
+  (117,963 COP/day; 201.91 kWh) is above Round Robin (117,532; 201.17 kWh);
+  both oracles stay below AFAP (118,084; 202.12 kWh). A dated correction
+  note was added; the heading is kept.
+- S5.8: "20×–70×" corrected to 20×–53×, recomputed as 759.4–2,062.8 against
+  38.8 COP/kWh.
+
+**04, f11 count.** f11 shows 25 Round Robin steps; 04 S4.3 says 27.
+Recomputed on the current environment: Round Robin has 25 steps (sum
+−3,086.9) and AFAP 2 steps (−99.3). The table's 27 / −3,236.1 predate the
+Gate 4 setpoint fix, which changes Round Robin's dispatch; AFAP is
+unchanged. Also clarified that "~32×" is the magnitude ratio (31.1× now),
+while the frequency ratio is 12.5×.
+
+**07 / f07 / 01.**
+- The f07 caption's Week 2 sentence was replaced, in `make_figures.py` and
+  in the sidecar. The image was not regenerated: regenerating would add the
+  nine Week 6 arms, and f02–f05 would then no longer match.
+- 01's bibliography no longer calls Res. 40223/2021 a RETIE provision. Its
+  official title is quoted from the stored text.
+
+**08.** New L9:
+- item 48: RL with the transformer as a penalty only, no safety layer, no
+  tuning and no DC training, so the RL conclusion is bounded to that
+  design;
+- item 49: the DC threshold in arrivals/day is an upper estimate, because
+  energy per session is 27% below the reference, so kWh/day is the less
+  biased statement. A pointer was added in 06 S6.6.6.
+
+No simulation was run except the two diagnostic f11 episodes. No registry
+or results CSV was written.
+
 ## 2026-10-14 (UTC−5) — Two-regime framing adopted (advisor's decision); no simulation rerun (branch `main`, uncommitted)
 
 **Decision (thesis advisor, relayed by the author).** Results under EV2Gym's

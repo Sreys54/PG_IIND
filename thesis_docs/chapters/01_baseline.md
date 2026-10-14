@@ -204,6 +204,17 @@ simple heuristic already resolves.**
   assumption — see `experiments/phase1_baseline/results/size_sensitivity.csv`
   and `scripts/run_size_sensitivity.py` for the n=2/8/16-port sweep at both
   fixed and ratio-scaled transformer capacity.
+  *Corrected 2026-10-14:* `size_sensitivity.csv` does not exist in the
+  repository. The sweep's results are the `station_n02_tx025`,
+  `station_n02_tx100`, `station_n16_tx100` and `station_n16_tx200` rows of
+  `results/master_results.csv`, 100 rows per config, from the Week 2 grid
+  and now `superseded = True`. They are plotted in
+  `figures/f06_size_sensitivity.png`, regenerated on 2026-10-14 from those
+  rows and labelled as superseded-grid data. Mean AFAP overload, in kWh/day:
+  - 2 ports: 0.0 at 100 kW and 98.7 at 25 kW;
+  - 16 ports: 74.0 at 100 kW and 0.0 at 200 kW.
+
+  Round Robin's overload is at most 1.64 kWh/day (16 ports, 100 kW).
 - Grid voltage constraints are not modeled here (`simulate_grid: False`);
   RETIE's ±5% voltage band cannot be checked against this baseline and will
   require the Week 2 grid-enabled scenario instead.
@@ -222,3 +233,11 @@ simple heuristic already resolves.**
   DC fast-charging provisions). Referenced in §1.1 as the basis for treating
   our 50 kW DC-capable 8-port config as a near-term upgrade path rather than
   a description of currently installed hardware.
+  *Corrected 2026-10-14:* this resolution is not part of the RETIE. Its
+  title is "Por la cual se establecen las condiciones mínimas de
+  estandarización y de mercado para la implementación de infraestructura de
+  carga para vehículos eléctricos e híbridos enchufables" (Ministerio de
+  Minas y Energía, 9 July 2021; Diario Oficial No. 51.730). It is cited in
+  §1.1(a) for its Art. 4 connector minimum (Tipo 1 AC, CCS Combo 1 DC), not
+  for DC fast-charging provisions of the RETIE. Local copy:
+  `thesis_docs/references/regulatory/res_40223_2021.html`.

@@ -152,6 +152,24 @@ normally answer "which algorithm makes the operator the most money"
 cannot distinguish a strategy that earns its energy delivery honestly from
 one that earns it by ignoring a hard operating constraint.
 
+*Correction (2026-10-14).* The 196.69 kWh/day above, and the 195.67–196.45
+kWh and the margins in the heading and paragraph below, come from the
+superseded 5-seed grid. On the current grid (`analysis_row = True`, 100
+runs per arm) the energy delivered is:
+- AFAP 202.12 kWh/day;
+- Optimal_Oracle_Balanced 201.91;
+- Round Robin 201.17;
+- Optimal_Oracle_Tracking 201.13.
+
+The mean margins are 118,084 / 117,963 / 117,532 / 117,507 COP/day
+(`results/week5_margin_vs_overload.csv`). **The heading below no longer
+holds as written.** Both oracle variants still deliver less energy, and
+earn less margin, than AFAP. But `Optimal_Oracle_Balanced` is now *above*
+Round Robin (+431 COP/day), and only `Optimal_Oracle_Tracking` is below
+it. The mechanism explained below (neither oracle's objective rewards
+energy) is unchanged, and it is why both stay below AFAP. Read the heading
+as "Why both oracle variants lose to AFAP on margin".
+
 ### Why both oracle variants also lose to AFAP and Round Robin on margin (114,774 and 114,320 vs. 114,913 and 114,824)
 
 This is expected, not a bug, and the mechanism follows directly from what
@@ -818,7 +836,8 @@ this chapter, on the three declared axes:
   week: tracking error (420%+ oracle gap vs. 128.8%), transformer
   overload (now confirmed real and non-trivial at 50 seeds, S5.6, where
   Week 3/4's 5-seed sample understated it), and cost-per-kWh-of-overload-
-  avoided (20×–70× more expensive). This is the same conclusion Week 4
+  avoided (20×–53× more expensive; corrected 2026-10-14 from "20×–70×",
+  which came from the stale pre-Gate-4 file, see S5.1). This is the same conclusion Week 4
   reached, now on a properly-powered sample rather than reversed by it —
   if anything, more RL checkpoints show real overload than the small
   sample suggested, sharpening rather than softening the finding.

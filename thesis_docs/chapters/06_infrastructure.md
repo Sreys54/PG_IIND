@@ -821,6 +821,10 @@ is excluded, as in the closure run.
     unit.
   - The 78-minute bracket lowers the first figure to 35 arrivals/day
     (556 kWh/day).
+  - *Note (2026-10-14).* Simulated sessions request 27% less energy than
+    the paid-DC reference, so the arrivals/day figures are upper estimates.
+    The kWh/day figures are the less biased statement of the threshold
+    (08, item 49).
 - **Without a rating-aware load manager.**
   - Unmanaged charging needs **300 kVA**, at 8 ports at 1.3× and 10 ports
     at 1.6×.

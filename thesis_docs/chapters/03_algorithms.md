@@ -73,6 +73,16 @@ with a small number of high-overload outlier days driving the mean),
 `figures/f06_size_sensitivity.png` (AFAP's overload grows sharply with
 port count under a fixed transformer).
 
+> *Note (2026-10-14).* f06 rendered empty from 2026-09-09 to 2026-10-14.
+> The size-sweep rows are all `superseded = True` (Week 2 grid), and the
+> figure filtered on current analysis rows. It was regenerated from the
+> Week 2 grid for every port count, including n = 8, and is labelled as
+> such. Mean AFAP overload with a fixed 100 kW transformer is 0.0 / 5.33 /
+> 74.0 kWh/day at 2 / 8 / 16 ports. Round Robin's is at most 1.64 kWh/day
+> at any tested size. Both statements in this chapter hold on that data.
+> The n = 8 value is the superseded 5.33 kWh, not the current-grid
+> 14.22 kWh.
+
 ### Conclusions
 
 At this station's 4:1 oversubscription ratio, unmanaged charging produces

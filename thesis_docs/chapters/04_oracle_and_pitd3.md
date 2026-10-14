@@ -311,7 +311,23 @@ caused a real overload.
 
 Round Robin — the heuristic that already nearly eliminates transformer
 overload (Week 1-3 results) — was penalized **~32× more often** than
-AFAP, the unmanaged baseline that overloads this station routinely. The
+AFAP, the unmanaged baseline that overloads this station routinely.
+
+> **Note, 2026-10-14 (figure f11 vs. this table).** The table above was
+> computed on 2026-08-19, before the Week 5 fix to
+> `generate_power_setpoints` (05 S5.5, Gate 4). Round Robin's dispatch
+> follows the setpoint, so it changed with the fix. AFAP ignores the
+> setpoint and did not change. Recomputed on the current environment (same
+> cell, same function), which is what figure f11 plots:
+> - Round Robin: **25** nonzero steps, sum −3,086.9 (here: 27 and
+>   −3,236.1);
+> - AFAP: 2 steps, sum −99.3, unchanged.
+>
+> "~32× more often" above mixes two measures. **By magnitude** (penalty
+> sum) Round Robin's penalty is 32.6× AFAP's before the fix and 31.1×
+> after. **By frequency** (steps) it is 13.5× and 12.5×. The conclusion,
+> that the term penalises the heuristic that avoids overload far more than
+> the one that causes it, holds under both measures and both environments. The
 strongly positive SoC correlation confirms the mechanism directly: raising
 fleet SoC *lowers* the penalty. **The term's gradient points toward
 charging faster and more completely — toward AFAP — not toward
