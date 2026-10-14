@@ -33,6 +33,16 @@ transformer limit:
 
 The full statement is in 03 (RoundRobin, Implementation).*
 
+*[Dated note 2026-10-14, thesis advisor's decision.] The thesis reports its
+results under two operating regimes (06 S6.8). This chapter is the
+algorithm comparison of the **long-dwell regime**: EV2Gym's native session
+durations, the environment the simulator and its Public-PST problem were
+built for, in which smart charging can shift energy in time. It is a result
+in its own right for that regime, and it is comparable with the EV2Gym
+literature. Its rankings describe destination charging and are not carried
+over to the DC fast-charging regime, where the comparison was not rerun.
+The capacity and control guideline for DC fast charging is 06 S6.6–S6.7.*
+
 ## S5.1 Colombian gross margin: what it does and does not measure
 
 ### The result
@@ -744,6 +754,11 @@ gestionado" wording); `ENS_abs` is diagnostic only, reported for every
 arm including AFAP, never used to judge compliance.
 
 ## S5.8 Recommended strategy for Objective 4
+
+*[Dated note 2026-10-14.] This recommendation holds for the long-dwell
+regime, where it was made. For the DC fast-charging regime the recommended
+strategy is the transformer-aware Round Robin (06 S6.7.1); the two are
+compared in 06 S6.8.*
 
 **Recommendation: Round Robin.** Argued from the evidence assembled in
 this chapter, on the three declared axes:

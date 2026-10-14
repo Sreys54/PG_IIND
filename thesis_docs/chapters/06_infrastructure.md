@@ -209,7 +209,7 @@ of the tail of the demand distribution.
 
 ### Guideline 2 — Capacity and ports, on demand not served (rewritten 2026-10-06, closure brief Parts B–C)
 
-*[Dated note 2026-10-07, final capacity brief.] This subsection uses EV2Gym's Dutch session durations (mean 300.6 min, minimum 225 min). It is now a declared sensitivity. The capacity guideline under DC session durations is S6.6, which supersedes it.*
+*[Dated note 2026-10-07, final capacity brief; reframed 2026-10-14.] This subsection uses EV2Gym's native session durations (mean 300.6 min, minimum 225 min), the long-dwell regime the simulator was built for. The 2026-10-07 note labelled it a "declared sensitivity". Following the thesis advisor's decision of 2026-10-14, it is reported instead as the capacity guideline for the **long-dwell regime**, one of the thesis's two operating regimes (S6.8). The capacity guideline for the DC fast-charging regime is S6.6.*
 
 
 *Correction (2026-10-06, closure brief Checkpoint B).* This guideline
@@ -360,7 +360,7 @@ port count:
 
 ### C3 — Guideline per growth level (8-port, 100 kW reference station; Round Robin)
 
-*[Dated note 2026-10-07, final capacity brief.] This subsection uses EV2Gym's Dutch session durations (mean 300.6 min, minimum 225 min). It is now a declared sensitivity. The capacity guideline under DC session durations is S6.6, which supersedes it.*
+*[Dated note 2026-10-07, final capacity brief; reframed 2026-10-14.] This subsection uses EV2Gym's native session durations (mean 300.6 min, minimum 225 min). The 2026-10-07 note labelled it a "declared sensitivity". Following the thesis advisor's decision of 2026-10-14, it is the growth guideline for the **long-dwell regime** (S6.8). The growth guideline for the DC fast-charging regime is S6.6.*
 
 
 - **Up to 0.5× the Week 1 demand:** the reference design meets every
@@ -587,6 +587,13 @@ first two rows are superseded by the table above.
 
 ## S6.5 Answer to Objective 4
 
+*[Dated note 2026-10-14, advisor's decision.] This section is the answer to
+Objective 4 for the **long-dwell regime**, EV2Gym's native environment.
+S6.7.5 answers it for the **DC fast-charging regime**, and S6.8 sets the two
+side by side. The 2026-10-07 notes below said that S6.7.5 "supersedes" this
+section; that wording is replaced by the two-regime reading, and the notes
+are kept as written for the record.*
+
 *[Dated note 2026-10-07, last run.] The final answer to Objective 4 is S6.7.5, which supersedes this section and the dated note below.*
 
 *[Dated note 2026-10-07, final capacity brief.] Points 1 and 2 below rest on
@@ -600,6 +607,10 @@ EV2Gym's Dutch session durations. Under DC session durations (S6.6):
   units.
 
 Points 3 and 4 are unchanged.*
+
+*(2026-10-14: read "does not hold as stated" and "is replaced" above as "does
+not carry over to the DC regime". Points 1 and 2 remain the guideline for
+the long-dwell regime.)*
 
 *Rewritten 2026-10-06 (closure brief, Checkpoint B rule).* The earlier
 answer said that Round Robin removes the overload "with no loss of user
@@ -650,10 +661,14 @@ These guidelines are **conditional**:
 
 ## S6.6 DC session duration and the capacity guideline (final capacity brief, 2026-10-07)
 
-This section **supersedes Guideline 2, C3 and point 2 of S6.5 as the
-capacity guideline**. Those results stay in this chapter as a declared
-sensitivity, labelled "Dutch durations". The decision rule and its log are
-in `thesis_docs/overnight_report.md` (dwell section, Checkpoints A and C).
+This section gives the **capacity guideline for the DC fast-charging
+regime**. Guideline 2, C3 and point 2 of S6.5 remain the capacity guideline
+for the long-dwell regime (S6.8). *(Reframed 2026-10-14, advisor's decision.
+The 2026-10-07 text read: "This section supersedes Guideline 2, C3 and point
+2 of S6.5 as the capacity guideline. Those results stay in this chapter as a
+declared sensitivity, labelled 'Dutch durations'.")* The decision rule and
+its log are in `thesis_docs/overnight_report.md` (dwell section, Checkpoints
+A and C).
 
 ### S6.6.1 What the simulator did with session duration
 
@@ -812,9 +827,11 @@ is excluded, as in the closure run.
   - EV2Gym's Round Robin needs 14 ports and 400 kVA at 1.6×, and no
     searched configuration meets the criteria at 1.3×.
 - **Status of the closure result.** The closure's "34.6% of demand
-  unserved; the 8 ports bind" is a Dutch-duration artefact. Under DC
-  sessions at the same spawn multiplier, lower-bound rejections fall from
-  8.9 to 0.9 per day, and port occupancy falls from 35% to 14%.
+  unserved; the 8 ports bind" is a property of the long-dwell regime, not of
+  a DC station (2026-10-14; the 2026-10-07 text called it "a Dutch-duration
+  artefact"). Under DC sessions at the same spawn multiplier, lower-bound
+  rejections fall from 8.9 to 0.9 per day, and port occupancy falls from
+  35% to 14%.
 
 These statements are conditional on: the DC session model (an external,
 non-Colombian reference); EV2Gym's per-port arrival process and its 3-step
@@ -824,8 +841,11 @@ manager (Round Robin, transformer-aware) that was not part of the Weeks 1–7 co
 
 ## S6.7 Recommended operating strategy, bounds, voltage and final compliance under DC sessions (last run, 2026-10-07)
 
-This section supersedes S6.5 as the answer to Objective 4. The decision log
-is in `thesis_docs/overnight_report.md` (last-run section).
+This section answers Objective 4 for the DC fast-charging regime; S6.5
+answers it for the long-dwell regime, and S6.8 compares the two
+(2026-10-14; the 2026-10-07 text read "This section supersedes S6.5 as the
+answer to Objective 4"). The decision log is in
+`thesis_docs/overnight_report.md` (last-run section).
 
 ### S6.7.1 The recommended strategy: Round Robin, transformer-aware
 
@@ -899,7 +919,8 @@ Robin, n_clusters = 50):
 - They remain bounds on their own objective, tracking EV2Gym's setpoint,
   and that objective under-asks when sessions are short.
 - The Weeks 4–5 optimality-gap framing, under which Round Robin
-  approaches the oracle, is therefore a Dutch-duration result (08 L8).
+  approaches the oracle, is therefore a long-dwell-regime result (08 L8;
+  "Dutch-duration result" in the 2026-10-07 text).
 - The MPC "overloads" (7–11 of 100 runs) are solver tolerance: at most
   0.0001 kWh/day, with a P95 peak of 100.0006 kW.
 
@@ -988,6 +1009,76 @@ These statements are conditional on:
 - test feeders, not a Colombian operator's network;
 - demand stated per station per day, with no Colombian city mapped (07
   S7.10).
+
+## S6.8 Two operating regimes (added 2026-10-14)
+
+**Framing decision (thesis advisor, 2026-10-14).** The thesis reports its
+results under two operating regimes rather than as a primary model and a
+sensitivity. The first is the **long-dwell regime**: EV2Gym's native session
+durations, drawn from ElaadNL data on Dutch public charging, with connections
+of several hours. This is the environment the simulator was built for, and in
+it smart charging has room to shift energy in time. Results in this regime
+are comparable with the EV2Gym literature. The second is the **DC
+fast-charging regime**: 42-minute sessions from the external DC references of
+S6.6.2. The two regimes describe two kinds of public station: destination
+charging, where vehicles stay while their owners shop or park, and DC fast
+charging. Neither replaces the other. No simulation was rerun for this
+section; every value below is already reported elsewhere in this chapter or
+in chapter 05, and its source file is given.
+
+All values are for the reference station (8 ports, 100 kW transformer), at
+the Week 1 demand level (1.0×) unless stated, with 95% cluster-bootstrap CIs
+and n_clusters = 50.
+
+| Quantity | Long-dwell regime (EV2Gym native) | DC fast-charging regime (42 min) | Source |
+|---|---|---|---|
+| Mean connection duration | 300.6 min [296.5, 304.7] | 42.7 min (target 42) | `dwell_a_session_summary.csv`, S6.6.3 |
+| Offered arrivals and requested energy per day | 22.3 arrivals; 327 kWh | 38.9 arrivals; 627 kWh | `dwell_d_physical_units.csv` |
+| Mean port occupancy | 35.1% | 14.1% | `dwell_d_physical_units.csv` |
+| Binding constraint | **Ports**: DNS 34.3–35.8% for every arm, within 1.6 points of each other | **Transformer power**: AFAP's P95 peak 206.1 kW, while its DNS is 2.4% | `closure_c1_capacity_by_level.csv`, `dwell_c1_capacity_by_level.csv` |
+| EV2Gym's Round Robin (follows the setpoint) | 0 of 100 runs overload; P95 peak 66.8 kW | Overload in 65 of 100 runs; P95 peak 175.3 kW | same |
+| Recommended control | Round Robin (EV2Gym's, setpoint-following): keeps the 100 kW unit with zero overload up to 2.5× (S6.5) | Round Robin, transformer-aware: zero overload by construction (S6.7.1) | S6.5, S6.7 |
+| Recommended control: DNS against the physical floor (AFAP) | 34.6% against 34.3% (0.3 points above) | 5.0% against 2.4% (2.6 points above) | same |
+| 8 ports and 100 kW meet the DNS < 15% target up to | 0.5× (10.3 offered arrivals/day; 153 kWh/day); breaks at 0.733× | 1.3× (47.3 offered arrivals/day; 763 kWh/day); breaks at 1.6× | S6.4 C1, S6.6.4 |
+| What closes the gap | More ports: 10 at 0.733×, 12 at 1.0× (constant station demand); a larger transformer does nothing | A rating-aware load manager first; then 10 ports at 1.6× | S6.4 C2, S6.6.5 |
+| Unmanaged charging needs | 225 kVA (P95 peak 172.7–191.9 kW, 1.0–1.6×) | 300 kVA: with 8 ports at 1.3×, with 10 ports at 1.6× | S6.4 Guideline 1, S6.6.5 |
+| Value of departure-time information (MPC_TrackingG2V) | High: tracking-error gap to the oracle 44.6%, against 128.8% for Round Robin | Does not bound service: DNS 48.5% against 5.0% | 05 S5.6, S6.7.2 |
+| Station's voltage drop on node_123: reduction by the recommended control against AFAP | 39.2% [18.6, 53.7] (EV2Gym's Round Robin) | 10.6% [2.8, 19.0] (transformer-aware Round Robin) | `closure_ieee123_voltage.csv`, `dwell_last_voltage_node123.csv` |
+| Cost of keeping the 100 kW limit, Bogotá, flat tariff | 551.9 COP/day (0.47% of AFAP's margin) | 10,141 COP/day (2.84%) | `closure_multicity_rr_cost.csv`, `dwell_multicity_dc_cost.csv` |
+| Same, Barranquilla under Air-e's two-band option | 523 → 1,878 COP/day (3.6× the flat cost) | 9,619 → 9,230 COP/day (within 4% of the flat cost) | same |
+| Algorithm comparison (05) and RL | Evaluated in this regime | Not rerun; the final RL model is out of its training distribution | 05, 08 L7 |
+
+**The physical floor (labelled argument, checked on the data).** Arrivals and
+departure times are drawn before any control action is taken, so the energy
+requested and the arrivals rejected at full ports do not depend on the
+policy. This is why the censoring replay of S6.4 is policy-independent. AFAP
+charges every connected EV at its maximum rate at every step, so no policy
+can deliver more energy to the same arrivals, and AFAP's demand not served
+is a floor for every policy, including those that respect the transformer.
+In the data, no arm has a lower mean DNS than AFAP at any of the 7
+long-dwell levels or the 11 DC levels at 42 minutes. The floor therefore
+bounds how much any better allocation rule could still gain over the
+recommended control: about 0.3 points in the long-dwell regime and 2.6
+points in the DC regime at 1.0× (3.5 and 3.7 points at 1.3× and 1.6×). The
+non-causal MPC and oracle arms do not give this bound, because they track
+EV2Gym's setpoint rather than maximise the energy served (S6.7.2).
+
+**Reading.** Which strategy works, and which constraint binds, depends on how
+long vehicles stay:
+- **Long-dwell regime.** The ports bind. Control is about *when* to charge,
+  information about departures is valuable, and a setpoint-following round
+  robin already respects the transformer. Capacity is gained by adding ports.
+- **DC fast-charging regime.** The transformer binds. Control is about *how
+  to share* the rated power at each step, and only a load manager that reads
+  the rating keeps it. Ports are added only once power is managed.
+
+**Answer to Objective 4, by regime.** For a destination station
+(long-dwell), the guideline is S6.5. For a DC fast-charging station, it is
+S6.7.5. Both are conditional on the stand-ins listed in S6.5 and S6.7.5.
+
+**Not covered.** The transformer-aware Round Robin was not run in the
+long-dwell regime. EV2Gym's Round Robin is reported there because it was
+evaluated and keeps the rating in every run.
 
 ### References for S6.6 (APA 7)
 

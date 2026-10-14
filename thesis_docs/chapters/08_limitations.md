@@ -208,6 +208,15 @@ items marked **[corrected]** replace an earlier statement that was wrong.
 
 ## L7. Session duration and the DC capacity model [final capacity brief, 2026-10-06]
 
+*[Dated note 2026-10-14, thesis advisor's decision.] The thesis reports two
+operating regimes (06 S6.8): the **long-dwell regime**, EV2Gym's native
+environment, and the **DC fast-charging regime**. Results under EV2Gym's own
+session durations are therefore not a sensitivity of the DC model. They are
+the long-dwell results, valid for destination charging and comparable with
+the EV2Gym literature. The limitation that remains is narrower, and items 35
+and 40 state it: each result applies to its own regime, and the algorithm
+comparison and the RL training exist only for the long-dwell regime.*
+
 35. **Weeks 1–7 used Dutch AC session durations.** EV2Gym draws each
     connection from the `public` column of
     `ev2gym/data/mean-session-length-per.csv`. That is ElaadNL data on Dutch
@@ -223,6 +232,11 @@ items marked **[corrected]** replace an earlier statement that was wrong.
       durations.** They were not rerun. The closure's capacity results are
       kept as a declared sensitivity, and the capacity guideline now uses
       the DC model (06 S6.6).
+    - *Reframed 2026-10-14:* these results are the long-dwell regime's
+      results, not a sensitivity (06 S6.8). **The remaining limitation is
+      that the algorithm comparison of chapter 05, including RL, was run only
+      in the long-dwell regime.** Its rankings are not claimed for DC fast
+      charging.
 36. **The DC session duration is an external reference, not Colombian
     data.** The central value is 42 min, the mean of 1,412,050 paid US DC
     sessions, 2020–2023, excluding Tesla (U.S. Department of Energy [DOE],
@@ -311,6 +325,11 @@ items marked **[corrected]** replace an earlier statement that was wrong.
     - **The Weeks 4–5 optimality-gap results** (Round Robin close to the
       oracle) **are Dutch-duration results**, and the oracle is not an
       upper bound on demand served.
+    - *Added 2026-10-14:* those are long-dwell-regime results (06 S6.8).
+      For demand served, the bound in both regimes is AFAP's delivered
+      energy, a floor on demand not served for every policy (06 S6.8). The
+      recommended control is 0.3 points above it in the long-dwell regime
+      and 2.6 points above it in the DC regime at 1.0×.
 44. **MPC is infeasible in 37.7% of its steps under DC sessions.** EV2Gym's
     MPC base class requires each departing EV to reach its desired energy
     (`mpc.py`, lines 297–305 and 375–378). When that is impossible, the

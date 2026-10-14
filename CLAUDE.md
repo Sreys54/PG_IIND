@@ -620,6 +620,21 @@ top of `thesis_docs/overnight_report.md`. The handback is
   rows). The voltage runs are in `results/dwell_ieee123_voltage_by_run.csv`.
   `master_results.csv` is untouched.
 
+**Update, 2026-10-14: two-regime framing (advisor's decision). Supersedes
+the "declared sensitivity" wording above.**
+- Results under EV2Gym's native durations are the **long-dwell regime**,
+  valid in their own right (EV2Gym's native environment). They are **not a
+  sensitivity**.
+- 42-minute sessions are the **DC fast-charging regime**.
+- Synthesis: `06_infrastructure.md` S6.8.
+- Recommended control:
+  - long-dwell regime: EV2Gym's Round Robin (S6.5);
+  - DC regime: the transformer-aware Round Robin (S6.7.5).
+- The chapter 05 comparison and RL exist only in the long-dwell regime.
+- AFAP's demand not served is the floor for any policy, in both regimes
+  (S6.8).
+- Never call either regime "primary" or "sensitivity" again.
+
 ## Useful Commands (reference, don't re-derive these each time)
 
 ```bash

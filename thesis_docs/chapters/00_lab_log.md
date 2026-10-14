@@ -1,5 +1,44 @@
 # Lab Log
 
+## 2026-10-14 (UTC−5) — Two-regime framing adopted (advisor's decision); no simulation rerun (branch `main`, uncommitted)
+
+**Decision (thesis advisor, relayed by the author).** Results under EV2Gym's
+native session durations are no longer labelled a "declared sensitivity" of
+the DC model. EV2Gym was built for long-dwell public charging, so those
+results are valid in their own right and comparable with the EV2Gym
+literature, and they were kept to the end. The thesis now reports two
+operating regimes:
+- the **long-dwell regime** (EV2Gym native, mean connection 300.6 min);
+- the **DC fast-charging regime** (42-minute sessions, 06 S6.6).
+
+**Changes (framing only; every number already existed):**
+- 06: new S6.8, a side-by-side table of the two regimes with source files.
+  The dated notes in Guideline 2, C3, S6.5, S6.6, S6.6.6 and S6.7 were
+  reframed; the 2026-10-07 wording is quoted in each, not deleted.
+- 05: regime note at the top and at S5.8.
+- 08: note at the top of L7; items 35 and 43 extended.
+- Figures f19, f20, f23, f19dc and f20dc: titles and captions relabelled in
+  `scripts/make_figures.py` and regenerated with `--only`. Data unchanged;
+  visually checked. The f20dc PNG is byte-identical, since only its caption
+  changed. `DELIVERABLES_INDEX.md` rebuilt; only those 5 rows changed.
+
+**New in S6.8: the physical floor (labelled argument, checked on the data).**
+Arrivals and departures are drawn before any control action, so the
+requested and rejected energy do not depend on the policy. AFAP charges
+every EV at its maximum rate, so its demand not served is a floor for every
+policy. Checked: no arm has a lower mean DNS than AFAP at any of the 7
+long-dwell levels (`closure_c1_capacity_by_level.csv`) or the 11 DC levels
+at 42 min (`dwell_c1_capacity_by_level.csv`). The recommended control sits
+0.3 points above the floor in the long-dwell regime and 2.6 points above it
+in the DC regime at 1.0× (3.5 and 3.7 points at 1.3× and 1.6×).
+
+**Stated as not covered:** the transformer-aware Round Robin was not run in
+the long-dwell regime. The chapter 05 comparison and RL exist only in that
+regime.
+
+**Hard stops:** none. No library file was edited, and no registry or
+results CSV was written.
+
 ## 2026-10-07 17:50 (UTC−5) — Last run completed; nothing committed (branch `semana-7`)
 
 All five parts are done, with no hard stop. The transformer-aware Round Robin is promoted to the recommended strategy. Under DC sessions MPC and the oracle are setpoint-tracking bounds that leave 48.5% / 39.9% of demand unserved at 1.0×, and MPC is infeasible in 37.7% of its steps. node_123 voltage: 0/50 cells out of band for AFAP and the transformer-aware Round Robin at 1.0–1.6×. Barranquilla's two-band option is no longer material under DC profiles. The final 6-arm × 3-level compliance table is in place. Test suite: `Ran 155 tests in 531.197s`, `OK`. Details and the commit plan are at the top of `thesis_docs/overnight_report.md`.
