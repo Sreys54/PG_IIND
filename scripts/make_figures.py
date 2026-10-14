@@ -1614,7 +1614,7 @@ def make_f19_capacity_threshold():
     fig.legend(h + [h2[0]], l + [l2[0]], loc="lower center", ncol=5, fontsize=8.5, frameon=False)
     axes[0].set_ylim(0, 100)
     axes[1].set_ylim(0, 260)
-    fig.suptitle("SENSITIVITY (Dutch session durations; primary: f19_capacity_threshold_dc). Where the 8-port, 100 kW station breaks, by arm\n"
+    fig.suptitle("Long-dwell regime (EV2Gym's native session durations; DC regime: f19_capacity_threshold_dc). Where the 8-port, 100 kW station breaks, by arm\n"
                  "Point = mean (left) or P95 over 50 seeds (right); bar = 95% CI, cluster bootstrap over 50 scenario seeds",
                  fontsize=10)
     fig.tight_layout(rect=[0, 0.07, 1, 0.92])
@@ -1622,8 +1622,8 @@ def make_f19_capacity_threshold():
     write_caption(
         "f19_capacity_threshold",
         what_it_shows=(
-            "SENSITIVITY: EV2Gym's Dutch session durations (mean 300.6 min); the primary model since the final capacity "
-            "brief is 42-minute DC sessions, see f19_capacity_threshold_dc. Closure brief C1. Left: demand not served, lower bound (rejected arrivals' energy plus shortfall on served "
+            "Long-dwell regime: EV2Gym's native session durations (mean 300.6 min), the environment the simulator was "
+            "built for; the DC fast-charging regime is f19_capacity_threshold_dc (two-regime framing, 06 S6.8). Closure brief C1. Left: demand not served, lower bound (rejected arrivals' energy plus shortfall on served "
             "EVs, over total requested; ev2gym_thesis/demand/censoring.py). Right: 95th percentile over 50 seeds of the "
             "per-seed peak station power. Round Robin breaks the 15% target at 0.733x and never exceeds 100 kW; AFAP and "
             "the final RL model exceed 100 kW from 0.5x. Demand not served is nearly identical across arms: the 8 ports "
@@ -1666,15 +1666,15 @@ def make_f20_port_options():
             ax.spines[side].set_visible(False)
     axes[0].set_ylabel("Demand not served, lower bound (% of requested energy)")
     axes[0].legend(fontsize=8.5, frameon=False, loc="upper right")
-    fig.suptitle("SENSITIVITY (Dutch session durations; primary: f20_port_options_dc). What closes the demand gap: more ports\n"
+    fig.suptitle("Long-dwell regime (EV2Gym's native session durations; DC regime: f20_port_options_dc). What closes the demand gap: more ports\n"
                  "Point = mean over 100 cells; bar = 95% CI, cluster bootstrap over 50 scenario seeds", fontsize=10)
     fig.tight_layout(rect=[0, 0, 1, 0.9])
     _save(fig, "f20_port_options")
     write_caption(
         "f20_port_options",
         what_it_shows=(
-            "SENSITIVITY: EV2Gym's Dutch session durations (mean 300.6 min); the primary model since the final capacity "
-            "brief is 42-minute DC sessions, see f20_port_options_dc. Closure brief C2, Round Robin on the 100 kW transformer. EV2Gym draws arrivals per port, so adding ports at "
+            "Long-dwell regime: EV2Gym's native session durations (mean 300.6 min), the environment the simulator was "
+            "built for; the DC fast-charging regime is f20_port_options_dc (two-regime framing, 06 S6.8). Closure brief C2, Round Robin on the 100 kW transformer. EV2Gym draws arrivals per port, so adding ports at "
             "an unchanged spawn multiplier also adds demand (grey); the constant-demand variants scale the spawn "
             "multiplier by 8/ports so only the port count changes (blue, the primary reading). 10 ports meet the 15% "
             "target at 0.733x and 12 ports at 1.0x. The 112.5 and 150 kVA variants (not plotted) leave Round Robin's "
@@ -1812,7 +1812,7 @@ def make_f23_dc_capacity_threshold():
         axes[1].errorbar(x, g.peak_kw_p95, yerr=[g.peak_kw_p95 - g.peak_kw_p95_ci_low,
                                                  g.peak_kw_p95_ci_high - g.peak_kw_p95], **kw)
     axes[0].plot(dutch.level.replace(DWELL_X), 100 * dutch.dns_lower_mean, color="0.55", linestyle="--", marker="s",
-                 markersize=4, label="Round Robin under EV2Gym's Dutch durations (closure run)")
+                 markersize=4, label="Round Robin, long-dwell regime (closure run)")
     for m, ls in [(32, ":"), (42, "-"), (78, "-.")]:
         for arm in ["RoundRobin", "RoundRobin_TransformerCapped"]:
             g = d[(d.dwell_mean_min == m) & (d.algorithm == arm)].sort_values("level")
@@ -1850,13 +1850,13 @@ def make_f23_dc_capacity_threshold():
     write_caption(
         "f23_dc_capacity_threshold",
         what_it_shows=(
-            "Final capacity brief C1 under the DC session model (primary). Left and middle: 42-minute sessions, four arms. "
+            "Final capacity brief C1 in the DC fast-charging regime (two-regime framing, 06 S6.8). Left and middle: 42-minute sessions, four arms. "
             "Right: demand not served for EV2Gym's Round Robin and the transformer-aware Round Robin at 32, 42 and 78 "
             "minutes. EV2Gym's Round Robin charges ceil(setpoint / port power) EVs, and the setpoint is median-smoothed "
             "over 5 steps, which erases short-session spikes: it under-delivers and still exceeds 100 kW where spikes "
             "survive. The transformer-aware Round Robin (same allocation, budget = 0.999 x rating; the recommended strategy) never exceeds 100 kW by "
             "construction. The final RL model was trained on Dutch durations and is out of its training distribution. "
-            "Grey dashed: the closure (Dutch-duration) Round Robin, now a declared sensitivity. Source: "
+            "Grey dashed: the closure Round Robin in the long-dwell regime (EV2Gym's native durations). Source: "
             "results/dwell_c1_capacity_by_level.csv."),
         n_runs=int(d.n_runs.sum()), configs=["station_v0_bogota_dc{32,42,78}_sp{8..150}"],
         algorithms=[_dwell_label(a) for a in DWELL_ARMS])
@@ -1922,8 +1922,8 @@ LAST_ARMS = ["ChargeAsFastAsPossible", "RoundRobin", "RoundRobin_TransformerCapp
 
 
 def make_f19_capacity_threshold_dc():
-    """Last run: f19 under 42-minute DC sessions (the Dutch f19 is kept as a
-    sensitivity). Same two panels: demand not served and P95 peak by level."""
+    """Last run: f19 under 42-minute DC sessions (DC fast-charging regime; the
+    long-dwell regime is f19). Same two panels: demand not served and P95 peak by level."""
     import pandas as pd
     d = pd.read_csv("results/dwell_c1_capacity_by_level.csv")
     d = d[d.dwell_mean_min == 42]
@@ -1955,7 +1955,7 @@ def make_f19_capacity_threshold_dc():
     h2, l2 = axes[1].get_legend_handles_labels()
     k = l2.index("Transformer limit, 100 kW")  # visual QA fix: pick the limit line by label, not by position
     fig.legend(h + [h2[k]], l + [l2[k]], loc="lower center", ncol=3, fontsize=8.5, frameon=False)
-    fig.suptitle("Where the 8-port, 100 kW station breaks under 42-minute DC sessions (primary model)\n"
+    fig.suptitle("Where the 8-port, 100 kW station breaks under 42-minute DC sessions (DC fast-charging regime)\n"
                  "Point = mean (left) or P95 over 50 seeds (right); bar = 95% CI, cluster bootstrap over 50 scenario seeds",
                  fontsize=10)
     fig.tight_layout(rect=[0, 0.1, 1, 0.92])
@@ -1963,8 +1963,8 @@ def make_f19_capacity_threshold_dc():
     write_caption(
         "f19_capacity_threshold_dc",
         what_it_shows=(
-            "Last run: f19 regenerated under the primary 42-minute DC session model (the Dutch-duration f19 is kept as "
-            "a sensitivity). The transformer-aware Round Robin (the recommended strategy) holds every criterion through "
+            "Last run: f19 in the DC fast-charging regime, 42-minute sessions (the long-dwell regime is "
+            "f19_capacity_threshold; two-regime framing, 06 S6.8). The transformer-aware Round Robin (the recommended strategy) holds every criterion through "
             "1.3x (47 offered arrivals/day, 763 kWh/day) and never exceeds 100 kW; AFAP, EV2Gym's setpoint-following "
             "Round Robin and the final RL model (out of its training distribution) exceed 100 kW from 0.267x. Source: "
             "results/dwell_c1_capacity_by_level.csv."),
@@ -1973,8 +1973,8 @@ def make_f19_capacity_threshold_dc():
 
 
 def make_f20_port_options_dc():
-    """Last run: f20 under 42-minute DC sessions (the Dutch f20 is kept as a
-    sensitivity): demand not served by port count on the 100 kW unit, at 1.3x
+    """Last run: f20 under 42-minute DC sessions (DC fast-charging regime; the
+    long-dwell regime is f20): demand not served by port count on the 100 kW unit, at 1.3x
     and 1.6x, constant station demand."""
     import pandas as pd
     c = pd.read_csv("results/dwell_c2_growth_options.csv")
@@ -2003,8 +2003,8 @@ def make_f20_port_options_dc():
     write_caption(
         "f20_port_options_dc",
         what_it_shows=(
-            "Last run: f20 regenerated under the primary 42-minute DC session model (the Dutch-duration f20 is kept as "
-            "a sensitivity). On the 100 kW unit, with the spawn multiplier scaled by 8/ports (constant station demand), "
+            "Last run: f20 in the DC fast-charging regime, 42-minute sessions (the long-dwell regime is "
+            "f20_port_options; two-regime framing, 06 S6.8). On the 100 kW unit, with the spawn multiplier scaled by 8/ports (constant station demand), "
             "the transformer-aware Round Robin meets the 15% target with 8 ports at 1.3x and needs 10 ports at 1.6x "
             "(where 8 ports also fail the satisfaction criterion); EV2Gym's setpoint-following Round Robin stays above "
             "15% at every port count on 100 kW. Source: results/dwell_c2_growth_options.csv."),

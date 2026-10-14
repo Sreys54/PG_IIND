@@ -146,13 +146,13 @@ Paths are relative to the repository root.
 | `figures/f16_transformer_sizing.png` | Per scenario seed, the peak power drawn by the station (max over the two day types, from each run's saved timeseries); black bar = 95th percentile over the 50 s... |
 | `figures/f17_voltage_attribution.png` | Station-attributable voltage effect: each arm's run minus the idle-station (zero-charging) run of the same setting, seed and day (the feeder's background load a... |
 | `figures/f18_two_city_margin.png` | Gross margin each arm concedes against AFAP (COP/day), recomputed from the registry's energy with Bogota's Week 5 constants (retail 1,450; CU 865.7615) and Mede... |
-| `figures/f19_capacity_threshold.png` | SENSITIVITY: EV2Gym's Dutch session durations (mean 300.6 min); the primary model since the final capacity brief is 42-minute DC sessions, see f19_capacity_thre... |
-| `figures/f19_capacity_threshold_dc.png` | Last run: f19 regenerated under the primary 42-minute DC session model (the Dutch-duration f19 is kept as a sensitivity). The transformer-aware Round Robin (the... |
-| `figures/f20_port_options.png` | SENSITIVITY: EV2Gym's Dutch session durations (mean 300.6 min); the primary model since the final capacity brief is 42-minute DC sessions, see f20_port_options_... |
-| `figures/f20_port_options_dc.png` | Last run: f20 regenerated under the primary 42-minute DC session model (the Dutch-duration f20 is kept as a sensitivity). On the 100 kW unit, with the spawn mul... |
+| `figures/f19_capacity_threshold.png` | Long-dwell regime: EV2Gym's native session durations (mean 300.6 min), the environment the simulator was built for; the DC fast-charging regime is f19_capacity_... |
+| `figures/f19_capacity_threshold_dc.png` | Last run: f19 in the DC fast-charging regime, 42-minute sessions (the long-dwell regime is f19_capacity_threshold; two-regime framing, 06 S6.8). The transformer... |
+| `figures/f20_port_options.png` | Long-dwell regime: EV2Gym's native session durations (mean 300.6 min), the environment the simulator was built for; the DC fast-charging regime is f20_port_opti... |
+| `figures/f20_port_options_dc.png` | Last run: f20 in the DC fast-charging regime, 42-minute sessions (the long-dwell regime is f20_port_options; two-regime framing, 06 S6.8). On the 100 kW unit, w... |
 | `figures/f21_city_cost.png` | Closure brief D2. Each city's Nivel 2 commercial energy cost with contribution (ev2gym_thesis/prices/cities.py, sources saved in thesis_docs/sources/) applied t... |
 | `figures/f22_session_duration.png` | Final capacity brief, Parts A-B. EV2Gym draws each stay from the ElaadNL 'public' mean session length for the arrival time (2.8-12.5 h), floors it at min_time_o... |
-| `figures/f23_dc_capacity_threshold.png` | Final capacity brief C1 under the DC session model (primary). Left and middle: 42-minute sessions, four arms. Right: demand not served for EV2Gym's Round Robin ... |
+| `figures/f23_dc_capacity_threshold.png` | Final capacity brief C1 in the DC fast-charging regime (two-regime framing, 06 S6.8). Left and middle: 42-minute sessions, four arms. Right: demand not served f... |
 | `figures/f24_growth_configs.png` | Final capacity brief C2 at 1.3x and 1.6x, 42-minute DC sessions, ports scaled at constant station demand (spawn multiplier x 8/ports). Criteria: satisfaction co... |
 | `figures/f25_voltage_dc.png` | Last run, Part 3: the closure E2 protocol under 42-minute DC sessions. node_123 as shipped, 8 ports on bus 115, idle baseline matched per (level, seed), weekday... |
 
