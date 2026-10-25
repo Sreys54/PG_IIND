@@ -1,0 +1,109 @@
+"""
+Week 8 (redesigned RL): hyperparameters and design for the projected TD3 agent
+("TD3_safe"), every value with a declared origin.
+
+Why a new config instead of editing config_rl.py. config_rl.py is the exact
+configuration behind every Weeks 3-7 RL result (registry rows, figures,
+chapters 03-06). It is left untouched so those results stay reproducible;
+this module holds the corrected design, used only by
+scripts/train_td3_safe.py and scripts/evaluate_safe_rl.py.
+
+What changed, and why (review of 2026-10-14, chapter 08 item 48):
+  1. Transformer limit: a hard constraint (ev2gym_thesis/rl/safety.py), not a
+     reward penalty.
+  2. Reward: ServedEnergyReward (ev2gym_thesis/rl/reward_service.py), whose
+     episode return is exactly the energy delivered, i.e. it minimises demand
+     not served with no weight to tune. The old composite reward is retired.
+  3. State: ServiceState (ev2gym_thesis/rl/state_service.py), which adds each
+     EV's state of charge (its remaining need), still without departure times.
+  4. Hyperparameters: the TD3 authors' reference implementation, instead of
+     values reduced for the Week 3 CPU budget. The reference is
+     github.com/sfujim/TD3 (TD3.py, main.py, utils.py), read on 2026-10-24;
+     every constant below quotes it. Where this project departs from it, the
+     comment says from what and why.
+  5. Selection: the validation criterion is the energy delivered (aligned
+     with the reward), not tracking error.
+
+Origins used:
+  "TD3 reference implementation" -- sfujim/TD3, the value quoted in the comment.
+  "SB3 default"                  -- stable_baselines3 2.9.0, td3.py.
+  "set for this project"         -- departs from the reference; the comment
+                                    states from what and why.
+"""
+import numpy as np
+from stable_baselines3.common.noise import NormalActionNoise
+
+from ev2gym_thesis.rl.reward_service import ServedEnergyReward, CappedTrackingReward
+from ev2gym_thesis.rl.state_service import ServiceState
+
+# doc:begin safe_td3_hyperparams
+POLICY = "MlpPolicy"            # SB3 default for a flat vector observation
+NET_ARCH = [256, 256]           # TD3 reference implementation: actor and critics are Linear(.,256)-Linear(256,256) (TD3.py, Actor/Critic)
+LEARNING_RATE = 3e-4            # TD3 reference implementation: Adam(lr=3e-4) for actor and critic (TD3.py)
+GAMMA = 0.99                    # TD3 reference implementation: discount=0.99. A 96-step day sits inside the ~100-step effective horizon
+TAU = 0.005                     # TD3 reference implementation: tau=0.005
+TRAIN_FREQ = 1                  # TD3 reference implementation: one gradient update per environment step (main.py loop)
+GRADIENT_STEPS = 1              # TD3 reference implementation, as above
+POLICY_DELAY = 2                # TD3 reference implementation: policy_freq=2
+TARGET_POLICY_NOISE = 0.2       # TD3 reference implementation: policy_noise=0.2 x max_action; SB3 applies it in the [-1, 1] policy space, the same scale
+TARGET_NOISE_CLIP = 0.5         # TD3 reference implementation: noise_clip=0.5 x max_action, same note
+BATCH_SIZE = 256                # TD3 reference implementation: batch_size=256
+ACTION_NOISE_SIGMA = 0.1        # TD3 reference implementation: expl_noise=0.1 x max_action, i.e. 0.1 of the half-range. SB3 adds the noise
+                                # in the policy's [-1, 1] space (off_policy_algorithm._sample_action), so sigma=0.1 there is the same
+                                # magnitude. (config_rl.py's comment read sigma as relative to [0, 1]; it is the half-range, 0.05 of [0, 1].)
+LEARNING_STARTS = 10_000        # set for this project: the reference uses start_timesteps=25e3 of a 1e6-step budget (2.5%); 10,000 steps
+                                # (~104 episodes of uniformly random actions) is 2-5% of the 220k-500k steps this run is expected to take
+BUFFER_SIZE = 300_000           # set for this project: the reference uses max_size=1e6 (utils.py). The observation is float64, so 1e6
+                                # transitions are ~0.6 GB in RAM and on disk per saved buffer, per seed, inside a OneDrive-synced folder.
+                                # 300,000 keeps the most recent ~3,100 episodes, at least half of the expected run.
+
+
+def make_action_noise(n_actions: int) -> NormalActionNoise:
+    return NormalActionNoise(mean=np.zeros(n_actions), sigma=ACTION_NOISE_SIGMA * np.ones(n_actions))
+# doc:end safe_td3_hyperparams
+
+# doc:begin safe_vecnormalize
+# Observations are standardised (their scales still differ: SoC in [0, 1],
+# steps connected / T, power / rating). Rewards are NOT normalised: the
+# served-energy reward is already in [0, 1] by construction, and keeping it
+# raw keeps the critic's targets interpretable (return = energy / 25 kWh)
+# and removes a non-stationary scaling the old design had.
+VECNORMALIZE_NORM_OBS = True
+VECNORMALIZE_NORM_REWARD = False
+VECNORMALIZE_CLIP_OBS = 10.0    # SB3 VecNormalize default
+VECNORMALIZE_GAMMA = GAMMA
+# doc:end safe_vecnormalize
+
+# doc:begin safe_design
+STATE_FN = ServiceState
+REWARD_FNS = {"served_energy": ServedEnergyReward, "tracking": CappedTrackingReward}
+DEFAULT_REWARD = "served_energy"
+
+# Regimes (06 S6.8). The DC regime config is the dwell brief's own 1.0x
+# variant: the reference YAML plus a <config>.dwell.json sidecar with the
+# 42-minute lognormal session model (ev2gym_thesis/demand/dc_sessions.py).
+REGIME_CONFIGS = {
+    "dc42": "experiments/phase3_infra_replicability/configs/dwell/station_v0_bogota_dc42_sp30.yaml",
+    "long": "experiments/phase1_baseline/configs/station_v0_bogota.yaml",
+}
+DEFAULT_REGIME = "dc42"
+
+# Validation criterion, aligned with the reward: mean energy delivered over
+# the 20 validation cells (higher is better). It is strictly positive and of
+# order 10^2 kWh, so extended_training's relative convergence thresholds are
+# meaningful. For the tracking reward the criterion is tracking error.
+SELECTION = {"served_energy": ("total_energy_charged", False), "tracking": ("tracking_error", True)}
+VALIDATION_LOG_METRICS = ["total_energy_charged", "average_user_satisfaction", "energy_user_satisfaction",
+                          "total_transformer_overload", "tracking_error", "total_ev_served"]
+# doc:end safe_design
+
+
+def arm_name(regime: str, reward: str) -> str:
+    return "TD3_safe_" + regime + ("" if reward == DEFAULT_REWARD else f"_{reward}")
+
+
+def hyperparameters_dict() -> dict:
+    return {k: globals()[k] for k in (
+        "POLICY", "NET_ARCH", "LEARNING_RATE", "BUFFER_SIZE", "LEARNING_STARTS", "BATCH_SIZE", "TAU", "GAMMA",
+        "TRAIN_FREQ", "GRADIENT_STEPS", "POLICY_DELAY", "TARGET_POLICY_NOISE", "TARGET_NOISE_CLIP",
+        "ACTION_NOISE_SIGMA", "VECNORMALIZE_NORM_OBS", "VECNORMALIZE_NORM_REWARD", "VECNORMALIZE_CLIP_OBS")}

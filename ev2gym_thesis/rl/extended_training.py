@@ -286,7 +286,9 @@ def load_frozen_checkpoint(ckpt_path, spaces_venv):
 
 
 # doc:begin run_validation
-def run_validation(model, venv, reward_fn, cells=None, day_config_dir=VALIDATION_DAY_CONFIG_DIR) -> dict:
+def run_validation(model, venv, reward_fn, cells=None, day_config_dir=VALIDATION_DAY_CONFIG_DIR,
+                   config_path=REFERENCE_CONFIG_PATH, state_fn=None, step_fn=None,
+                   metrics=None) -> dict:
     """Deterministic (no exploration noise) evaluation of a policy on the
     fixed validation cells. In training, `model`/`venv` come from
     load_frozen_checkpoint() on the checkpoint just saved (frozen
@@ -302,24 +304,35 @@ def run_validation(model, venv, reward_fn, cells=None, day_config_dir=VALIDATION
     scenario chain, the exploration noise and replay-buffer sampling. All
     three generator states are snapshotted before and restored after, so
     running the monitor does not change the training trajectory.
+
+    Week 8 (redesigned RL) added keyword arguments, all defaulting to the
+    Week 6 behaviour: `config_path` (the regime's config), `state_fn` (the
+    observation function the policy was trained with), `step_fn` (e.g.
+    safety.safe_step, so validation applies the same transformer projection
+    as training) and `metrics` (the stats keys to average).
     """
     cells = VALIDATION_CELLS if cells is None else cells
+    metrics = VALIDATION_LOG_METRICS if metrics is None else metrics
     snap = _rng_snapshot()
     per_cell = []
     try:
         for scenario_seed, day in cells:
-            env = make_env(REFERENCE_CONFIG_PATH, day, scenario_seed, reward_fn=reward_fn,
-                           day_config_dir=day_config_dir)
+            kw = {} if state_fn is None else {"state_fn": state_fn}
+            env = make_env(config_path, day, scenario_seed, reward_fn=reward_fn,
+                           day_config_dir=day_config_dir, **kw)
             obs, _ = reset_for_evaluation(env, scenario_seed)
             done, stats = False, None
             while not done:
                 action, _ = model.predict(venv.normalize_obs(obs), deterministic=True)
-                obs, _, terminated, truncated, stats = env.step(action)
+                if step_fn is None:
+                    obs, _, terminated, truncated, stats = env.step(action)
+                else:
+                    obs, _, terminated, truncated, stats = step_fn(env, action)[:5]
                 done = terminated or truncated
-            per_cell.append({k: float(stats[k]) for k in VALIDATION_LOG_METRICS})
+            per_cell.append({k: float(stats[k]) for k in metrics})
     finally:
         _rng_restore(snap)
-    return {k: float(np.mean([c[k] for c in per_cell])) for k in VALIDATION_LOG_METRICS} | {"n_cells": len(per_cell)}
+    return {k: float(np.mean([c[k] for c in per_cell])) for k in metrics} | {"n_cells": len(per_cell)}
 # doc:end run_validation
 
 
@@ -345,8 +358,19 @@ class ExtendedTrainingCallback(BaseCallback):
                  eval_freq=EVAL_FREQ_STEPS, buffer_freq=REPLAY_BUFFER_SAVE_FREQ_STEPS,
                  confirmation_steps=CONFIRMATION_MARGIN_STEPS, safety_margin_s=DEADLINE_SAFETY_MARGIN_S,
                  max_steps=None, cells=None, state=None, validation_day_config_dir=VALIDATION_DAY_CONFIG_DIR,
-                 verbose=1):
+                 verbose=1, criterion=SELECTION_CRITERION, lower_is_better=SELECTION_CRITERION_LOWER_IS_BETTER,
+                 log_metrics=None, validation_kwargs=None):
         super().__init__(verbose)
+        # Week 8 (redesigned RL): criterion, its direction, the logged metrics
+        # and extra run_validation() arguments are parameters; the defaults
+        # are the Week 6 values, so the Week 6 behaviour is unchanged.
+        self.criterion = criterion
+        self.lower_is_better = lower_is_better
+        self.log_metrics = list(VALIDATION_LOG_METRICS if log_metrics is None else log_metrics)
+        if self.criterion not in self.log_metrics:
+            self.log_metrics.append(self.criterion)
+        self.validation_kwargs = dict(validation_kwargs or {})
+        self.validation_csv_fields = (VALIDATION_CSV_FIELDS[:6] + self.log_metrics + VALIDATION_CSV_FIELDS[6 + len(VALIDATION_LOG_METRICS):])
         self.run_name = run_name
         self.model_dir = model_dir
         self.ckpt_dir = os.path.join(model_dir, "checkpoints")
@@ -451,7 +475,8 @@ class ExtendedTrainingCallback(BaseCallback):
         try:
             eval_model, eval_vn = load_frozen_checkpoint(ckpt, self._spaces_venv())
             res = run_validation(eval_model, eval_vn, self.reward_fn, self.cells,
-                                 day_config_dir=self.validation_day_config_dir)
+                                 day_config_dir=self.validation_day_config_dir,
+                                 metrics=self.log_metrics, **self.validation_kwargs)
         finally:
             _rng_restore(snap)
         val_wall = time.time() - t_eval
@@ -462,8 +487,8 @@ class ExtendedTrainingCallback(BaseCallback):
         entry = {"eval_index": len(self.state["evals"]), "timesteps": self.num_timesteps,
                  "wall_clock_s": round(wall, 2),
                  "validation_wall_clock_s": round(val_wall, 2),
-                 "criterion_name": SELECTION_CRITERION, "criterion_value": res[SELECTION_CRITERION],
-                 **{k: res[k] for k in VALIDATION_LOG_METRICS}, "n_cells": res["n_cells"],
+                 "criterion_name": self.criterion, "criterion_value": res[self.criterion],
+                 **{k: res[k] for k in self.log_metrics}, "n_cells": res["n_cells"],
                  "train_steps_per_s_since_last_eval": round((self.num_timesteps - prev_step) / train_s, 2),
                  "checkpoint_path": ckpt}
         self.state["evals"].append(entry)
@@ -475,13 +500,12 @@ class ExtendedTrainingCallback(BaseCallback):
             if ci is not None:
                 self.state["conv_eval_index"] = ci
         entry["converged"] = self.state["conv_eval_index"] is not None
-        self._append_csv(self.val_csv, VALIDATION_CSV_FIELDS, entry)
+        self._append_csv(self.val_csv, self.validation_csv_fields, entry)
         self.save_state()
         if self.verbose:
+            others = ", ".join(f"{m}={res[m]:.3f}" for m in self.log_metrics if m != self.criterion)
             print(f"[{self.run_name}] eval {k} @ {self.num_timesteps} steps: "
-                  f"{SELECTION_CRITERION}={res[SELECTION_CRITERION]:.2f} | "
-                  f"overload={res['total_transformer_overload']:.3f} kWh, "
-                  f"energy_user_sat={res['energy_user_satisfaction']:.2f} | "
+                  f"{self.criterion}={res[self.criterion]:.2f} | {others} | "
                   f"{entry['train_steps_per_s_since_last_eval']} steps/s, validation {val_wall:.1f}s, "
                   f"converged={entry['converged']}", flush=True)
 
@@ -536,7 +560,7 @@ class ExtendedTrainingCallback(BaseCallback):
         self.save_replay_buffer(self.num_timesteps)
         m = self.criterion_series()
         ci = self.state["conv_eval_index"]
-        pi = select_primary_index(m, ci)
+        pi = select_primary_index(m, ci, lower_is_better=self.lower_is_better)
         self.state["primary_eval_index"] = pi
         self.state["primary_step"] = self.state["evals"][pi]["timesteps"] if pi is not None else None
         self.state["last_step"] = self.num_timesteps

@@ -284,3 +284,6 @@ experiments/phase3_infra_replicability/results/closure_shards/
 # /results/* rule would swallow them); worker shards are regenerable.
 !/results/dwell_*
 experiments/phase3_infra_replicability/results/dwell_shards/
+# Week 8 (redesigned RL, TD3_safe): evaluation rows are deliverables, allowlisted
+# up front under the blanket /results/* rule (the standing lesson of Weeks 4-7).
+!/results/safe_rl_*
