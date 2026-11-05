@@ -1,0 +1,4 @@
+Station power on one day (scenario seed 0, weekday 2022-01-17, 1.0x =
+627 kWh/day offered, station-level arrivals, 42-min DC sessions), 8 ports and the 100 kW
+transformer. AFAP ignores the rating; PS (AFAP + proportional safety layer), RR-TA and TD3_safe
+stay at or below 0.999 x 100 kW. One illustrative day, not a statistic.

@@ -1,5 +1,14 @@
 # Chapter 6 — Infrastructure Guidelines on the Grid-Enabled Model (Objective 4)
 
+> **Week 8 correction (2026-11-03, advisor review of 2026-11-01).** Two
+> facts change this chapter; S6.9 holds the re-run DC results. (1) Every
+> transformer overload in "kWh" below is EV2Gym's `total_transformer_overload`,
+> which is kW summed over 15-minute steps: divide by 4 for kWh (08 item 50).
+> (2) The DC regime of S6.6-S6.8 connected each EV 15 minutes longer than
+> its labelled duration and drew arrivals per port with a 30-minute dead time
+> (08 items 51-52); its capacity figures (47 arrivals/day, 763 kWh/day, 10
+> ports at 1.6×) are superseded by S6.9. The text below is kept as written.
+
 This chapter moves the reference station (`station_v0_bogota`: 8 ports,
 50 kW each, one 100 kW local transformer) onto a distribution feeder and
 asks two questions:
@@ -1083,6 +1092,97 @@ S6.7.5. Both are conditional on the stand-ins listed in S6.5 and S6.7.5.
 **Not covered.** The transformer-aware Round Robin was not run in the
 long-dwell regime. EV2Gym's Round Robin is reported there because it was
 evaluated and keeps the rating in every run.
+
+## S6.9 The DC regime with station-level arrivals (Week 8 advisor review, 2026-11-03)
+
+**What changed.** Arrivals are a station-level Poisson stream fixed per
+scenario (`ev2gym_thesis/demand/station_arrivals.py`): every driver takes
+any free port, with no dead time, and is rejected only when every port is
+busy, so demand not served (DNS) is exact. Each EV is connected exactly its
+sampled duration (lognormal, mean 42.0 min, CV 0.5). Demand levels are
+defined by offered energy: 1.0× = 627, 1.3× = 814, 1.6× = 1,002 kWh/day
+(38.3 / 49.3 / 60.7 arrivals/day). Every causal arm that needs the
+transformer limit gets the same safety layer (common scaling factor, 0.999 ×
+rating). Statistics: cluster bootstrap over the scenario seed (n_clusters =
+50, 10,000 resamples, percentile, per comparison), ratios of totals,
+overload in kWh. Satisfaction is the energy satisfaction f with rejected
+drivers at 0.
+
+**Comparison at 1.0× (8 ports, 100 kW).** The upper bound on energy within
+the 100 kW unit (Oracle-E, full knowledge) is 581.7 kWh/day, DNS 7.3%.
+RR-TA delivers 552.9 kWh/day: DNS 11.8% [10.9, 12.8], mean f 91.2% [90.4,
+91.9], zero overload. Proportional sharing (PS) delivers 542.1 kWh/day
+(DNS 13.6%, f 90.3% [89.6, 90.9]); a fixed 12.5 kW per port delivers
+307.2 kWh/day (DNS 51.0%). MPC with the operator objective and true
+departure times reaches the bound (581.7 kWh/day); with departures
+estimated as arrival + 42 min it delivers 515.5 kWh/day, below RR-TA: knowing
+departure times is worth 66.1 kWh/day. EV2Gym's Round Robin (setpoint-driven,
+not causal) delivers 418.3 kWh/day and overloads on 77 of 100 days. Full
+tables at 1.0×, 1.3× and 1.6×: `results/review_C_dc_comparison.xlsx`.
+
+**Capacity (C4).** With the 112.5 kVA unit, RR-TA meets both targets (DNS
+upper bound ≤ 15%, mean-f lower bound ≥ 90%) up to **40.2 offered
+arrivals/day = 659 kWh/day (1.05×)**, PS up to 36.6 arrivals/day = 596
+kWh/day. Both thresholds are identical at 8 and at 10 ports, and at 1.6×
+neither arm meets the targets with 8, 12, 14 or 16 ports: **the binding
+constraint is the transformer's power, not the number of ports**; the
+earlier 10-port recommendation came from EV2Gym's 30-minute dead time.
+The criterion that breaks first is satisfaction, not DNS. At +60% (1.6×,
+1,002 kWh/day) the answer is a larger transformer, not more ports: RR-TA
+meets both targets with the same 8 ports on a 150 kVA unit (DNS 11.2%, mean
+f 92.1%); proportional sharing needs 225 kVA.
+
+**Transformer for unmanaged charging.** AFAP's actions do not depend on the
+rating; its daily peak reaches 261.1 kW at 1.0× and 349.2 kW at 1.6×
+(maximum over 100 days), so with the maximum-peak rule it needs a 300 kVA
+unit at 1.0× and 400 kVA at 1.3× and 1.6× (a P95 rule would allow 300 kVA up
+to 1.3× and about five days in a hundred above the rating).
+
+**Against feasible alternatives (the general objective).** At 1.0×, RR-TA
+delivers 245.7 kWh/day [236.5, 254.8] and 143,557 COP/day more than
+FIX12.5, the limit an installer would set without load management. Against
+unmanaged charging on a 300 kVA unit it delivers 33.9 kWh/day [29.2, 39.0]
+less, i.e. respecting the 112.5 kVA unit costs 19,822 COP/day [17,076,
+22,792], 5.8% of AFAP's margin; at 1.6× the cost is 66,242 COP/day (12.1%).
+
+**Voltage (node_123, station at bus 115, weekday, 50 seeds).** The station
+lowers the feeder's minimum voltage by 0.00015 p.u. at 1.0× and 0.00020 p.u.
+at 1.6× with unmanaged charging (less with PS or RR-TA); no case leaves
+0.95-1.05 p.u. (EV2Gym's criterion) or 0.90-1.10 p.u. (CREG 024 de 2005),
+feeder-wide or at the station bus. On this test feeder the voltage does not
+constrain the station; the transformer does.
+
+**Sensitivities (Block D).** If drivers stay until charged (up to 90
+minutes) instead of leaving at a fixed time, RR-TA and PS meet both service
+targets up to 1.6× with 8 ports and the 100 kW unit (RR-TA at 1.6×: DNS
+9.2%, mean f 91.9%), and PS overtakes RR-TA; the fixed-departure assumption
+is what creates most of the DC service gap. A 5-minute control step lowers
+RR-TA's DNS by 2.8 points at 1.0× and 4.2 at 1.6× without changing which
+levels pass. Sessions of 22 kWh (the DC reference) raise DNS by 8-10 points
+and RR-TA fails even at 1.0×.
+
+**Reinforcement learning with the constraint enforced.** TD3_safe is a TD3
+agent trained in this DC regime with the same safety layer as every causal
+arm (so it cannot exceed the transformer and learns only the allocation), a
+causal state without EV2Gym's power setpoint, and a reward equal to the
+energy delivered. Three training seeds converged under a rule fixed before
+training (230,000-300,000 steps, 3.65 h in total); the carried model was
+selected on validation scenarios only. On the test grid it never overloads
+(0 of 900 days) and clearly outperforms a random allocation under the same
+safety layer (+95.9 kWh/day [90.7, 101.2] at 1.0×), but it delivers less
+than RR-TA at every demand level (−16.9 kWh/day [−20.1, −13.7] at 1.0×,
+−29.4 [−34.1, −24.8] at 1.6×) and 5-6 kWh/day less than proportional
+sharing, and it meets no service target at any level. The three seeds
+agree within 4.5 kWh/day at 1.0×. Within this design the transformer-aware
+rotation remains the recommended control for the DC regime; the RL result
+is bounded to one algorithm, state and reward without tuning (08 item 48). A
+pre-registered sensitivity that retrained the three seeds to 2,000,000
+steps without a stopping rule narrows the gap but does not close it: the
+best checkpoint (seed 100, 490,000 steps, selected on validation) delivers
+9.7 kWh/day more than the carried model and still 7.2 kWh/day [−10.0,
+−4.6] less than RR-TA at 1.0× and 16.2 less at 1.6×; all six long-budget
+checkpoints stay below RR-TA at every level, and the 2,000,000-step
+checkpoints are worse than the best ones.
 
 ### References for S6.6 (APA 7)
 

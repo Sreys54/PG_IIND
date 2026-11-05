@@ -1,5 +1,30 @@
 # Chapter 5 — Algorithm Comparison (Week 5)
 
+> **Week 8 correction (2026-11-03, advisor review of 2026-11-01).** Kept as
+> written; read with these corrections (numbers in
+> `thesis_docs/review_2026-11-01_numbers.md`):
+> - **Overload units.** Every overload in "kWh/day" here is EV2Gym's kW
+>   summed over 15-minute steps; divide by 4 (08 item 50).
+> - **Satisfaction.** `average_user_satisfaction` is EV2Gym's battery level,
+>   s = 1 − (R/C)(1 − f). With energy satisfaction f and rejected drivers at
+>   f = 0, no arm reaches 90% in this long-dwell regime (≈ 60% for every arm;
+>   the ports bind).
+> - **Aggregation.** Energy percentages are now ratios of totals: the RR
+>   tracking-error reduction is 75.86% (not 75.5%), AFAP's DNS lower bound
+>   38.3% (not 34.3%); full list in `experiments/phase4_review/A/A2_recomputed.csv`.
+> - **MPC_EnergyMaxG2V** minimises energy subject to meeting every departure
+>   (flat price 1.0), it does not maximise it; its +3.1 COP/day over AFAP is
+>   +0.0053 kWh/day of solver tolerance.
+> - **Causality.** EV2Gym's Round Robin and the PublicPST state read the power
+>   setpoint, which is built from every EV's departure and energy and the next
+>   two steps' arrivals: neither is causal.
+> - **S5.11 (extended RL).** The reward decomposition shows that training
+>   improved the agent's own tracking term (+2,492 per day [308, 4,747], 60k →
+>   850k) while the reported tracking error worsened (+8,620 [6,877, 10,419]);
+>   on its own reward the final model is beaten by the random policy (+3,576
+>   per day [1,860, 5,344]), so "the limit is the reward, not the budget" is
+>   withdrawn: the agent did not reach the optimum of its own reward.
+
 > Status: this chapter is being built incrementally. **S5.1 below is
 > written now, ahead of the rest of the chapter, per an explicit
 > instruction from the 2026-09-08 Part A review session**: the Colombian

@@ -287,3 +287,20 @@ experiments/phase3_infra_replicability/results/dwell_shards/
 # Week 8 (redesigned RL, TD3_safe): evaluation rows are deliverables, allowlisted
 # up front under the blanket /results/* rule (the standing lesson of Weeks 4-7).
 !/results/safe_rl_*
+# Week 8 advisor review (2026-11-01): the new DC registry and every review_*
+# deliverable (xlsx/csv) are allowlisted under the blanket /results/* rule;
+# per-worker shards and instrumented per-EV dumps are regenerable intermediates.
+!/results/review_*
+experiments/phase4_review/gate1/cases_w*.csv
+experiments/phase4_review/gate1/log_w*.txt
+experiments/phase4_review/A/cases_w*.csv
+experiments/phase4_review/A/evs_w*.csv
+experiments/phase4_review/C/*_w*.csv
+experiments/phase4_review/**/log_*.txt
+experiments/phase4_review/A/A_evs.csv
+experiments/phase4_review/C4/cases_*.csv
+experiments/phase4_review/C4/registry_*.csv
+experiments/phase4_review/D/d*_w*.csv
+experiments/phase4_review/C5/voltage_w*.csv
+experiments/phase4_review/queue/log_*.txt
+experiments/phase4_review/queue/*.done

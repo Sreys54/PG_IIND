@@ -1,0 +1,18 @@
+{
+  "arrival_model": "station_poisson",
+  "module": "ev2gym_thesis/demand/station_arrivals.py",
+  "arrivals_per_day": {
+    "weekday": 60.7031,
+    "weekend": 60.7031
+  },
+  "dwell_mean_min": 42.0,
+  "dwell_cv": 0.5,
+  "dead_time_steps": 0,
+  "extra_connected_steps": 0,
+  "level": NaN,
+  "load_dependent_departure_cap_min": 0.0,
+  "energy_scale": 1.0,
+  "level_label": "",
+  "offered_kwh_target_1x": 627.0,
+  "calibration": "experiments/phase4_review/calibration.csv"
+}

@@ -1018,13 +1018,144 @@ def build_last_section(doc):
 # doc:end last_progress_log
 
 
+# doc:begin week8_progress_log
+WEEK8_TITLE = "18. Week 8 -- Advisor Review of 2026-11-01: Corrections and a Fair DC Comparison"
+
+
+def build_week8_section(doc):
+    """Week 8 (2026-11-03 onward). Appended after section 17; earlier sections
+    are corrected by reference (18.1), never edited. Every number is read from
+    the result files."""
+    import json
+    import pandas as pd
+    a1 = pd.read_csv("experiments/phase4_review/A/A1_A7_service_and_dns.csv")
+    a4 = pd.read_csv("experiments/phase4_review/A/A4_posthoc_reward_vs_td3.csv").set_index("baseline")
+    d4 = pd.read_csv("experiments/phase4_review/A/A4_reward_terms_850k_minus_60k.csv")
+    cal = pd.read_csv("experiments/phase4_review/calibration.csv")
+    m1 = pd.read_csv("results/review_C_master_1.0x.csv").set_index("algorithm")
+    c4 = pd.read_csv("results/review_C4_summary.csv")
+    add_heading(doc, WEEK8_TITLE)
+    add_heading(doc, "18.1. Corrections to Earlier Sections (dated 2026-11-03)")
+    add_bullet(doc, "Every transformer overload reported in kWh since Week 1 is EV2Gym's total_transformer_overload, which "
+                    "sums the overload in kW over 15-minute steps without the step length: divide by 4 for kWh "
+                    "(ev2gym_env.py line 526, utils.py line 26; ratio 4.000 on 1,310 re-simulated cases).")
+    add_bullet(doc, "The DC sessions of sections 16-17 were connected one step (15 min) longer than labelled (mean 57 min, "
+                    "not 42), and EV2Gym's per-port spawner left each port idle 30 minutes after every departure. Their "
+                    "capacity figures (47 arrivals/day, 763 kWh/day, 10 ports at 1.6x) are superseded by 18.3.")
+    add_bullet(doc, "'User satisfaction' in sections 3-17 is EV2Gym's battery level s = 1 - (R/C)(1 - f). Week 8 reports "
+                    "the energy satisfaction f (rejected drivers at 0) and the share of drivers with f >= 0.9.")
+    add_bullet(doc, "Energy percentages are now ratios of totals (RR tracking-error reduction 75.86%, not 75.5%; DC RR-TA "
+                    "ENS_rel 2.84%, not 2.7%; long-dwell AFAP DNS lower bound 38.3%, not 34.3%).")
+    add_bullet(doc, "Table IV: the RR 14-port row was consistent; the offered demand at 14 ports was 1,009.5 kWh/day, not "
+                    "911 -- the 'constant demand' scaling held only at 10 ports.")
+    add_heading(doc, "18.2. Audit of the Earlier Results (Block A)")
+    long = a1[a1.regime == "long"]
+    add_bullet(doc, f"Long-dwell regime: mean energy satisfaction of served drivers {100 * long.mean_f_served.min():.1f}-"
+                    f"{100 * long.mean_f_served.max():.1f}%; including rejected drivers (lower bound) "
+                    f"{100 * long.mean_f_all_lower.min():.1f}-{100 * long.mean_f_all_lower.max():.1f}%. No arm meets the 90% "
+                    f"target; the 8 ports bind.")
+    r = d4[d4.to_label.str.contains("850k")].iloc[0]
+    add_bullet(doc, f"RL (final model, seed 102, 60k -> 850k steps): its own tracking term improved by "
+                    f"{r.diff_r_tracking:,.0f} per day [{r.diff_r_tracking_ci_low:,.0f}, {r.diff_r_tracking_ci_high:,.0f}] "
+                    f"while the reported tracking error worsened by {r.diff_tracking_error:,.0f} "
+                    f"[{r.diff_tracking_error_ci_low:,.0f}, {r.diff_tracking_error_ci_high:,.0f}]. On its own reward the "
+                    f"random policy beats it by {a4.loc['RandomPolicy', 'reward_baseline_minus_td3']:,.0f} per day.")
+    add_heading(doc, "18.3. DC Regime with Station-Level Arrivals and One Safety Layer")
+    add_body(doc, "Demand levels by offered energy: " + "; ".join(
+        f"{x.level:g}x = {x.arrivals_per_day:.2f} arrivals/day, {x.mean_offered_kwh_per_day:,.1f} kWh/day" for _, x in cal.iterrows()) + ".")
+    for arm in [a for a in ["AFAP", "PS", "FIX12.5", "RR", "RR-TA", "TD3_safe", "MPC-soft", "MPC-soft-est", "Oracle-E"] if a in m1.index]:
+        x = m1.loc[arm]
+        add_bullet(doc, f"1.0x, {arm}: {x.energy_kwh_per_day:,.1f} kWh/day; DNS {100 * x.dns_exact:.1f}% "
+                        f"[{100 * x.dns_exact_ci_low:.1f}, {100 * x.dns_exact_ci_high:.1f}]; mean f incl. rejected "
+                        f"{100 * x.mean_f_incl_rejected:.1f}%; overload days {int(x.days_with_overload)}/100; margin "
+                        f"{x.gross_margin_cop_per_day:,.0f} COP/day.")
+    for _, x in c4[c4.question.str.startswith("capacity threshold")].iterrows():
+        if "D3" in x.question:
+            add_bullet(doc, f"Capacity under D3 (22 kWh per session), {x.arm}, {int(x.ports)} ports, 112.5 kVA: no level "
+                            f"meets the targets down to the bisection floor of 0.5x (19.15 arrivals/day).")
+        else:
+            add_bullet(doc, f"Capacity, {x.arm}, {int(x.ports)} ports, 112.5 kVA: {x.answer} "
+                            f"({x.offered_kwh_per_day:,.0f} kWh/day).")
+    add_body(doc, "Statistics: cluster bootstrap over the scenario seed (n_clusters = 50), 10,000 resamples, percentile 95%, "
+                  "per comparison; ratios of totals. Full record: thesis_docs/Week8_Advisor_Review_Parameter_Method_and_"
+                  "Implementation_Justification.docx and thesis_docs/review_2026-11-01_numbers.md.")
+    if os.path.exists("results/review_td3_safe_selection.json"):
+        sel = json.load(open("results/review_td3_safe_selection.json"))
+        cm = sel.get("carried_model", {})
+        add_heading(doc, "18.4. TD3_safe in the DC Regime")
+        add_body(doc, f"Carried model: training seed {cm.get('train_seed')}, checkpoint at {cm.get('final_step')} steps "
+                      f"(converged: {cm.get('converged')}), chosen on validation only by the rule fixed before training. "
+                      "TD3 with the common safety layer inside the training environment, a causal state (ServiceStateCausal, "
+                      "no EV2Gym setpoint) and a reward equal to the energy delivered; TD3 reference hyperparameters.")
+        for seed, info in sel["seeds"].items():
+            add_bullet(doc, f"Seed {seed}: converged at {info['convergence_step']:,} steps, final checkpoint "
+                            f"{info['final_step']:,}, stopped at {info['last_step']:,}; validation "
+                            f"{info['validation_energy_kwh']:.1f} kWh/day.")
+        if os.path.exists("results/review_C3_td3_safe_comparisons.csv"):
+            c3 = pd.read_csv("results/review_C3_td3_safe_comparisons.csv")
+            for _, x in c3[c3.other.isin(["RR-TA", "PS", "Random+S"])].iterrows():
+                add_bullet(doc, f"{x.level:g}x, TD3_safe minus {x.other}: {x.energy_kwh_per_day_td3_minus_other:+,.1f} kWh/day "
+                                f"[{x.energy_kwh_per_day_diff_ci_low:,.1f}, {x.energy_kwh_per_day_diff_ci_high:,.1f}].")
+        add_body(doc, "Reading: TD3_safe never overloads and learns a real allocation (well above random allocation under "
+                      "the same safety layer) but delivers less than the transformer-aware Round Robin at every level; "
+                      "RR-TA remains the recommended control in the DC regime.")
+    add_heading(doc, "18.5. Infrastructure, Voltage and DC Sensitivities")
+    for _, x in c4[c4.question.str.startswith("transformer at 1.6x")].iterrows():
+        add_bullet(doc, f"1.6x with 8 ports, {x.arm}, {x.transformer}: {x.answer} (DNS {100 * x.dns:.1f}%, mean f "
+                        f"{100 * x.mean_f:.1f}%).")
+    if os.path.exists("results/review_C5_voltage_summary.csv"):
+        v = pd.read_csv("results/review_C5_voltage_summary.csv")
+        out = int(v.cases_any_bus_outside_ev2gym_095_105.sum() + v.cases_any_bus_outside_creg024_090_110.sum())
+        worst = v.feeder_min_pu_diff_vs_idle.min()
+        add_bullet(doc, f"Voltage, node_123, station on bus 115: {out} cases outside 0.95-1.05 or 0.90-1.10 p.u. over "
+                        f"every arm and level; largest drop of the feeder minimum versus the idle station "
+                        f"{abs(worst):.5f} p.u.")
+    if os.path.exists("results/review_D_summary.csv"):
+        d = pd.read_csv("results/review_D_summary.csv")
+        for _, x in d[(d.algorithm == "RR-TA") & d.level.isin([1.0, 1.6])].iterrows():
+            add_bullet(doc, f"{x.sensitivity}, {x.level:g}x, RR-TA: DNS {100 * x.dns_exact:.1f}% (base "
+                            f"{100 * x.dns_exact_base:.1f}%), mean f {100 * x.mean_f_incl_rejected:.1f}%; meets targets: "
+                            f"{x.meets_targets}.")
+# doc:end week8_progress_log
+
+WEEK8_LONG_TITLE = "18.6. TD3_safe Long-Budget Sensitivity (2,000,000 steps)"
+
+
+def build_week8_long_section(doc):
+    """Appended after 18.5 once the pre-registered long-budget runs ended
+    (2026-11-04). Every number is read from the result files."""
+    import json
+    import pandas as pd
+    sel = json.load(open("results/review_td3_safe_long_selection.json"))
+    t = pd.read_csv("results/review_C3_long_budget.csv")
+    add_heading(doc, WEEK8_LONG_TITLE)
+    add_body(doc, "Approved by the author after the C3 results and fixed before the runs: seeds 100-102 retrained from "
+                  "scratch with the C3 design to 2,000,000 steps each with no stopping rule; the last and the best-validation "
+                  "checkpoint of each seed tested on the C3 test grid; the carried TD3_safe model unchanged.")
+    for seed, x in sel["seeds"].items():
+        add_bullet(doc, f"Seed {seed}: stopped at {x['last_step']:,} steps ({x['stop_reason']}); best validation "
+                        f"{x['bestval_validation_energy_kwh']:.1f} kWh/day at {x['bestval_step']:,} steps; at the end "
+                        f"{x['last_validation_energy_kwh']:.1f} kWh/day.")
+    for _, x in t[t.level.isin([1.0, 1.6])].iterrows():
+        add_bullet(doc, f"{x.level:g}x, {x.algorithm}: {x.energy_kwh_per_day:,.1f} kWh/day; minus TD3_safe "
+                        f"{x.energy_kwh_per_day_minus_TD3_safe:+,.1f} [{x.energy_kwh_per_day_minus_TD3_safe_ci_low:,.1f}, "
+                        f"{x.energy_kwh_per_day_minus_TD3_safe_ci_high:,.1f}]; minus RR-TA "
+                        f"{x['energy_kwh_per_day_minus_RR-TA']:+,.1f} [{x['energy_kwh_per_day_minus_RR-TA_ci_low']:,.1f}, "
+                        f"{x['energy_kwh_per_day_minus_RR-TA_ci_high']:,.1f}]; overload days {int(x.days_with_overload)}/100.")
+    add_body(doc, "Reading: longer training helps a little and non-monotonically (best checkpoints at 310,000-580,000 "
+                  "steps), and every long-budget checkpoint stays below the transformer-aware Round Robin at every level; "
+                  "the C3 conclusion is not an artefact of the stopping rule.")
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--section", choices=["week5", "week6_part0", "week7", "closure", "dwell", "last"], required=True,
+    ap.add_argument("--section", choices=["week5", "week6_part0", "week7", "closure", "dwell", "last", "week8", "week8_long"],
+                    required=True,
                     help="which section to append (each runs once; nothing already in the file is modified)")
     args = ap.parse_args()
-    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7", "closure", "dwell", "last") else PROGRESS_LOG_PATH
+    path = CORRECTED_PROGRESS_LOG_PATH if args.section in ("week6_part0", "week7", "closure", "dwell", "last", "week8",
+                                                           "week8_long") else PROGRESS_LOG_PATH
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"{path!r} not found relative to the current working directory. Run this script with "
@@ -1036,6 +1167,14 @@ if __name__ == "__main__":
         # Week 3, Week 4, and the Week 4 correction were already appended in
         # earlier sessions; Week 5 was appended as "2.4. Week 5".
         build_week5_section(doc)
+    elif args.section == "week8_long":
+        if any(p.text.strip() == WEEK8_LONG_TITLE for p in doc.paragraphs):
+            raise SystemExit(f"{WEEK8_LONG_TITLE!r} already present in {path} -- not appending twice.")
+        build_week8_long_section(doc)
+    elif args.section == "week8":
+        if any(p.text.strip() == WEEK8_TITLE for p in doc.paragraphs):
+            raise SystemExit(f"{WEEK8_TITLE!r} already present in {path} -- not appending twice.")
+        build_week8_section(doc)
     elif args.section == "last":
         if any(p.text.strip() == LAST_TITLE for p in doc.paragraphs):
             raise SystemExit(f"{LAST_TITLE!r} already present in {path} -- not appending twice.")

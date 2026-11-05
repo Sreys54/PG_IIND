@@ -1,0 +1,4 @@
+Capacity threshold of RR-TA and PS with the 100 kW transformer at 8 and 10
+ports (station-level arrivals, 42-min DC sessions): every level evaluated by the bisection, 100 days each
+(point estimates, ratio of totals). A level passes when the DNS 95% upper bound is <= 15% and the mean-f
+95% lower bound is >= 90%; vertical lines mark the largest passing arrivals/day.

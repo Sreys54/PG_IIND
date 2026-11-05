@@ -1,5 +1,13 @@
 # Chapter 7 — Replicability in a Second Colombian City (Objective 5)
 
+> **Week 8 correction (2026-11-03).** The DC cost of the transformer limit
+> by city is recomputed on the Week 8 DC regime (station-level arrivals,
+> exact 42-minute connection): Bogotá 19,822 COP/day [17,076, 22,792], 5.8%
+> of AFAP's margin at 1.0× (`results/review_paper_tables.xlsx`, Table V,
+> generated from the registry). The shares are equal across cities, as
+> Proposition 7.1 predicts. Overload values are kW summed over steps (08
+> item 50).
+
 This chapter asks which parts of the station study transfer to a second
 Colombian city, which must be replaced, and which cannot be transferred
 with the data available. No new simulation is run. The tariff transfer

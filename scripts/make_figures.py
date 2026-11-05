@@ -42,7 +42,7 @@ METRICS_FOR_BARS = [
 METRIC_LABELS = {
     "total_ev_served": "EVs served",
     "total_energy_charged": "Energy charged (kWh)",
-    "total_transformer_overload": "Transformer overload (kWh)",
+    "total_transformer_overload": "Transformer overload (kW x 15-min steps; / 4 = kWh)",
     "average_user_satisfaction": "Avg. user satisfaction",
     # CORRECTED 2026-09-09 (Week 5 Gate review): this panel used to plot
     # EV2Gym's own `total_profits` labeled "Profits" -- that column is a
@@ -57,6 +57,8 @@ METRIC_LABELS = {
     "gross_margin_cop": "Gross margin (COP/day)*",
 }
 HEADLINE_METRIC = "total_transformer_overload"  # the Week 1 headline finding
+# Week 8 (2026-11-03): EV2Gym's total_transformer_overload is kW summed over 15-min steps
+# (ev2gym_env.py line 526, utils.py line 26), not kWh; labels say so, values unchanged (08 item 50).
 
 ALGO_ORDER = list(ALGORITHM_STYLE.keys())
 
@@ -279,7 +281,7 @@ def make_f03_tradeoff_pareto(rows):
                 color="gray", linestyle=":", linewidth=1, zorder=0)
 
     ax.set_xlabel("Average user satisfaction")
-    ax.set_ylabel("Transformer overload (kWh)")
+    ax.set_ylabel("Transformer overload (kW x 15-min steps; / 4 = kWh)")
     ax.set_title(f"{REFERENCE_CONFIG}: satisfaction vs. overload trade-off\n"
                  "(black edge = non-dominated, mean +/- 95% CI both axes)", fontsize=10)
     ax.legend(fontsize=8)
@@ -1168,7 +1170,7 @@ def make_f13_extended_validation():
     conv = _w6p0_convergence()
     val = {s: pd.read_csv(f"{W6P0_LOG_DIR}/TD3_vanilla_extended_ts{s}_validation.csv") for s in W6P0_SEEDS}
     panels = [("criterion_value", "Validation tracking error\n(selection criterion; lower is better)"),
-              ("total_transformer_overload", "Validation transformer overload\n(kWh per simulated day)"),
+              ("total_transformer_overload", "Validation transformer overload\n(kW x 15-min steps per day; / 4 = kWh)"),
               ("energy_user_satisfaction", "Validation energy user satisfaction\n(0-100 scale)")]
     fig, axes = plt.subplots(1, 3, figsize=(17, 5))
     common_max = min(v.timesteps.max() for v in val.values())
@@ -1280,7 +1282,7 @@ def make_f14_all_models_comparison():
 
     panels = [
         ("tracking_error", "Tracking error\n(sum of squared kW deviations; lower is better)", None),
-        ("total_transformer_overload", "Transformer overload\n(kWh per simulated day; lower is better)", None),
+        ("total_transformer_overload", "Transformer overload\n(kW x 15-min steps per day; / 4 = kWh)", None),
         ("avg_sat_pct", "Average user satisfaction\n(%; higher is better; target > 90%)", None),
         ("ENS_rel", "Energy not served vs. AFAP, ENS_rel\n(%; target: 95% CI upper bound < 15%)", 15.0),
     ]
@@ -1387,7 +1389,7 @@ def make_f15_grid_growth():
     mc = mc.merge(en[["setting", "algorithm", "ENS_rel_point_pct", "ENS_rel_ci_low_pct", "ENS_rel_ci_high_pct"]],
                   on=["setting", "algorithm"])
     panels = [("tracking_error", "Tracking error\n(lower is better)", None, 1),
-              ("total_transformer_overload", "Transformer overload\n(kWh/day; lower is better)", None, 1),
+              ("total_transformer_overload", "Transformer overload\n(kW x 15-min steps per day; / 4 = kWh)", None, 1),
               ("average_user_satisfaction", "Average user satisfaction (%)\n(target > 90%)", 90.0, 100),
               ("ENS_rel", "Energy not served vs. AFAP, ENS_rel (%)\n(target: CI upper < 15%)", 15.0, 1)]
     fig, axes = plt.subplots(2, 4, figsize=(19, 9.5))
@@ -2137,6 +2139,11 @@ if __name__ == "__main__":
                 "f22": make_f22_session_duration, "f23": make_f23_dc_capacity_threshold,
                 "f24": make_f24_growth_configs, "f19dc": make_f19_capacity_threshold_dc,
                 "f20dc": make_f20_port_options_dc, "f25": make_f25_voltage_dc}
+        # Week 8 (overload relabel): the early figures, on the same rows as a full run
+        _rows = lambda: _merge_economics(load_registry())
+        _fns.update({"f02": lambda: make_f02_metrics_bars(_rows()), "f03": lambda: make_f03_tradeoff_pareto(_rows()),
+                     "f04": lambda: make_f04_distributions(_rows()), "f05": lambda: make_f05_vs_baseline(_rows()),
+                     "f07": lambda: make_f07_metric_heatmap(_rows())})
         for _fid in _only.split(","):
             _fns[_fid.strip()]()
         raise SystemExit(0)

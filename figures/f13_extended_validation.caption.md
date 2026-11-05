@@ -5,7 +5,7 @@ Deterministic (no exploration noise) validation of each saved checkpoint every 1
 - Runs behind this figure: 4100
 - Configs: station_v0_bogota
 - Algorithms: TD3 extended, primary (seed 100), TD3 extended, primary (seed 101), TD3 extended, primary (seed 102)
-- Git commit: 23468f3dff170f211d33911b79d6e7c1cd6d7d58
-- Generated: 2026-09-28T15:10:12.094496Z
+- Git commit: 8b2fc5016d2b49fab79de6d11fb985afe5f0d0bc
+- Generated: 2026-11-03T19:20:54.090701Z
 
 n_runs counts validation episodes (validation evaluations x 20 cells).

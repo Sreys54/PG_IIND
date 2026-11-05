@@ -47,7 +47,7 @@ N_PORTS, TRANSFORMER_KW = 8, 100
 
 
 def cell_config(regime, level):
-    if regime == "dc42":
+    if regime == "dc42_spawner":
         from scripts.run_dwell_capacity import variant_config
         return variant_config(level, 42)
     assert level == 1.0, "the long-dwell regime is evaluated at the reference demand only"
@@ -128,7 +128,10 @@ def main(argv=None):
     torch.set_num_threads(1)  # standing fact: one torch thread per process (numerics depend on it)
     price_data_cache.enable()
     if a.regime == "dc42":
-        dc_sessions.enable(dc_sessions.model_for_config(cfg.REGIME_CONFIGS["dc42"]))  # the 42-minute sidecar
+        raise SystemExit("Week 8 review: the dc42 regime now uses the station-level arrival generator; "
+                         "evaluate TD3_safe with scripts/review_dc.py (arm TD3_safe), not this script.")
+    if a.regime == "dc42_spawner":
+        dc_sessions.enable(dc_sessions.model_for_config(cfg.REGIME_CONFIGS["dc42_spawner"]))  # the 42-minute sidecar
     commit, done = get_git_commit(), existing_keys()
     day_dir = f"experiments/phase2_algorithms/configs/_tmp_eval_day_configs_safe_pid{os.getpid()}"
     try:

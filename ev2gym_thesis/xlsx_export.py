@@ -85,3 +85,38 @@ def export_formatted_xlsx(csv_path: str, xlsx_path: str, column_labels: dict,
 
     print(f"Wrote {xlsx_path} ({len(df)} rows, {len(df.columns)} columns, every header unit-labeled).")
     return xlsx_path
+
+
+# doc:begin export_formatted_xlsx_sheets
+def export_formatted_xlsx_sheets(xlsx_path: str, sheets: list):
+    """Week 8 advisor review: the same rules as export_formatted_xlsx (every
+    column renamed to an explicit unit-bearing label, hard check on missing
+    labels, type-matched number formats, bold frozen header, sized columns)
+    for a workbook with several sheets.
+
+    sheets: list of (sheet_name, DataFrame, column_labels, number_formats),
+    with column_labels {original column: label} and number_formats
+    {label: format} as in export_formatted_xlsx.
+    """
+    with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
+        for sheet_name, df, column_labels, number_formats in sheets:
+            df = df.rename(columns=column_labels)
+            missing = set(df.columns) - set(column_labels.values())
+            if missing:
+                raise ValueError(f"{xlsx_path}/{sheet_name}: columns with no detailed label mapped: {missing} -- "
+                                 f"every column must get an explicit, unit-bearing label.")
+            df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
+            ws = writer.sheets[sheet_name[:31]]
+            for cell in ws[1]:
+                cell.font = Font(bold=True)
+            ws.freeze_panes = "A2"
+            for col_idx, col_name in enumerate(df.columns, start=1):
+                letter = get_column_letter(col_idx)
+                fmt = number_formats.get(col_name)
+                if fmt:
+                    for row in range(2, len(df) + 2):
+                        ws[f"{letter}{row}"].number_format = fmt
+                ws.column_dimensions[letter].width = min(max(len(col_name), 14) + 2, 46)
+    print(f"Wrote {xlsx_path} ({len(sheets)} sheets, every header unit-labeled).")
+    return xlsx_path
+# doc:end export_formatted_xlsx_sheets

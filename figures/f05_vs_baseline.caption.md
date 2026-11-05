@@ -2,8 +2,8 @@
 
 Paired percentage (or absolute, where the AFAP baseline is exactly 0) change relative to the AFAP baseline for each metric, computed with a paired bootstrap matched by (seed, eval_day) cell -- not independent-sample means, since every algorithm is evaluated on the identical scenario grid. A vertical zero line marks 'no change'.
 
-- Runs behind this figure: 1300
+- Runs behind this figure: 2200
 - Configs: station_v0_bogota
-- Algorithms: AFAP, Round Robin, TD3 (seed 100), TD3 (seed 101), TD3 (seed 102), Random (control), TD3-TrackingOnly (seed 100), TD3-TrackingOnly (seed 101), TD3-TrackingOnly (seed 102), MPC (tracking), MPC (energy-max)
-- Git commit: 07eb8a4fecac3a57be1571389199f4917c39ca03
-- Generated: 2026-09-09T16:11:47.659708Z
+- Algorithms: AFAP, Round Robin, TD3 (seed 100), TD3 (seed 101), TD3 (seed 102), Random (control), TD3-TrackingOnly (seed 100), TD3-TrackingOnly (seed 101), TD3-TrackingOnly (seed 102), MPC (tracking), MPC (energy-max), TD3 extended, primary (seed 100), TD3 extended, primary (seed 101), TD3 extended, primary (seed 102), TD3 extended, last (seed 100), TD3 extended, last (seed 101), TD3 extended, last (seed 102), TD3 new run @60k (seed 100), TD3 new run @60k (seed 101), TD3 new run @60k (seed 102)
+- Git commit: 8b2fc5016d2b49fab79de6d11fb985afe5f0d0bc
+- Generated: 2026-11-03T19:20:51.196320Z

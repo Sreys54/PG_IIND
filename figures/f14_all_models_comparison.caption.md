@@ -5,5 +5,5 @@ Every arm evaluated on the current statistical grid (analysis_row=True, 50 scena
 - Runs behind this figure: 2200
 - Configs: station_v0_bogota
 - Algorithms: AFAP, Round Robin, Random (control), MPC (tracking), MPC (energy-max), Oracle (tracking-only), Oracle (balanced), TD3 (seed 100), TD3 (seed 101), TD3 (seed 102), TD3-TrackingOnly (seed 100), TD3-TrackingOnly (seed 101), TD3-TrackingOnly (seed 102), TD3 new run @60k (seed 100), TD3 new run @60k (seed 101), TD3 new run @60k (seed 102), TD3 extended, primary (seed 100), TD3 extended, primary (seed 101), TD3 extended, primary (seed 102), TD3 extended, last (seed 100), TD3 extended, last (seed 101), TD3 extended, last (seed 102)
-- Git commit: 23468f3dff170f211d33911b79d6e7c1cd6d7d58
-- Generated: 2026-09-28T15:51:28.381114Z
+- Git commit: 8b2fc5016d2b49fab79de6d11fb985afe5f0d0bc
+- Generated: 2026-11-03T19:20:56.101503Z

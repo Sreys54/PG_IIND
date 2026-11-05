@@ -1,5 +1,12 @@
 # Chapter 3 — RL Baseline Vanilla: TD3 (Week 3)
 
+> **Week 8 note (2026-11-03).** The MDP of this chapter (27-element PublicPST
+> state, action, reward terms, γ, network, noise, budget in episodes) is
+> tabulated in `results/review_A_post_processing.xlsx` (sheets "A4 facts",
+> "A4 PublicPST state"). PublicPST reads EV2Gym's power setpoint and is
+> therefore not causal (05, Week 8 correction). Overload values are kW summed
+> over steps (08 item 50).
+
 > Status: Entregables 1–9 (partial) complete as of 2026-08-13 — reward/state
 > choice, `ev2gym_thesis/rl/` package, the perfect-information-reference
 > design note, calibration + confirmed training budget, training (3 seeds),

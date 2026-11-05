@@ -379,6 +379,26 @@ comparison and the RL training exist only for the long-dwell regime.*
     transformer, in the long-dwell regime, does not outperform Round Robin.
     No claim is made about RL with a hard capacity constraint, or about RL
     for DC fast charging. Those are future work.
+
+    **Update, 2026-11-03 (Week 8 advisor review, C3).** The safety layer was
+    built (`ev2gym_thesis/rl/safety.py`) and an agent was trained with it in
+    the DC fast-charging regime: TD3_safe, with a causal state
+    (`ServiceStateCausal`, no setpoint), a reward equal to the energy
+    delivered, and the TD3 reference hyperparameters. It never overloads,
+    beats a random allocation under the same layer by 96-120 kWh/day, and
+    still delivers less than the transformer-aware Round Robin at every
+    demand level (−16.9 kWh/day [−20.1, −13.7] at 1.0×; 06 S6.9). The
+    sentences above about "RL with a hard capacity constraint" and "RL for
+    DC fast charging" are therefore no longer future work for this design.
+    What remains bounded: one algorithm (TD3), one state and one reward,
+    no hyperparameter tuning, three training seeds, a budget set by the
+    convergence rule (230,000-300,000 steps), and training only at 1.0×
+    (the 1.3× and 1.6× results are out of the training distribution). The
+    budget limit was then tested directly: a pre-registered sensitivity to
+    2,000,000 steps per seed without a stopping rule improved the best
+    checkpoint by up to 9.7 kWh/day at 1.0× and left every checkpoint below
+    the transformer-aware Round Robin (best: −7.2 kWh/day [−10.0, −4.6]),
+    so the budget is not what separates RL from the heuristic here.
 49. **The DC capacity threshold in arrivals per day is optimistic.** Under
     the DC model the energy requested per session is 16.1 kWh, against the
     22.0 kWh paid-DC reference (item 37), so each arrival requests about 27%
@@ -393,6 +413,62 @@ comparison and the RL training exist only for the long-dwell regime.*
 
     Other cities and sites should apply the guideline from their own
     kWh/day first, and use arrivals/day only as a cross-check (07 S7.10).
+
+## L10. Week 8 advisor review (2026-11-01) [added 2026-11-03]
+
+50. **EV2Gym's transformer overload is in kW·steps, not kWh.**
+    `total_transformer_overload` sums the overload in kW of every step
+    (`ev2gym/models/ev2gym_env.py` line 526, `ev2gym/utilities/utils.py`
+    line 26) without multiplying by the step length, although `utils.py`
+    line 172 prints it as kWh. At 15-minute steps it is 4 × the energy
+    (verified on 1,310 re-simulated cases with overload, ratio 4.000). Every
+    overload quoted as "kWh/day" in chapters 01-07 and in the earlier
+    handbacks is therefore 4 × the energy; Week 8 tables report kWh.
+    Counts of days with overload, and every comparison between arms, are
+    unaffected.
+51. **The DC sessions of the Final capacity brief lasted 15 minutes longer
+    than labelled.** An EV with arrival a and departure d is connected
+    during steps a..d inclusive. `ev2gym_thesis/demand/dc_sessions.py` set
+    d = a + n for a sampled n-step duration, so the connection lasted
+    n + 1 steps: a mean of 57.0 minutes, not 42 (14% of the sampled
+    sessions are one step). The station-level generator connects each EV
+    exactly the sampled duration (mean 42.0 minutes). Chapter 06's DC
+    results (S6.6-S6.8) use the longer window and are superseded by the
+    Week 8 tables where they differ.
+52. **EV2Gym's spawner drew arrivals per port, with a dead time.** A port
+    took a new arrival only if it had been free at t, t−1 and t−2
+    (`utils.py` lines 534-536): 2 idle steps (30 minutes) after every
+    departure, measured. Demand also grew with the number of ports. Both are
+    gone in the DC regime from Week 8 (station-level Poisson arrivals,
+    `ev2gym_thesis/demand/station_arrivals.py`, any free port, no dead
+    time, exact rejections). The long-dwell regime keeps EV2Gym's spawner,
+    so its demand not served is still a bound (A7: AFAP 38.3% lower, 72.2%
+    upper bound, ratio of totals).
+53. **The power setpoint carries information a station does not have.**
+    `generate_power_setpoints` builds it at reset from every EV of the day
+    (energy spread between arrival and departure, median-smoothed over
+    t−2..t+2). EV2Gym's Round Robin and every state that reads the setpoint
+    (PublicPST, ServiceState) therefore receive, indirectly, departure times,
+    requested energy and the next two steps' arrivals; they are not causal
+    (information table, `ev2gym_thesis/review_information.py`).
+54. **"Satisfaction" in Weeks 1-7 was EV2Gym's battery level.**
+    `get_user_satisfaction` is current / desired capacity: s = 1 − (R/C)(1 −
+    f), with f the energy-satisfaction share. With R/C ≈ 0.23 an EV that
+    received nothing scores 0.77. Week 8 reports the energy satisfaction f
+    (rejected drivers at 0) and the service level (share with f ≥ 0.9); the
+    90% target applies to the mean of f including rejected drivers
+    (labelled assumption).
+55. **Aggregation rule.** Before Week 8, energy percentages were means of
+    per-case ratios in tables and sometimes ratios of means in the text;
+    Week 8 adopts the ratio of totals, recomputed inside every bootstrap
+    resample (A2 list of the numbers that change,
+    `experiments/phase4_review/A/A2_recomputed.csv`).
+56. **The Week 1 transformer sweep had no stored data.** The progress log
+    says its raw output is in the lab log; it is not. Re-run in Week 8 with
+    the Week 1 protocol (seed 42): AFAP overload 0 / 0 / 0.033 / 12.5 / 32.6
+    kWh at 250 / 150 / 100 / 75 / 50 kW. The 100 kW rating was chosen as the
+    largest one at which uncoordinated charging overloads, i.e. the problem
+    was built so that the transformer binds.
 
 **References for L7 (APA 7).**
 - Blu Radio. (2026, May 13). *Conductores en Bogotá podrán cargar hasta el 50 % de batería de su carro eléctrico en menos tiempo* (C. Durán, Author). https://www.bluradio.com/motor/conductores-en-boogta-podran-cargar-hasta-el-50-de-bateria-de-su-carro-electrico-en-menos-tiempo-so35

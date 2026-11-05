@@ -1,0 +1,36 @@
+{
+  "rule": "fixed 2,000,000 steps, no convergence stop; test the last and the best-validation checkpoint per seed; carried model unchanged; reported in full as a sensitivity (2026-11-03)",
+  "budget_steps": 2000000,
+  "seeds": {
+    "100": {
+      "stop_reason": "max_steps",
+      "last_step": 2000000,
+      "last_validation_energy_kwh": 525.7392310643035,
+      "last_checkpoint": "C:/ev2gym_runs/w8_td3_safe_long/models/TD3_safe_dc42_ts100/checkpoints/td3_safe_dc42_ts100_2000000_steps.zip",
+      "bestval_step": 490000,
+      "bestval_validation_energy_kwh": 535.8542921613932,
+      "bestval_checkpoint": "C:/ev2gym_runs/w8_td3_safe_long/models/TD3_safe_dc42_ts100/checkpoints/td3_safe_dc42_ts100_490000_steps.zip",
+      "convergence_step_c3_rule": 130000
+    },
+    "101": {
+      "stop_reason": "max_steps",
+      "last_step": 2000000,
+      "last_validation_energy_kwh": 524.5997469135976,
+      "last_checkpoint": "C:/ev2gym_runs/w8_td3_safe_long/models/TD3_safe_dc42_ts101/checkpoints/td3_safe_dc42_ts101_2000000_steps.zip",
+      "bestval_step": 580000,
+      "bestval_validation_energy_kwh": 533.467456492275,
+      "bestval_checkpoint": "C:/ev2gym_runs/w8_td3_safe_long/models/TD3_safe_dc42_ts101/checkpoints/td3_safe_dc42_ts101_580000_steps.zip",
+      "convergence_step_c3_rule": 130000
+    },
+    "102": {
+      "stop_reason": "max_steps",
+      "last_step": 2000000,
+      "last_validation_energy_kwh": 526.2209906606428,
+      "last_checkpoint": "C:/ev2gym_runs/w8_td3_safe_long/models/TD3_safe_dc42_ts102/checkpoints/td3_safe_dc42_ts102_2000000_steps.zip",
+      "bestval_step": 310000,
+      "bestval_validation_energy_kwh": 530.1421077443749,
+      "bestval_checkpoint": "C:/ev2gym_runs/w8_td3_safe_long/models/TD3_safe_dc42_ts102/checkpoints/td3_safe_dc42_ts102_310000_steps.zip",
+      "convergence_step_c3_rule": 200000
+    }
+  }
+}

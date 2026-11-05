@@ -70,3 +70,19 @@ def ServiceState(env, *args):
 
 def service_state_dim(n_ports: int) -> int:
     return N_GLOBAL + N_PER_PORT * n_ports
+
+
+# doc:begin service_state_causal
+def ServiceStateCausal(env, *args):
+    """Week 8 advisor review (A6/C1): ServiceState without the power
+    setpoint. EV2Gym builds the setpoint from every EV of the day
+    (utils.generate_power_setpoints: each EV's requested energy spread over
+    [arrival + 1, departure), then median-smoothed over steps t-2..t+2), so
+    setpoint[t] carries the departure times and energy of the connected EVs
+    and the arrivals of the next two steps -- information a real station does
+    not have. Dropping it makes the observation causal: occupancy, SoC (CCS
+    reports it), time connected, energy delivered, last-step power and the
+    time of day. Layout: 3 global + 4 per port (35 values for 8 ports)."""
+    s = ServiceState(env)
+    return np.delete(s, 2)  # index 2 = next-step power setpoint / rating
+# doc:end service_state_causal

@@ -47,7 +47,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ev2gym_thesis.demand import dc_sessions
+from ev2gym_thesis.demand import dc_sessions, station_arrivals
 from ev2gym_thesis.eval_protocol import TRAIN_SEEDS, TRAIN_DAYS
 from ev2gym_thesis.registry import get_git_commit
 from ev2gym_thesis.rl import config_safe as cfg
@@ -66,16 +66,42 @@ def run_name(regime, reward, seed):
 
 
 def enable_regime(regime):
-    """Install the regime's session model process-wide, before any EV2Gym is
-    built (training env, its probe, validation envs)."""
-    config_path = cfg.REGIME_CONFIGS[regime]
-    model = dc_sessions.model_for_config(config_path)
-    if regime == "dc42":
-        assert model is not None and model.mean_min == 42.0, f"{config_path} must carry the 42-minute sidecar"
-        dc_sessions.enable(model)
-    else:
-        assert model is None, f"{config_path} must have no session sidecar"
-    return config_path
+    """Install the regime's demand model process-wide, before any EV2Gym is
+    built (training env, its probe, validation envs). Week 8 review: dc42 is
+    the station-level arrival generator at 1.0x (config_safe.enable_regime)."""
+    return cfg.enable_regime(regime)
+
+
+# doc:begin validation_step_fn
+def validation_step_fn(env, action):
+    """safe_step plus, on the terminal step, the Week 8 review extras in the
+    stats dict: the three post-hoc terms of the retired reward and the A1
+    service metrics (config_safe.VALIDATION_EXTRA_METRICS). Read-only: the
+    recorder only observes the step."""
+    from ev2gym_thesis.demand import station_arrivals
+    from ev2gym_thesis.metrics import service
+    if getattr(env, "_rec", None) is None or env.current_step == 0:
+        env._rec = {"seed": env.seed, "sim_date": str(env.sim_date), "timescale": env.timescale,
+                    "steps": [], "evs": []}
+    out = list(safe_step(env, action))
+    service._post_step(env)
+    terminated, truncated, stats = out[2], out[3], out[4]
+    if terminated or truncated:
+        rec = env._rec
+        tot = service.episode_totals(rec)
+        stats = dict(stats)
+        stats.update({"old_r_tracking": tot["r_tracking"], "old_r_overload": tot["r_overload"],
+                      "old_r_user": tot["r_user"]})
+        if getattr(env, "_sa", None) is not None:
+            dem = station_arrivals.episode_demand(env, float(stats["total_energy_charged"]))
+            summ = service.service_summary([e["f"] for e in rec["evs"] + rec.get("connected_at_end", [])],
+                                           dem["arrivals_rejected"])
+            stats.update({"dns_exact": dem["dns_exact"], "mean_f_all": summ["mean_f_all"],
+                          "service_level_all": summ["service_level_all"],
+                          "arrivals_rejected": dem["arrivals_rejected"]})
+        out[4] = stats
+    return tuple(out)
+# doc:end validation_step_fn
 
 
 def make_venv(config_path, reward_fn, train_seed):
@@ -143,12 +169,18 @@ def main(argv=None):
     p.add_argument("--reward", choices=list(cfg.REWARD_FNS), default=cfg.DEFAULT_REWARD)
     p.add_argument("--deadline", required=True, help="ISO-8601 with offset, e.g. 2026-10-26T08:00:00-05:00")
     p.add_argument("--resume", action="store_true")
-    p.add_argument("--max-steps", type=int, default=None, help="calibration/tests only")
+    p.add_argument("--max-steps", type=int, default=None,
+                   help="calibration/tests; with --fixed-budget, the fixed training budget")
+    p.add_argument("--fixed-budget", action="store_true",
+                   help="Week 8 long-budget sensitivity (config_safe doc long_budget_sensitivity): no convergence "
+                        "stop, train to --max-steps (required); the carried model is unaffected")
     p.add_argument("--eval-freq", type=int, default=et.EVAL_FREQ_STEPS)
     p.add_argument("--buffer-freq", type=int, default=et.REPLAY_BUFFER_SAVE_FREQ_STEPS)
     p.add_argument("--torch-threads", type=int, default=None)
     p.add_argument("--output-root", default=None, help="override models/log roots (calibration/tests)")
     p.add_argument("--price-cache", action="store_true")
+    p.add_argument("--state", choices=list(cfg.STATE_FNS), default=None,
+                   help="Week 8 review: observation function (default config_safe.STATE_FN)")
     p.add_argument("--n-validation-cells", type=int, default=None, help="tests only: use the first N validation cells")
     a = p.parse_args(argv)
 
@@ -165,6 +197,10 @@ def main(argv=None):
     if deadline.tzinfo is None:
         raise ValueError("--deadline must carry a UTC offset")
 
+    if a.fixed_budget and not a.max_steps:
+        raise ValueError("--fixed-budget needs --max-steps")
+    if a.state:
+        cfg.STATE_FN = cfg.STATE_FNS[a.state]
     config_path = enable_regime(a.regime)
     reward_fn = cfg.REWARD_FNS[a.reward]
     criterion, lower_is_better = cfg.SELECTION[a.reward]
@@ -189,21 +225,31 @@ def main(argv=None):
         run_name=name, model_dir=model_dir, log_dir=log_dir, reward_fn=reward_fn,
         deadline_epoch_s=deadline.timestamp(), eval_freq=a.eval_freq, buffer_freq=a.buffer_freq,
         max_steps=a.max_steps, cells=cells, state=state,
+        confirmation_steps=float("inf") if a.fixed_budget else et.CONFIRMATION_MARGIN_STEPS,
         validation_day_config_dir=et.day_config_dirs_for(a.seed)[1] + "_safe",
-        criterion=criterion, lower_is_better=lower_is_better, log_metrics=cfg.VALIDATION_LOG_METRICS,
-        validation_kwargs={"config_path": config_path, "state_fn": cfg.STATE_FN, "step_fn": safe_step})
+        criterion=criterion, lower_is_better=lower_is_better,
+        log_metrics=cfg.VALIDATION_LOG_METRICS + (cfg.VALIDATION_EXTRA_METRICS if a.regime == "dc42" else []),
+        validation_kwargs={"config_path": config_path, "state_fn": cfg.STATE_FN, "step_fn": validation_step_fn})
 
     manifest = {
         "run_name": name, "algorithm": "TD3", "design": "safe (hard transformer constraint)",
         "train_seed": a.seed, "regime": a.regime, "config_path": config_path,
         "session_model": (lambda m: None if m is None else {"mean_min": m.mean_min, "cv": m.cv})(
             dc_sessions.model_for_config(config_path)),
+        "arrival_model": (lambda sp: "ev2gym_spawner" if sp is None else {
+            "model": station_arrivals.ARRIVAL_MODEL, "arrivals_per_day": sp.arrivals_per_day,
+            "dwell_mean_min": sp.dwell.mean_min, "dwell_cv": sp.dwell.cv, "level": sp.level,
+            "extra_connected_steps": sp.extra_connected_steps, "dead_time_steps": sp.dead_time_steps})(
+            station_arrivals.spec_for_config(config_path)),
+        "selection_rule": cfg.SELECTION_RULE_VERSION, "carried_model_rule": cfg.CARRIED_MODEL_RULE,
         "reward_function": reward_fn.__name__, "state_function": cfg.STATE_FN.__name__,
         "safety_layer": "ev2gym_thesis/rl/safety.py::project_actions (budget 0.999 x rating)",
         "sample_mode": "round_robin", "train_days_pool_size": len(TRAIN_DAYS), "git_commit": get_git_commit(),
         "launched_utc": datetime.datetime.utcnow().isoformat(), "deadline": a.deadline,
         "stop_at_epoch_s": deadline.timestamp() - et.DEADLINE_SAFETY_MARGIN_S,
         "eval_freq": a.eval_freq, "buffer_freq": a.buffer_freq, "max_steps": a.max_steps,
+        "fixed_budget": a.fixed_budget,
+        "long_budget_rule": cfg.LONG_BUDGET_RULE if a.fixed_budget else None,
         "n_validation_cells": len(cells) if cells else len(et.VALIDATION_CELLS),
         "selection_criterion": criterion, "selection_lower_is_better": lower_is_better,
         "convergence_rule": {"window": et.CONVERGENCE_WINDOW, "rel_mean_tol": et.CONVERGENCE_REL_MEAN_TOL,
@@ -223,9 +269,17 @@ def main(argv=None):
     model.learn(total_timesteps=UNBOUNDED_TIMESTEPS, callback=cb, reset_num_timesteps=not a.resume,
                 log_interval=None)
     cb.finalize()
+    # Week 8 review C3 selection rule (config_safe, doc safe_selection_rule): best at/after
+    # convergence, else best over the whole run (non-convergence reported as a result).
+    fi = cfg.final_index(cb.criterion_series(), cb.state["conv_eval_index"], lower_is_better)
+    cb.state.update({"final_eval_index": fi, "final_step": cb.state["evals"][fi]["timesteps"],
+                     "final_checkpoint": cb.state["evals"][fi]["checkpoint_path"],
+                     "final_rule": cfg.SELECTION_RULE_VERSION,
+                     "converged": cb.state["conv_eval_index"] is not None})
+    cb.save_state()
     print(f"[{name}] stopped: {cb.state['stop_reason']} at {model.num_timesteps} steps, "
           f"this segment {time.perf_counter() - t0:.1f}s, conv_eval_index={cb.state['conv_eval_index']}, "
-          f"primary_step={cb.state['primary_step']}", flush=True)
+          f"primary_step={cb.state['primary_step']}, final_step={cb.state['final_step']}", flush=True)
 
 
 if __name__ == "__main__":

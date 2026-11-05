@@ -1,0 +1,821 @@
+% ============================================================
+% Comentarios de la asesora -- plantilla comun
+% Compilar con: latexmk -pdf <archivo>.tex   (o pdflatex dos veces)
+% ============================================================
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english,spanish,es-noquoting,es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[letterpaper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx,array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage[most]{tcolorbox}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+\usepackage{needspace}
+\usepackage{etoolbox}
+\pretocmd{\subsection}{\Needspace{12\baselineskip}}{}{}
+
+% ---------- Colores ----------
+\definecolor{andesazul}{HTML}{1F3A5F}
+\definecolor{rojoerror}{HTML}{B03A2E}
+\definecolor{verdeej}{HTML}{1E7B4F}
+\definecolor{azulidea}{HTML}{2E6DA4}
+\definecolor{naranjatarea}{HTML}{C0661A}
+\definecolor{grisfondo}{HTML}{F5F5F5}
+
+% ---------- Encabezado ----------
+\newcommand{\estudiante}{Santiago Reyes Cortés}
+\newcommand{\fecharevision}{1 de noviembre de 2026}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\color{andesazul} Comentarios de Aleja}
+\rhead{\small\color{andesazul} \estudiante}
+\cfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{14pt}
+
+% ---------- Cajas ----------
+% Error que hay que corregir (con titulo)
+\newtcolorbox{error}[1][]{enhanced,breakable,colback=rojoerror!5,colframe=rojoerror,
+  fonttitle=\bfseries,title={Error que hay que corregir\ifx\relax#1\relax\else: #1\fi}}
+% Ejemplo concreto
+\newtcolorbox{ejemplo}[1][]{enhanced,breakable,colback=verdeej!5,colframe=verdeej,
+  fonttitle=\bfseries,title={Ejemplo\ifx\relax#1\relax\else: #1\fi}}
+% Explicacion de un concepto
+\newtcolorbox{idea}[1][]{enhanced,breakable,colback=azulidea!5,colframe=azulidea,
+  fonttitle=\bfseries,title={Para entenderlo mejor\ifx\relax#1\relax\else: #1\fi}}
+% Lo que le pido hacer
+\newtcolorbox{tarea}[1][]{enhanced,breakable,colback=naranjatarea!6,colframe=naranjatarea,
+  fonttitle=\bfseries,title={Qué te pido hacer\ifx\relax#1\relax\else: #1\fi}}
+% Duda que el estudiante debe verificar (agregada a la plantilla)
+\newtcolorbox{duda}[1][]{enhanced,breakable,colback=black!3,colframe=black!55,
+  fonttitle=\bfseries,title={Duda que debes verificar\ifx\relax#1\relax\else: #1\fi}}
+
+% Etiqueta de prioridad: \prioridad{Alta} / \prioridad{Media} / \prioridad{Baja}
+\newcommand{\prioridad}[1]{%
+  \def\tmpA{Alta}\def\tmpM{Media}\def\tmp{#1}%
+  \ifx\tmp\tmpA\colorbox{rojoerror}{\color{white}\small\bfseries Prioridad alta}%
+  \else\ifx\tmp\tmpM\colorbox{naranjatarea}{\color{white}\small\bfseries Prioridad media}%
+  \else\colorbox{azulidea}{\color{white}\small\bfseries Prioridad baja}\fi\fi}
+% Etiquetas de estado (agregadas a la plantilla)
+\newcommand{\confirmado}{\colorbox{rojoerror!15}{\small\bfseries\color{rojoerror} Error confirmado}}
+\newcommand{\pordudar}{\colorbox{black!10}{\small\bfseries\color{black!75} Duda por verificar}}
+\newcommand{\verificado}{\colorbox{verdeej!15}{\small\bfseries\color{verdeej} Verificado}}
+
+% ---------- Codigo ----------
+\lstdefinestyle{codigo}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{grisfondo},
+  frame=single, rulecolor=\color{black!20},
+  breaklines=true, breakatwhitespace=false,
+  columns=fullflexible, keepspaces=true,
+  numbers=left, numberstyle=\tiny\color{black!50},
+  keywordstyle=\color{andesazul}\bfseries,
+  commentstyle=\color{verdeej}\itshape,
+  stringstyle=\color{rojoerror},
+  showstringspaces=false,
+  literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+           {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+           {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {ü}{{\"u}}1 {¿}{{?`}}1 {¡}{{!`}}1
+           {≤}{{$\le$}}1 {≥}{{$\ge$}}1 {→}{{$\to$}}1 {×}{{$\times$}}1
+}
+\lstset{style=codigo}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\setlength{\parskip}{4pt}
+\setlength{\emergencystretch}{3em}
+
+% Texto en ingles para las reescrituras propuestas
+\newenvironment{eng}{\begin{otherlanguage}{english}\itshape}{\end{otherlanguage}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{andesazul} Comentarios sobre tu avance de tesis}\\[6pt]
+  {\large \estudiante}\\[2pt]
+  {\small Revisión de Aleja (Alejandra Tabares Pozos) \quad·\quad \fecharevision}\\[2pt]
+  {\small Documento revisado: \texttt{Documento\_Final\_PG\_IIND.docx} (23 de octubre de 2026), con la bitácora hasta la semana 5 y la presentación del 24 de agosto}
+\end{center}
+
+% ============================================================
+\section*{Resumen}
+% ============================================================
+
+Santiago:
+
+Leí con calma la versión del artículo del 23 de octubre, la bitácora hasta la semana 5 y la presentación de nuestra primera reunión. Quiero empezar por lo importante. Hiciste muchísimo trabajo, y trabajo serio. Leíste el código de EV2Gym con lupa, encontraste comportamientos del simulador que casi nadie que lo usa ha visto, armaste un protocolo experimental con escenarios pareados e intervalos de confianza, y escribes con una honestidad poco común sobre lo que tu modelo puede decir y lo que no. Eso es exactamente lo que se espera de alguien que investiga.
+
+Al mismo tiempo, el documento todavía no se puede entregar. Le faltan el resumen, las limitaciones y las conclusiones, y al revisar los números encontré problemas de fondo que cambian lo que puedes afirmar. Los más serios son cuatro. La métrica de satisfacción de EV2Gym mide el nivel de la batería y no la fracción de energía entregada, el agente de RL final no supera a la política aleatoria, la comparación entre estrategias favorece por construcción a la que recomiendas, y el nivel 1,6× equivale a un 45\,\% más de energía demandada y no al 60\,\% del anteproyecto. Nada de esto invalida tu tesis. Sí te obliga a ajustar algunos experimentos y, sobre todo, la manera de contar los resultados.
+
+Sobre cómo leer este documento. Cada comentario explica qué está mal, por qué importa para tu tesis, cómo se corrige y trae un ejemplo con tus propios números. Marqué como \confirmado{} lo que verifiqué yo misma, con una cuenta sobre tus tablas o leyendo el código público de EV2Gym (rama \texttt{main} del repositorio en GitHub), y como \pordudar{} lo que necesito que revises tú, casi siempre porque depende de tu código o tu configuración, que no tengo. Cuando cito el código de EV2Gym, confirma que tu copia hace lo mismo. Las cajas azules explican conceptos; léelas aunque creas que ya los dominas, porque el jurado te los va a preguntar.
+
+Sigue el orden de prioridad de la sección~3. Al final encuentras las preguntas que te haría un jurado y la lista de próximos pasos.
+
+% ============================================================
+\section{El proyecto}
+% ============================================================
+
+
+Tu pregunta es cómo operar una estación pública de carga rápida en Colombia para atender bien a los usuarios, ganar dinero y no sobrecargar el transformador que la alimenta, y qué infraestructura necesitaría esa estación si la demanda crece.
+
+Para responderla modelas en EV2Gym una estación de referencia en Bogotá con ocho puertos DC de 50\,kW (400\,kW instalados) detrás de un transformador de 100\,kW, una relación de 4 a 1. La flota es homogénea, con baterías de 70\,kWh; las llegadas y la energía pedida salen de los datos holandeses de ElaadNL que trae el simulador, y el día tiene 96 pasos de 15 minutos desde las 5:00. El multiplicador de llegadas de EV2Gym, fijado en 30, es tu nivel de demanda 1,0×.
+
+Sobre el simulador agregas cuatro piezas desde afuera de la librería. La primera son los precios colombianos (venta a 1.450\,COP/kWh, compra a 865,76\,COP/kWh, margen de 584,24\,COP/kWh). La segunda es un módulo que cuenta los conductores que EV2Gym descarta cuando su puerto está ocupado, de donde sale la demanda no servida (DNS). La tercera es un segundo régimen de sesiones, porque a las estancias nativas de EV2Gym (unos 300 minutos) les sumas sesiones DC lognormales de 42 minutos en promedio. La cuarta es la red de 123 nodos para revisar la tensión.
+
+Comparas AFAP (carga sin gestión), el Round Robin de EV2Gym, un Round Robin que respeta la capacidad del transformador y que escribiste tú (RR-TA), dos MPC y dos oráculos que conocen el futuro, un agente TD3 y una política aleatoria como control negativo. Todas se evalúan sobre los mismos 100 escenarios (50 semillas por dos tipos de día) con intervalos de confianza por bootstrap de conglomerados.
+
+Tus resultados centrales, tal como los leo, son estos. Con estancias largas la estación se queda corta de puertos (al menos 34,3\,\% de la energía queda sin servir con cualquier política) y el Round Robin de EV2Gym basta para cuidar el transformador. Con sesiones DC la restricción pasa a ser el transformador. AFAP lo sobrecarga 97 de cada 100 días, y el RR-TA es la única estrategia que cumple todas las metas a 1,0×, con DNS de 5,0\,\%, sin sobrecarga y a un costo de 2,8\,\% del margen. La estación aguanta hasta 1,3×; a 1,6× le bastan diez puertos con el mismo transformador, mientras que AFAP necesitaría uno de 300\,kVA. Con tarifa plana el orden de las estrategias por margen es el mismo en todas las ciudades, y solo la tarifa de dos bandas de Barranquilla cambia algo, y únicamente con estancias largas. Tu recomendación es invertir primero en un gestor de carga que lea la capacidad del transformador, luego en puertos, y dejar el transformador más grande como última opción.
+
+% ============================================================
+\section{Lo que está bien}
+% ============================================================
+
+\begin{itemize}[leftmargin=1.2em,itemsep=5pt]
+\item \textbf{Leíste el simulador por dentro y lo describes con exactitud.} Verifiqué en el código público tres de tus hallazgos. El generador de llegadas (\texttt{EV\_spawner}, en \texttt{utils.py}) solo sortea un vehículo si el puerto estuvo libre en el paso actual y en los dos anteriores, así que el conductor que llega a un puerto ocupado desaparece sin dejar rastro. La clase \texttt{RoundRobin} de \texttt{heuristics.py} decide cuántos vehículos cargar dividiendo la consigna entre la potencia de un puerto y nunca consulta el transformador. Y el generador de consignas multiplica la energía pedida por 1,8 (100 más el 80\,\% de flexibilidad de la configuración), la reparte con los precios holandeses y la suaviza con una mediana de cinco pasos. Tus descripciones coinciden con el código. Detectar además que la ubicación por defecto en la red convertía el límite de 100\,kW en 800\,kW es el tipo de error silencioso que invalida muchos estudios. Esa lectura cuidadosa distingue una tesis de un ejercicio de usar una librería.
+
+\item \textbf{Separas con claridad el supuesto del dato.} Frases como \foreignlanguage{english}{\emph{``it is the weakest quantitative assumption in the model''}}, \foreignlanguage{english}{\emph{``None of these is Colombian data''}} o \foreignlanguage{english}{\emph{``its DC results are not evidence about RL''}} le muestran al jurado que conoces los límites de tu modelo. Conserva ese tono.
+
+\item \textbf{El diseño experimental es sólido.} Todas las estrategias ven las mismas llegadas, de modo que las comparaciones son pareadas. Remuestreas por semilla porque reconoces que los dos días simulados con la misma semilla no son independientes. Exiges que una meta se cumpla en el extremo más exigente del intervalo. Incluyes una política aleatoria como control negativo, una ablación de la recompensa y oráculos como cotas, y marcas como no causales las estrategias que conocen el futuro. Muchos artículos publicados no hacen todo esto.
+
+\item \textbf{Traduces el multiplicador a unidades físicas.} Reportar llegadas y kWh por día junto al 1,0× o el 1,3× permite que otra estación compare su propia demanda con tu umbral. Más abajo te pido corregir cómo se escala esa demanda, pero la idea de fondo es la correcta.
+
+\item \textbf{Tus cuentas de tarifas cuadran.} Recalculé la Tabla V completa. Los seis costos del límite salen de multiplicar 10.141\,COP/día por $(1450-c)/584{,}24$, con $c$ el costo de cada ciudad (Medellín da 9.186, Cali 12.135 y Cartagena 7.260, como reportas). La Tabla III también es coherente por dentro, porque la DNS de cada estrategia es casi exactamente $1-(1-\mathrm{ENS}_{\mathrm{rel}})(1-0{,}024)$; para el RR-TA da 5,03\,\% frente al 5,0\,\% que reportas. Y separas bien el álgebra del hallazgo cuando explicas por qué el 2,84\,\% se repite en todas las ciudades.
+
+\item \textbf{El RR-TA es una buena contribución.} Es simple, solo usa información que el operador tiene, lo probaste con una prueba unitaria y es lo que una estación podría poner a funcionar mañana.
+
+\item \textbf{Corregiste un error de la bitácora.} En la semana 1 escribiste que la Resolución 40223 de 2021 exige CCS Combo 2; en el artículo dices, correctamente, que exige al menos un conector CCS Combo 1 en las estaciones DC de nivel 3 que se instalen después del plazo. Lo verifiqué y está bien. Que revises tus propias afirmaciones anteriores es una muy buena señal.
+
+\item \textbf{Fuiste más allá de lo prometido en replicabilidad.} En la presentación del 24 de agosto ofreciste evaluar una ciudad alterna y terminaste con las cinco ciudades de categoría especial además de Bogotá.
+
+\item \textbf{Tu infraestructura de cómputo es reproducible.} El registro único de resultados, las aserciones que impiden mezclar entrenamiento y prueba y, sobre todo, el error del \texttt{reset()} sin semilla que detectaste y corregiste en la semana 3 muestran que desconfías de tus propios resultados. Esa es la actitud correcta.
+\end{itemize}
+
+% ============================================================
+\section{Lo que hay que corregir}
+% ============================================================
+
+Esta tabla resume los comentarios. Los de prioridad alta cambian conclusiones o dejan el documento incompleto; los de prioridad media afectan el rigor o la presentación; los de prioridad baja son detalles.
+
+\begin{center}
+\footnotesize
+\renewcommand{\arraystretch}{0.95}
+\begin{tabularx}{\textwidth}{@{}lXll@{}}
+\toprule
+\# & Tema & Tipo & Prioridad \\
+\midrule
+3.1 & Resumen, limitaciones, conclusiones y referencias incompletos & Confirmado & Alta \\
+3.2 & Los objetivos y los resultados no cuadran del todo & Confirmado & Alta \\
+3.3 & La satisfacción de EV2Gym mide el nivel de la batería & Confirmado & Alta \\
+3.4 & El agente de RL final no supera a la política aleatoria & Confirmado y dudas & Alta \\
+3.5 & La comparación entre estrategias todavía no es justa & Confirmado & Alta \\
+3.6 & Qué es causal y cuánto vale conocer la hora de salida & Confirmado & Alta \\
+3.7 & Falta la formulación matemática del MPC y del RL & Confirmado y dudas & Alta \\
+3.8 & El nivel 1,6× no es un 60\,\% más de demanda & Confirmado y duda & Alta \\
+3.9 & Una fila de la Tabla IV no cuadra & Confirmado & Alta \\
+3.10 & Rigor estadístico y forma de reportar & Confirmado y dudas & Media \\
+3.11 & El modelo de sesiones DC & Dudas & Media \\
+3.12 & Red, transformador y regulación & Confirmado y dudas & Media \\
+3.13 & Supuestos económicos & Verificado y dudas & Media \\
+3.14 & Escritura académica y referencias & Confirmado y duda & Media \\
+3.15 & Detalles menores & Confirmado & Baja \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ------------------------------------------------------------
+\subsection{El documento está incompleto}
+\prioridad{Alta} \confirmado
+
+\begin{error}[al artículo le faltan partes y conserva texto de la plantilla]
+\begin{itemize}[leftmargin=1.2em]
+\item El \emph{Abstract} y los \emph{Index Terms} siguen siendo el texto de relleno de la plantilla IEEE (en español, además).
+\item La sección VII (\emph{Limitations}) tiene cinco subtítulos sin texto, y la sección VIII (\emph{Conclusion}) y los agradecimientos están vacíos.
+\item Al final quedó el texto de plantilla ``Biografía Autor(es)''.
+\item La nota al pie de la primera página contiene una lista vieja de referencias [1]--[8], en la que la [8] es el pliego tarifario de Enel, mientras que en la lista final la [8] es el inventario de Enel X.
+\item El texto cita [18] a [26] (especificación ET-013 de Enel, Resolución CREG 015 de 2018, Ley 617 de 2000, categorización de la Contaduría y pliegos de EPM, EMCALI, Air-e, Afinia y ESSA), pero la lista de referencias termina en [17].
+\item La línea de autores quedó debajo del resumen; en el formato IEEE va antes.
+\end{itemize}
+\end{error}
+
+\textbf{Por qué importa.} El jurado lee primero el resumen y las conclusiones. Si faltan, la primera impresión es la de un documento sin terminar, por bueno que sea el resto. Y sin las referencias [18]--[26] quedan sin soporte afirmaciones centrales, como el factor de potencia de 0,894 o la lista de ciudades de categoría especial.
+
+\textbf{Cómo se corrige.} Escribe el resumen de último, cuando hayas corregido lo de las secciones 3.2 a 3.9, porque las cifras van a cambiar. Un buen resumen cabe en cinco o seis frases: el problema, el vacío, lo que hiciste, los resultados principales con números y la recomendación. Para las conclusiones, dedica un párrafo a cada objetivo específico y uno final al general; cada párrafo responde la pregunta del objetivo con una cifra. Para las limitaciones ya tienes casi todo el material, solo que está disperso. Junta en los cinco subtítulos lo que dices en II-A (flota homogénea, multiplicador sin estimar), III-C (duraciones que no son colombianas), III-D (DNS como cota inferior), III-E (redes que no son colombianas), IV-B (entrenamiento en CPU), V-E (sin costos de capital) y VI-D (mismos insumos físicos en todas las ciudades). Para cada limitación di qué resultado afecta y en qué dirección lo sesga.
+
+\begin{ejemplo}[un resumen posible con tus cifras actuales]
+\begin{eng}
+Public DC fast-charging hubs often share a distribution transformer rated well below the combined power of their chargers. This paper asks how such a hub in Colombia should allocate power among its ports and what infrastructure it needs as demand grows. We adapt the open-source EV2Gym simulator to an eight-port, 400~kW station behind a 100~kW transformer in Bogotá, adding Colombian tariffs, DC session durations and an explicit count of drivers turned away at occupied ports. Unmanaged charging, two round-robin heuristics, model predictive control and a TD3 agent are compared on 100 paired scenarios with cluster-bootstrap confidence intervals. With 42-minute sessions, unmanaged charging exceeds the transformer rating on 97 of 100 days, whereas a transformer-aware round robin never does, leaves 5.0\% of the requested energy unserved and gives up 2.8\% of the gross margin. At the highest demand level tested the station needs two more ports but no larger transformer. Because five of the six special-category cities have flat tariffs, the ranking of strategies holds across cities. The results favor a load manager that reads the transformer rating over a transformer upgrade.
+\end{eng}
+
+\smallskip
+Como \emph{Index Terms}, en orden alfabético como pide la plantilla, propongo \foreignlanguage{english}{\emph{Distribution transformers, electric vehicle charging, EV2Gym, model predictive control, reinforcement learning, smart charging}}.
+
+\smallskip
+Las cifras son las de tu versión actual; actualízalas cuando termines las correcciones.
+\end{ejemplo}
+
+\begin{tarea}
+\begin{enumerate}
+\item Escribe las limitaciones con el material que ya tienes disperso, una subsección por tema.
+\item Escribe las conclusiones con un párrafo por objetivo.
+\item Completa las referencias [18]--[26], borra la nota al pie con la lista vieja y el texto de biografía de la plantilla.
+\item Escribe el resumen y los términos índice de último.
+\end{enumerate}
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{Los objetivos y los resultados no cuadran del todo}
+\prioridad{Alta} \confirmado
+
+\begin{error}[el objetivo general promete algo que tu estrategia recomendada no hace]
+En la introducción, el objetivo general es diseñar una estrategia que \foreignlanguage{english}{\emph{``improves user satisfaction and operator profitability while respecting local grid limits''}}. Frente a la carga sin gestión en el régimen DC (Tabla III), tu estrategia recomendada baja la satisfacción de 97,9\,\% a 97,3\,\% y el margen de 356,5 a 346,4 miles de COP por día, es decir, 10.141\,COP diarios menos. Lo que sí logra es respetar el transformador, que AFAP sobrecarga 97 de cada 100 días. Ese es un resultado valioso, pero no es una mejora en satisfacción ni en rentabilidad; es lo que cuesta respetar el límite. Tal como está escrito, el jurado va a concluir que el objetivo general no se cumplió.
+\end{error}
+
+Revisé además cada objetivo específico con la redacción aprobada que copiaste en la bitácora (página 5) y lo comparé con lo que responde el artículo.
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}p{4.3cm}lX@{}}
+\toprule
+Objetivo aprobado & Sección & Lo que falta \\
+\midrule
+1. Caracterizar la operación actual (tiempos de espera, energía no servida, ingresos, perfiles de demanda) & II & Se caracteriza en simulación y los tiempos de espera no se miden porque EV2Gym no tiene cola. Está declarado en el texto; llévalo también a las limitaciones. \\
+2. Modelar la estación y \emph{validar el modelo contra la operación real} & III & Lo que hiciste es verificación y comprobaciones de plausibilidad contra referencias externas, no validación contra datos de operación. Cambia el verbo o declara que el objetivo se redujo. \\
+3. Comparar al menos tres algoritmos con satisfacción, ingresos y \emph{violaciones de tensión} como criterios & IV & La tensión no aparece en la comparación de la sección IV; solo en V-D y para dos estrategias. En DC faltan MPC-E y un RL entrenado en ese régimen (ver 3.5). \\
+4. Estrategia recomendada y lineamientos (capacidad, cargadores, interoperabilidad y \emph{posible integración de generación distribuida}) & V & La generación distribuida desapareció. La versión del objetivo 4 que trae la introducción ya no la menciona, y el artículo no explica por qué. \\
+5. Replicabilidad en las otras ciudades de categoría especial, con restricciones y supuestos críticos & VI & Cubierto en lo económico y declarado en lo físico. Bien. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{idea}[un objetivo se cumple cuando un resultado lo responde]
+El jurado lee los objetivos al comienzo y busca la respuesta a cada uno en las conclusiones. Cambiar el alcance durante la tesis es normal y aceptable, siempre que se diga. Una reducción declarada y justificada (``la integración de generación distribuida quedó fuera de alcance porque\ldots'') se lee como una decisión de investigación; una reducción silenciosa se lee como un olvido. Tampoco puedes reescribir el objetivo en el artículo para que coincida con lo que hiciste sin decirlo, porque el jurado tiene el anteproyecto.
+\end{idea}
+
+\begin{ejemplo}[cómo reformular el objetivo general sin prometer de más]
+\begin{eng}
+The general objective of this work is to design and evaluate, through simulation in EV2Gym, an operating strategy that keeps an EV charging station in Colombia within the rating of its local transformer at the smallest possible loss of service and gross margin with respect to unmanaged charging, and to formulate infrastructure guidelines to scale that operation under future demand scenarios.
+\end{eng}
+
+\smallskip
+Otra salida, que te recomiendo además de la anterior, es comparar contra una alternativa factible. Una estación real que no gestiona la carga no puede sobrecargar el transformador indefinidamente: o instala un transformador más grande (el de 300\,kVA de tu Tabla IV) o limita cada puerto de forma fija a $100/8 = 12{,}5$\,kW. Con tus números, un puerto limitado a 12,5\,kW entrega como máximo $12{,}5 \times 42{,}7/60 \approx 8{,}9$\,kWh en una sesión promedio, frente a 16,1\,kWh pedidos, es decir, cerca del 55\,\%. Frente a esa alternativa lo más probable es que el RR-TA mejore la satisfacción y el margen, y por mucho; compruébalo con la simulación. Esa sería la comparación que responde de verdad tu objetivo general (te lo pido en la sección 3.5).
+\end{ejemplo}
+
+\begin{tarea}
+\begin{enumerate}
+\item Reformula el objetivo general o agrega la comparación contra una alternativa factible, y escribe en las conclusiones qué responde a cada objetivo.
+\item Declara y justifica en el texto los cambios de alcance de los objetivos 1, 2 y 4 (tiempos de espera, validación con datos reales, generación distribuida).
+\item Decide si la tensión entra en la comparación de la sección IV o si dices explícitamente que solo se evalúa para las estrategias finalistas.
+\end{enumerate}
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{La satisfacción de EV2Gym mide el nivel de la batería, no la energía entregada}
+\prioridad{Alta} \confirmado
+
+\begin{error}[la definición de la sección II-B no corresponde al código]
+Escribes que la satisfacción es \foreignlanguage{english}{\emph{``the energy in its battery at departure divided by the energy it asked for''}}. En el código es el nivel de la batería al salir dividido por el nivel deseado, que es la batería llena.
+\begin{itemize}[leftmargin=1.2em]
+\item En \texttt{ev.py}, la función \texttt{get\_user\_satisfaction} devuelve \texttt{current\_capacity / desired\_capacity}.
+\item En \texttt{utils.py}, la función \texttt{spawn\_single\_EV} fija \texttt{desired\_capacity} como el parámetro del mismo nombre en la configuración multiplicado por la capacidad de la batería, y hace llegar la batería con su capacidad menos la energía pedida.
+\item En \texttt{PublicPST.yaml}, \texttt{desired\_capacity} vale 1.
+\end{itemize}
+Para un vehículo con batería $C$ que pide $R$ y recibe una fracción $f$ de lo pedido,
+\[
+s \;=\; \frac{C - R + fR}{C} \;=\; 1 - \frac{R}{C}\,(1-f).
+\]
+Con $C = 70$\,kWh y $R = 16{,}1$\,kWh (tu promedio con sesiones DC), $R/C = 0{,}23$. Un carro que se va sin recibir nada obtiene 77\,\%, uno que recibe la mitad obtiene 88,5\,\% y la meta del 90\,\% se cumple en cuanto $f > 0{,}565$.
+\end{error}
+
+Comprobé que tus tablas obedecen a esta fórmula. Si para los vehículos atendidos $s \approx 1 - 0{,}23\,\mathrm{ENS}_{\mathrm{rel}}$, y luego incluyes a los rechazados con puntaje cero multiplicando por $38{,}0/38{,}9$, la predicción coincide con tu Tabla III con menos de medio punto de diferencia.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Estrategia (DC, 1,0×) & ENS$_{\mathrm{rel}}$ (\%) & Satisfacción predicha (\%) & Satisfacción reportada (\%) \\
+\midrule
+AFAP & 0,0 & 97,7 & 97,9 \\
+RR & 22,9 & 92,5 & 93,0 \\
+RR-TA & 2,7 & 97,1 & 97,3 \\
+TD3 & 26,3 & 91,8 & 92,2 \\
+MPC-T & 47,3 & 87,1 & 87,2 \\
+Oracle-T & 38,4 & 89,1 & 89,5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Por qué importa.} Primero, la meta del 90\,\% resulta muy débil: una estación que entrega el 60\,\% de lo que le piden la cumple. MPC-T deja sin servir el 48,5\,\% de la demanda y aun así reporta 87,2\,\% de satisfacción. Segundo, la ``satisfacción contando rechazados'' mezcla dos escalas, porque al conductor rechazado le asignas cero mientras que el atendido nunca baja de 77\,\%; ser rechazado pesa unas cuatro veces más que irse sin un solo kWh. Tercero, este mismo puntaje entra en la recompensa del agente TD3, lo que explica parte de lo que pasa en la sección 3.4.
+
+\textbf{Cómo se corrige.} Define una satisfacción energética $f_i = \min(1,\, e_i/R_i)$, con $e_i$ la energía entregada y $R_i$ la pedida, y reporta su promedio y la fracción de conductores con $f_i \ge 0{,}9$, contando a los rechazados con $f_i = 0$. Conserva la métrica de EV2Gym solo para comparar con la literatura, con su definición correcta. Luego vuelve a evaluar las metas. Mi expectativa es que el RR-TA siga cumpliendo, porque su ENS$_{\mathrm{rel}}$ es de 2,7\,\%, pero los números de MPC-T, Oracle-T, TD3 y el Round Robin de EV2Gym van a empeorar mucho.
+
+\begin{ejemplo}[la métrica nueva se calcula con lo que ya guardas]
+\begin{lstlisting}[language=Python]
+import numpy as np
+
+def satisfaccion_energetica(evs, rechazados):
+    """f_i = energía entregada / energía pedida, con tope en 1.
+    evs: vehículos que ya salieron; rechazados: número de llegadas descartadas."""
+    f = []
+    for ev in evs:
+        pedida = ev.desired_capacity - ev.battery_capacity_at_arrival      # kWh
+        entregada = ev.current_capacity - ev.battery_capacity_at_arrival   # kWh
+        f.append(min(1.0, entregada / pedida) if pedida > 0 else 1.0)
+    f = np.array(f + [0.0] * rechazados)   # rechazados cuentan con cero
+    return f.mean(), (f >= 0.9).mean()      # promedio y nivel de servicio
+\end{lstlisting}
+Revisa que la lista de vehículos contenga solo los que ya salieron.
+\end{ejemplo}
+
+\begin{duda}
+Confirma que en tu configuración \texttt{desired\_capacity} vale 1. Si usas otro valor, la fórmula cambia, aunque la coincidencia con la Tabla III sugiere que es 1.
+\end{duda}
+
+% ------------------------------------------------------------
+\subsection{El agente de RL final no supera a la política aleatoria}
+\prioridad{Alta} \confirmado
+
+\begin{error}[el control negativo dice que el agente no aprendió algo útil]
+En la Tabla II, el TD3 final no es mejor que la política aleatoria en ninguna de las seis métricas.
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+ & Energía & Sat. & ENS$_{\mathrm{rel}}$ & Sobrecarga & Error seg. & Margen \\
+ & (kWh/d) & (\%) & (\%) & (kWh/d) & ($10^3$) & ($10^3$\,COP/d) \\
+\midrule
+TD3 final & 197,9 & 99,59 & 2,20 & 3,58 & 41,2 & 115,6 \\
+Aleatoria & 202,0 & 100,0 & 0,05 & 3,32 & 39,9 & 118,0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+La diferencia en sobrecarga probablemente no es significativa, pero en ningún caso el agente gana. La Figura 2 muestra además que el error de seguimiento en validación sube de unos 33.000 al inicio a valores entre 40.000 y 50.000 a medida que avanza el entrenamiento; entrenar empeoró la misma métrica con la que eliges los puntos de control. El texto solo dice que la sobrecarga del agente quedó \foreignlanguage{english}{\emph{``close to the random control''}}.
+\end{error}
+
+\textbf{Por qué importa.} El control negativo existe para responder una pregunta: ¿el agente aprendió algo que el azar no logra? Tus datos dicen que no, al menos en las métricas que reportas. El jurado lo va a ver en la tabla y te lo va a preguntar, y necesitas una explicación respaldada con evidencia.
+
+\textbf{La explicación de la sección IV-B no resiste las cuentas.} Escribes que la recompensa \foreignlanguage{english}{\emph{``penalizes each unsatisfied vehicle heavily''}} y que eso empujó al agente a entregar energía en lugar de seguir la consigna. Mira la escala de cada término.
+
+\begin{idea}[por qué una recompensa mal escalada sesga al agente]
+Un agente de RL maximiza la suma de los términos de su recompensa (\emph{reward}). Lo que decide su comportamiento es el tamaño relativo de cada término, no la intención de quien la diseñó. Si un término vale miles y otro vale decenas, el agente aprende a cuidar el primero y prácticamente ignora el segundo. Cuando los términos están en unidades distintas (kW$^2$, kW y una fracción sin unidades), los pesos 1, 100 y 1.000 no tienen ningún significado físico hasta que haces la cuenta con valores típicos del problema.
+
+La recompensa que usas (\texttt{SqTrError\_TrPenalty\_UserIncentives}, en \texttt{reward.py}) resta en cada paso el cuadrado de la desviación en kW, 100 por cada kW de sobrecarga y 1.000\,$(1-s)$ por cada vehículo que sale. Con tus números del régimen de larga estancia:
+\begin{itemize}[leftmargin=1.2em]
+\item Un vehículo que se va sin recibir nada cuesta $1000 \times R/C \approx 1000 \times 15{,}0/70 \approx 215$ (con $R \approx 202{,}1/13{,}44 \approx 15{,}0$\,kWh y la fórmula de la sección 3.3). Es lo mismo que desviarse $\sqrt{215} \approx 15$\,kW de la consigna durante un solo paso de 15 minutos.
+\item En un día del TD3 final, el término de satisfacción suma $13{,}44 \times 1000 \times (1 - 0{,}9959) \approx 55$; el de sobrecarga, $100 \times 3{,}58/0{,}25 \approx 1432$ (3,58\,kWh equivalen a 14,3\,kW·paso); el de seguimiento es del orden de decenas de miles (tu métrica da 41.200\,kW$^2$).
+\item Subir 1,8 puntos de satisfacción vale como mucho $13{,}44 \times 1000 \times 0{,}018 \approx 242$ por día, y la recompensa de entrenamiento mejoró 3.997.
+\end{itemize}
+El término de satisfacción no puede explicar el cambio. Es el más pequeño de los tres.
+\end{idea}
+
+\begin{duda}[una hipótesis que sí cuadra]
+En \texttt{reward.py} el seguimiento se mide contra el menor de tres valores (la consigna, la potencia que los vehículos conectados pueden tomar y la capacidad del transformador), mientras que el error de seguimiento que reportas (\texttt{get\_statistics} en \texttt{utils.py}) se mide contra la consigna sola. Es posible que el agente haya mejorado lo que optimiza (la desviación frente al mínimo) mientras empeoraba la métrica que reportas. Si es así, la conclusión correcta es ``la métrica reportada no es la optimizada'', y no ``la recompensa castiga mucho la satisfacción''. Revísalo descomponiendo la recompensa.
+\end{duda}
+
+\begin{tarea}
+\begin{enumerate}
+\item Descompón la recompensa en sus tres términos y repórtalos por separado en la grilla de prueba, para los puntos de control de 60.000 y de 850.000 pasos.
+\item Evalúa AFAP, el Round Robin de EV2Gym, la política aleatoria y MPC-T con la \emph{misma} función de recompensa del agente; puedes hacerlo después de simular, con las series de tiempo que guardas. Si el Round Robin obtiene mejor recompensa que el TD3, el agente no encontró el óptimo de su propia recompensa y el problema está en el entrenamiento, el estado o la exploración. Eso contradiría tu frase \foreignlanguage{english}{\emph{``The limit here is the design of the reward, not the training budget''}}.
+\item Escribe la regla de selección del punto de control (dices que la fijaste antes de entrenar; ponla en el texto) y quita \foreignlanguage{english}{\emph{``the author's choice''}}.
+\item Describe con qué escenarios entrenaste. EV2Gym solo distingue días hábiles de fines de semana al generar llegadas (tú mismo lo dices en II-C), así que separar 20 fechas de entrenamiento de las fechas de prueba, como en la bitácora de la semana 2, no separa nada; lo que separa los conjuntos es la semilla de los escenarios. Di que las semillas de entrenamiento no coinciden con las 50 de prueba ni con las 10 de validación.
+\item Reporta el presupuesto en episodios además de pasos: 60.000 pasos son 625 días simulados y 850.000 son 8.854.
+\item Si vuelves a entrenar, escala cada término por una magnitud física antes de pesarlo y elige los pesos preguntándote cuántos kW de desviación aceptarías a cambio de un conductor insatisfecho. Mejor aún, usa la recompensa alineada con el operador que propongo en la sección 3.5.
+\end{enumerate}
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{La comparación entre estrategias todavía no es justa}
+\prioridad{Alta} \confirmado
+
+\begin{error}[la estrategia ganadora tiene ventajas que las demás no tienen]
+Tu conclusión de que \foreignlanguage{english}{\emph{``only the transformer-aware Round Robin met every target evaluated''}} y la frase de V-A según la cual \foreignlanguage{english}{\emph{``EV2Gym's Round Robin, the RL agent and the two non-causal controllers all failed in that regime''}} comparan estrategias en condiciones distintas.
+\begin{enumerate}[label=(\alph*),leftmargin=1.5em]
+\item El RR-TA es la única que recibe la capacidad del transformador como límite duro, y la escribiste después de ver los resultados de larga estancia (lo dices en IV-C).
+\item El TD3 se entrenó solo con estancias largas. En IV-B escribes que sus resultados DC \foreignlanguage{english}{\emph{``are not evidence about RL''}}, pero en V-A lo cuentas entre las estrategias que fallaron. Las dos frases se contradicen.
+\item MPC-T resultó infactible en el 37,7\,\% de los pasos y aplicó potencia cero. En el código público (\texttt{ocmf\_mpc.py} y \texttt{eMPC.py}), cuando Gurobi declara el problema infactible el controlador imprime \texttt{INFEASIBLE (applying default actions)} y devuelve ceros. Eso es una debilidad de la implementación, que exige cumplir la energía de salida como restricción dura, y no del MPC como método.
+\item En DC no corriste MPC-E ni un oráculo que maximice energía con el límite de 100\,kW. Por eso no tienes cota superior para el RR-TA en ese régimen; es una consecuencia de lo que no se corrió, no una propiedad del problema.
+\item MPC-T, Oracle-T y la recompensa del TD3 persiguen la consigna de EV2Gym, una señal que ningún operador colombiano recibe. Tú mismo dices que con sesiones cortas es \foreignlanguage{english}{\emph{``a poor proxy for serving demand''}}. Comparar una estrategia que persigue el objetivo del operador con otras que persiguen otro objetivo decide el ganador antes del experimento.
+\end{enumerate}
+\end{error}
+
+\begin{idea}[qué significa que una comparación sea justa]
+Dos métodos se comparan con justicia cuando reciben la misma información, persiguen el mismo objetivo, respetan las mismas restricciones (aquí, el transformador), tienen un esfuerzo de ajuste parecido y se evalúan sobre los mismos escenarios. Si uno recibe más de cualquiera de estas cosas, la diferencia en resultados mezcla el mérito del método con esa ventaja, y no hay forma de separarlas después. En la literatura de RL es frecuente que la línea base (\emph{baseline}) quede débil por construcción; un jurado con experiencia lo busca de inmediato.
+\end{idea}
+
+\begin{ejemplo}[una misma capa de seguridad para todas las estrategias]
+Envuelve las acciones de cualquier estrategia causal con una proyección que reparta proporcionalmente la potencia cuando el total supera el límite.
+\begin{lstlisting}[language=Python]
+import numpy as np
+
+def capa_seguridad(acciones, p_max_puerto, p_trafo, margen=0.999):
+    """Escala las acciones (0 a 1) para no superar el transformador."""
+    p = np.clip(acciones, 0.0, 1.0) * p_max_puerto   # kW pedidos por puerto
+    limite = margen * p_trafo
+    if p.sum() > limite:
+        p = p * (limite / p.sum())                   # reparto proporcional
+    return p / p_max_puerto                          # de vuelta a la escala 0 a 1
+\end{lstlisting}
+Con esta capa, el TD3 y el MPC respetan los 100\,kW por construcción, igual que el RR-TA, y AFAP más la capa se convierte en un reparto proporcional, otra línea base natural y causal. Entonces las diferencias que encuentres dependen solo de cómo cada estrategia reparte la potencia, que es la pregunta de tu tesis.
+\end{ejemplo}
+
+\begin{tarea}
+\begin{enumerate}
+\item Aplica la misma capa de seguridad a todas las estrategias causales, o di explícitamente que solo el RR-TA la tiene y matiza las conclusiones.
+\item Agrega la línea base de límite fijo de 12,5\,kW por puerto (sección 3.2); es lo que haría un instalador sin gestión inteligente.
+\item Corre en DC un oráculo que maximice la energía entregada con el límite de 100\,kW e información perfecta. Esa es la cota superior que hoy dices que no existe.
+\item Reformula el MPC con restricciones blandas de energía a la salida (una holgura penalizada) y con el objetivo del operador, entregar la mayor energía posible dentro del límite. Así nunca queda infactible.
+\item Para el RL tienes dos caminos. El completo es reentrenar el TD3 en el régimen DC con la capa de seguridad y una recompensa alineada con el operador, por ejemplo la energía entregada en el paso dividida por una energía de referencia. El corto es quitar el TD3 de las conclusiones DC y corregir V-A. Escoge uno según el tiempo; hablémoslo.
+\end{enumerate}
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{Qué es causal y cuánto vale conocer la hora de salida}
+\prioridad{Alta} \confirmado
+
+\begin{error}[el Round Robin de EV2Gym y el TD3 usan información futura a través de la consigna]
+Marcas como no causales solo los MPC y los oráculos, porque conocen la hora de salida de cada vehículo. Pero la consigna que sigue el Round Robin de EV2Gym, y que el TD3 recibe en su estado, también usa esa información. En \texttt{utils.py}, \texttt{generate\_power\_setpoints} recorre todos los vehículos del día (\texttt{env.EVs\_profiles}), calcula para cada uno la energía pedida y la reparte desde su llegada hasta \texttt{ev.time\_of\_departure}. Luego \texttt{median\_smoothing} aplica una mediana centrada de cinco pasos (de $t-2$ a $t+2$), así que la consigna del paso $t$ ya incluye a los vehículos que llegan en $t+1$. El Round Robin y el TD3 reciben, por la vía de la consigna, información sobre horas de salida, energía pedida y llegadas del paso siguiente.
+\end{error}
+
+Esto tiene dos consecuencias en tu texto.
+\begin{itemize}[leftmargin=1.2em]
+\item En IV-C escribes \foreignlanguage{english}{\emph{``Against every other causal strategy\ldots{} Round Robin had lower tracking error''}}. El Round Robin de EV2Gym no es causal en sentido estricto.
+\item En IV-E afirmas que la brecha entre MPC-T y el Round Robin \foreignlanguage{english}{\emph{``is an upper bound on what an operator could gain by collecting declared departure times''}}. Hay tres problemas. MPC-T conoce también las llegadas dentro de su horizonte (lo dices en IV-A), así que la brecha mezcla horas de salida con llegadas futuras. MPC-T optimiza y el Round Robin es una heurística, así que la brecha incluye además el valor de optimizar. Y el Round Robin ya usa la hora de salida a través de la consigna. Tampoco es una cota superior, porque MPC-T queda 44,6\,\% por encima del oráculo y un controlador mejor con la misma información podría ganar más.
+\end{itemize}
+
+\begin{idea}[política causal y valor de la información]
+Una política es causal cuando la decisión del paso $t$ usa solo información disponible en $t$: qué vehículos están conectados, cuánto han recibido, la capacidad del transformador, la hora. El valor de una información es la diferencia entre el \emph{mismo} método con y sin esa información, dejando todo lo demás fijo. Si comparas dos métodos distintos que además tienen informaciones distintas, la diferencia mezcla ambas cosas y no puedes atribuirla a ninguna.
+\end{idea}
+
+\begin{ejemplo}[una tabla de información para el artículo]
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lXXXXX@{}}
+\toprule
+Estrategia & Vehículos conectados & Capacidad del transformador & Energía pedida & Hora de salida & Llegadas futuras \\
+\midrule
+AFAP & sí & no & no & no & no \\
+RR-TA & sí & sí & no & no & no \\
+RR de EV2Gym & sí & no & indirecta (consigna) & indirecta (consigna) & paso siguiente (consigna) \\
+TD3 & sí & solo por la recompensa & indirecta (consigna) & indirecta (consigna) & paso siguiente (consigna) \\
+MPC-T, MPC-E & sí & sí & sí & sí & sí, en el horizonte \\
+Oráculos & sí & sí & sí & sí & todo el día \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Y una reescritura posible de IV-E:
+
+\begin{eng}
+MPC\_TrackingG2V ended 44.6\% above the tracking oracle, and EV2Gym's Round Robin 128.8\% above it. Because the MPC also knows the arrivals inside its horizon and optimizes over them, this gap indicates what richer information and optimization can add together; it does not isolate, or bound, the value of departure times alone.
+\end{eng}
+\end{ejemplo}
+
+\begin{tarea}
+\begin{enumerate}
+\item Pon la tabla de información en la sección IV-A y corrige las frases que llaman causal al Round Robin de EV2Gym.
+\item Si quieres medir el valor de conocer la hora de salida, corre el mismo MPC dos veces, una con la salida real y otra con una salida estimada (por ejemplo, llegada más la duración media de 42 minutos), sin llegadas futuras en ninguna de las dos. La diferencia entre ambas es el valor de esa información.
+\end{enumerate}
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{Falta la formulación matemática del MPC y del RL}
+\prioridad{Alta} \confirmado
+
+\begin{error}[el artículo describe los modelos solo con palabras]
+Las únicas ecuaciones del artículo, (1) a (3), definen métricas. No están escritos el problema de optimización del MPC ni el de los oráculos, ni el proceso de decisión de Markov del agente. Un jurado de Ingeniería Industrial espera ver conjuntos, parámetros, variables, función objetivo y restricciones, con unidades. Sin eso no puede verificar, por ejemplo, que la restricción del transformador esté en kW, que el balance de energía use $\Delta t = 0{,}25$\,h o qué significa exactamente ``desviación cuadrática''.
+\end{error}
+
+\begin{ejemplo}[una plantilla con tu notación]
+Sea $\mathcal{I}$ el conjunto de puertos y $\mathcal{K}_t = \{t,\dots,t+H-1\}$ el horizonte, con $H = 10$ pasos (2,5\,h) y $\Delta t = 0{,}25$\,h. Las variables son la potencia $P_{i,k} \ge 0$ (kW), la energía en la batería $E_{i,k}$ (kWh) y una holgura $\sigma_i \ge 0$ (kWh) para la energía que falte a la salida.
+\begin{align*}
+\min \quad & \sum_{k \in \mathcal{K}_t} \Big(\sum_{i \in \mathcal{I}} P_{i,k} - P^{\ast}_{k}\Big)^{2} \;+\; \rho \sum_{i} \sigma_i
+  && \text{(kW$^2$ y kWh, con $\rho$ que convierte unidades)}\\
+\text{s.a.} \quad & 0 \le P_{i,k} \le P^{\max}\, a_{i,k} && \text{(50\,kW; $a_{i,k}=1$ si hay vehículo)}\\
+& \textstyle\sum_{i} P_{i,k} \le P^{\mathrm{tr}} && \text{(100\,kW, potencia y no energía)}\\
+& E_{i,k+1} = E_{i,k} + \eta\, P_{i,k}\, \Delta t && \text{(kWh = kW $\times$ h)}\\
+& E_{i,k} \le C && \text{(70\,kWh)}\\
+& E_{i,d_i} \ge E^{\mathrm{req}}_i - \sigma_i && \text{(salida en $d_i$, restricción blanda)}
+\end{align*}
+Para la versión que maximiza energía cambias la función objetivo por $\max \sum_{k}\sum_{i} P_{i,k}\Delta t - \rho\sum_i \sigma_i$. Fíjate que el error de seguimiento queda en kW$^2$ sumados sobre pasos, que no es una energía; en las tablas escríbelo así.
+\end{ejemplo}
+
+Para el RL escribe el estado (los 27 elementos, qué es cada uno y cómo se normaliza), la acción (ocho valores continuos entre 0 y 1 como fracción de 50\,kW), la recompensa con sus tres términos y unidades, $\gamma = 0{,}99$, la duración del episodio (96 pasos), la arquitectura, el ruido de exploración $\mathcal{N}(0;\,0{,}1)$ y el presupuesto. Todo eso está en la tabla 5 de tu bitácora; súbelo al artículo. Ten en cuenta que el estado no incluye la energía que le falta a cada vehículo, así que el agente no puede saber a quién le urge más la carga; vale la pena discutirlo.
+
+\begin{duda}[de dónde sale MPC\_TrackingG2V]
+En la versión pública de EV2Gym, las clases MPC de solo carga (\texttt{eMPC\_G2V} y \texttt{OCMF\_G2V}) minimizan un costo lineal $f^\top u$ con $f = T \cdot |\text{precio}|$; no encontré un MPC que minimice el error cuadrático de seguimiento. Dime de dónde sale \texttt{MPC\_TrackingG2V} y escribe su función objetivo.
+\end{duda}
+
+\begin{duda}[el signo de MPC\_EnergyMaxG2V y los precios que recibe]
+\texttt{eMPC\_G2V} minimiza el costo con precios positivos (\texttt{abs(env.charge\_prices)}). Con un precio plano, minimizar el costo significa entregar la menor energía que permitan las restricciones de salida, que es lo contrario de \foreignlanguage{english}{\emph{``delivering as much energy as the transformer allows''}}. Revisa el signo en tu implementación. Revisa también qué precios recibe: si son los holandeses, una decisión de control sí depende del precio, en contra de lo que afirmas en la sección VI (\foreignlanguage{english}{\emph{``No control decision in this study depends on price''}}).
+\end{duda}
+
+\begin{error}[MPC-E entrega más energía que AFAP, que según tu texto es imposible]
+En IV-C dices que MPC-E obtuvo \foreignlanguage{english}{\emph{``3.1 COP per day more margin''}} que AFAP, es decir, $3{,}1/584{,}24 \approx 0{,}005$\,kWh más por día. En II-D y IV-E afirmas que ninguna política puede entregar más energía que AFAP a las mismas llegadas. Seguramente es tolerancia numérica o redondeo; dilo en el texto para que el jurado no lo lea como una contradicción.
+\end{error}
+
+\begin{tarea}
+\begin{enumerate}
+\item Escribe la formulación del MPC (y de los oráculos, que son el mismo modelo con horizonte de un día) con unidades.
+\item Escribe el proceso de decisión de Markov del agente con la recompensa como ecuación.
+\item Resuelve las dos dudas sobre los MPC y aclara la diferencia de 3,1\,COP.
+\end{enumerate}
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{\texorpdfstring{El nivel 1,6× no es un 60\,\% más de demanda}{El nivel 1,6x no es un 60 por ciento más de demanda}}
+\prioridad{Alta} \confirmado
+
+\begin{error}[los niveles de demanda no escalan con el multiplicador]
+En la sección V escribes \foreignlanguage{english}{\emph{``The growth case of the proposal, 60\% more demand, is the 1.6× level''}}. Con tus propios números en el régimen DC:
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Nivel & Llegadas ofrecidas/día & kWh pedidos/día & Crecimiento en kWh & Crecimiento en llegadas \\
+\midrule
+1,0× & 38,9 & 627 & -- & -- \\
+1,3× & 47,3 & 762,6 & +21,6\,\% & +21,6\,\% \\
+1,6× & 57 & 911 & +45,3\,\% & +46,5\,\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+El 1,3× es un 22\,\% más de demanda y el 1,6× es un 45\,\%. Un 60\,\% más de energía serían unos 1.003\,kWh por día, un nivel que no simulaste.
+\end{error}
+
+\textbf{La causa está en el generador de llegadas (verificada en el código).} \texttt{EV\_spawner} sortea, en cada paso y para cada puerto, una llegada con probabilidad $\tau(t) \times \text{multiplicador} \times (15/60)/100$, pero solo si el puerto estuvo libre en $t$, $t-1$ y $t-2$. Con el perfil de llegadas público de EV2Gym (\texttt{distribution-of-arrival.csv}) y un multiplicador de 30, si los ocho puertos estuvieran siempre libres habría en promedio unos 59,5 sorteos exitosos por día hábil. A 0,267× la misma cuenta da 15,9, coherente con tus ``unas 14 llegadas por día'', lo que me hace pensar que tu copia usa la misma fórmula. A 1,0× con sesiones DC tú cuentas 38,9 llegadas ofrecidas, unos dos tercios. El tercio restante son sorteos que cayeron en un puerto bloqueado cuando otro puerto sí estaba libre. Tu cota inferior no los cuenta como rechazados porque ``otro puerto pudo absorberlos'', pero el simulador tampoco los atiende, así que desaparecen de ambos lados.
+
+Hay un segundo efecto. La condición sobre $t-1$ y $t-2$ obliga a que pasen al menos tres pasos (45 minutos) entre la salida de un vehículo y la llegada del siguiente al mismo puerto. Con sesiones de 42,7 minutos en promedio, cada sesión ocupa el puerto unos $42{,}7 + 45 \approx 88$ minutos, el doble de la sesión. Tu ocupación de 14,1\,\% no incluye ese tiempo muerto, que no existe en una estación DC real, donde el siguiente carro se conecta apenas sale el anterior.
+
+\textbf{Por qué importa.} Tu caso de crecimiento corresponde a +45\,\% y no a +60\,\%. Tu regla de transferencia (hasta 47 llegadas y 763\,kWh por día con 8 puertos; 57 y 911 con 10 puertos) depende de una definición de demanda que cambia con la ocupación. Y es posible que el número de puertos que necesitas a 1,6× esté inflado por esos 45 minutos de puerto bloqueado.
+
+\begin{tarea}
+\begin{enumerate}
+\item Define los niveles de demanda por energía ofrecida. Calibra el multiplicador para obtener 1,3 y 1,6 veces los 627\,kWh, y agrega el caso de +60\,\% (unos 1.003\,kWh/día).
+\item Mejor aún, genera las llegadas a nivel de estación, por fuera de EV2Gym. Un proceso de Poisson con tasa proporcional a $\tau(t)$ asigna cada conductor a cualquier puerto libre, sin tiempo muerto, y lo rechaza si no hay ninguno. Ya tienes un módulo que inyecta duraciones en el generador; extiéndelo.
+\item Reporta las dos cotas de la DNS, sobre todo con estancias largas, donde hoy solo aparece la inferior.
+\end{enumerate}
+\end{tarea}
+
+\begin{ejemplo}[llegadas a nivel de estación]
+\begin{lstlisting}[language=Python]
+import numpy as np
+rng = np.random.default_rng(semilla)
+# tau: perfil de llegadas de EV2Gym, reordenado para empezar a las 5:00
+lam = tau / tau.sum() * llegadas_dia        # llegadas esperadas por paso
+rechazados = 0
+for t in range(96):
+    for _ in range(rng.poisson(lam[t])):    # conductores que llegan en el paso t
+        puerto = puerto_libre(t)            # cualquier puerto libre, sin espera
+        if puerto is None:
+            rechazados += 1                 # aquí sí sabes cuántos se van
+        else:
+            asignar(puerto, t, duracion=rng.lognormal(mu, sigma))
+\end{lstlisting}
+\end{ejemplo}
+
+\begin{duda}
+Confirma que tu copia de EV2Gym usa el mismo \texttt{EV\_spawner} y el mismo archivo de llegadas, y mide cuánto cambian el umbral de 1,3× y la recomendación de diez puertos sin el tiempo muerto de tres pasos.
+\end{duda}
+
+% ------------------------------------------------------------
+\subsection{Una fila de la Tabla IV no cuadra}
+\prioridad{Alta} \confirmado
+
+\begin{error}[Round Robin a 1,6×: la DNS y el margen se contradicen]
+Para la fila del Round Robin de EV2Gym a 1,6× (14 puertos, 400\,kVA) reportas DNS de 13,1\,\% y margen de 512,6 miles de COP por día. Como el margen es $E \times 584{,}24$, ese margen corresponde a $E = 877{,}4$\,kWh entregados; con 911\,kWh pedidos, la DNS sería 3,7\,\%. Al revés, una DNS de 13,1\,\% implica $E = 791{,}7$\,kWh y un margen de 462,5 miles. Las demás filas cuadran con menos de medio punto de diferencia.
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Fila & Margen & kWh & DNS & DNS \\
+ & ($10^3$\,COP/d) & implícitos & implícita (\%) & reportada (\%) \\
+\midrule
+RR-TA, 1,3×, 8 puertos & 403,6 & 690,8 & 9,4 & 9,0 \\
+AFAP, 1,3×, 300\,kVA & 419,6 & 718,2 & 5,8 & 5,5 \\
+RR-TA, 1,6×, 10 puertos & 484,0 & 828,4 & 9,1 & 9,0 \\
+AFAP, 1,6×, 10 puertos & 515,1 & 881,7 & 3,2 & 3,2 \\
+\textbf{RR, 1,6×, 14 puertos} & \textbf{512,6} & \textbf{877,4} & \textbf{3,7} & \textbf{13,1} \\
+\bottomrule
+\end{tabular}
+\end{center}
+El margen de esa fila se parece mucho al de AFAP (515,1); quizá se copió de la fila de arriba. La otra posibilidad es que con 14 puertos la demanda no sea 911\,kWh, lo que contradiría el supuesto de demanda constante.
+\end{error}
+
+\begin{tarea}
+Genera todas las tablas directamente desde el registro de resultados (ya tienes la infraestructura) y agrega una prueba automática que verifique que margen $= E\,(p-c)$ y que la DNS sea coherente con la energía entregada y la pedida.
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{Rigor estadístico y forma de reportar}
+\prioridad{Media} \confirmado{} \pordudar
+
+\begin{idea}[qué es un intervalo de confianza y qué no es]
+Tomemos tu ejemplo: AFAP entrega 202,1\,kWh por día con intervalo de 95\,\% [192,9; 211,7]. Esto quiere decir que, si repitieras el experimento muchas veces con 50 semillas nuevas cada vez, el 95\,\% de los intervalos construidos así contendría el promedio verdadero de la estación \emph{simulada}. El intervalo habla del promedio y no de un día cualquiera. Además, mide solo la incertidumbre por haber usado 50 semillas y no la incertidumbre del modelo (datos holandeses, duraciones supuestas). Una diferencia entre dos estrategias es estadísticamente significativa cuando el intervalo de la diferencia pareada excluye el cero.
+\end{idea}
+
+\begin{error}[cuatro problemas de reporte]
+\begin{enumerate}[leftmargin=1.5em]
+\item \textbf{Las Tablas II y III no tienen intervalos.} El lector no puede saber si 0,47\,\% y 0,49\,\% son distintos. Agrega la semiamplitud del intervalo o una columna con la diferencia pareada frente a una referencia (AFAP o RR-TA).
+\item \textbf{Mezclas denominadores.} Para AFAP escribes \foreignlanguage{english}{\emph{``on 28 of the 50 seeds''}} (II-D y IV-C), y para el TD3, \foreignlanguage{english}{\emph{``18 of 100 days''}}. Usa siempre días (escenarios), o reporta ambos.
+\item \textbf{Significativo no es lo mismo que importante.} El efecto de AFAP sobre la tensión mínima del alimentador es de 0,13 mili-p.u. [0,10; 0,16], es decir 0,00013\,p.u., unas 380 veces menos que los 0,05\,p.u. que separan la tensión nominal del límite inferior; la reducción de 10,6\,\% que logra el RR-TA equivale a 0,000014\,p.u. Son diferencias distintas de cero en lo estadístico e irrelevantes en lo físico. Dilo con esas palabras.
+\item \textbf{Faltan detalles del bootstrap en el protocolo}: número de remuestreos (10.000 según la bitácora), método del intervalo (percentil) y unidad de remuestreo.
+\end{enumerate}
+\end{error}
+
+\begin{duda}[¿promedio de cocientes o cociente de promedios?]
+Varios porcentajes no coinciden con los que se calculan a partir de tus promedios. La reducción del error de seguimiento del Round Robin es 75,5\,\% en el texto y $(56{,}3-13{,}6)/56{,}3 = 75{,}8$\,\% con la Tabla II (fuera del rango que permite el redondeo, de 75,7\,\% a 76,0\,\%). La ENS$_{\mathrm{rel}}$ del RR-TA es 2,7\,\% en la Tabla III y 2,84\,\% con los márgenes de la Tabla V. La DNS de AFAP con estancias largas es 34,3\,\%, pero $1 - 202{,}1/327 = 38{,}2$\,\%. Sospecho que en las tablas promedias los cocientes de cada escenario y en el texto a veces divides promedios. Las dos opciones son válidas, pero debes declarar cuál usas y usarla siempre.
+\end{duda}
+
+\begin{ejemplo}[por qué dan distinto]
+Día A: se piden 100\,kWh y se entregan 90 (10\,\% sin servir). Día B: se piden 400\,kWh y se entregan 240 (40\,\% sin servir). El promedio de los cocientes es 25\,\%; el cociente de los promedios es $(500-330)/500 = 34$\,\%. El primero pesa igual cada día; el segundo pesa igual cada kWh. Para un operador que se pregunta qué fracción de la energía dejó de vender, la respuesta es la segunda.
+\end{ejemplo}
+
+\begin{tarea}
+\begin{enumerate}
+\item Agrega intervalos a las Tablas II y III y unifica los denominadores.
+\item Declara en II-B cómo agregas los porcentajes y revisa que el texto use lo mismo.
+\item Di que los intervalos son por comparación, o ajusta por comparaciones múltiples (Holm o Bonferroni), porque haces muchas.
+\end{enumerate}
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{El modelo de sesiones DC}
+\prioridad{Media} \pordudar
+
+\begin{duda}[tres supuestos que pueden cambiar tus resultados DC]
+\begin{enumerate}[leftmargin=1.5em]
+\item \textbf{La duración es fija y no depende de la carga recibida.} En una estación DC el conductor se va cuando llega a la carga que quería o cuando se le acaba el tiempo. Si el RR-TA le da menos potencia, en la realidad se quedaría más tiempo; en tu modelo, en cambio, la energía no entregada se pierde. Eso sobreestima la energía no servida de las estrategias gestionadas y subestima la ocupación de los puertos.
+\item \textbf{El paso de 15 minutos es grueso para sesiones de 42.} Tus sesiones duran entre uno y tres pasos, y la Figura 1 muestra que cerca del 13\,\% dura exactamente 15 minutos. Decidir cada 15 minutos en una sesión de 30 es muy poco control. EV2Gym acepta otro paso de tiempo (\texttt{timescale}), y el filtro de mediana se ajusta solo.
+\item \textbf{La energía por sesión no se reescaló} (16,1\,kWh frente a 22,0 de la referencia DC). Lo declaras, pero como la restricción del transformador depende de la energía, el umbral en kWh puede cambiar si la reescalas.
+\end{enumerate}
+\end{duda}
+
+\begin{tarea}
+\begin{enumerate}
+\item Corre una sensibilidad en la que la salida sea el mayor valor entre la duración sorteada y el tiempo que el vehículo necesita para recibir su energía con la potencia asignada, con un tope (por ejemplo, 90 minutos).
+\item Repite los resultados clave (AFAP y RR-TA a 1,0× y 1,6×) con pasos de 5 minutos.
+\item Corre el caso con energía reescalada a 22\,kWh y reporta cómo cambia el umbral.
+\end{enumerate}
+\end{tarea}
+
+% ------------------------------------------------------------
+\subsection{Red, transformador y regulación}
+\prioridad{Media} \confirmado{} \pordudar
+
+\begin{error}[la banda de ±5\,\% no está en el RETIE como límite de la red]
+Atribuyes al RETIE la banda de ±5\,\% (introducción, II-B y V-D). Revisé el texto completo del RETIE en sus dos versiones, la Resolución 40117 de 2024 (compilación del normograma de la DIAN) y la Resolución 40284 de 2026 (gestor normativo de la CREG), y en ninguna hay una banda de ±5\,\% para la tensión de la red de distribución. Lo que sí aparece es lo siguiente.
+\begin{itemize}[leftmargin=1.2em]
+\item El Título 9 del Libro 3 (clasificación de los niveles de tensión) toma de la NTC 1340 solo los niveles, por ejemplo media tensión entre 1\,kV y 57,5\,kV con 11,4 y 13,2\,kV como tensiones normalizadas. No toma tolerancias.
+\item El único ±5\,\% sobre variación de tensión está en el artículo 3.20.2, literal i, y se refiere a la alimentación de luminarias de alumbrado público con balastos electromagnéticos.
+\item Los demás límites tampoco aplican a tu caso: ±3\,\% en alimentadores de áreas de asistencia vital en instituciones de salud, caídas de tensión de diseño de 3\,\% en la acometida y 5\,\% en alimentadores y circuitos ramales de una instalación, y la marcación $+5$\,\%/$-10$\,\% de la tensión de salida de los inversores.
+\end{itemize}
+El mismo artículo 3.20.2 remite la operación de las redes de distribución a la Resolución CREG 070 de 1998 y a las normas que la modifiquen. La que fija el rango es la Resolución CREG 024 de 2005, que modificó el numeral 6.2.1.1 de ese reglamento y establece que, en estado estacionario, la tensión no puede bajar del 90\,\% ni superar el 110\,\% de la nominal durante más de un minuto (la CREG lo reitera en su Concepto 1283 de 2020). La banda de 0,95 a 1,05\,p.u. que usas es el valor fijo de EV2Gym en \texttt{get\_statistics}.
+\end{error}
+
+\begin{tarea}[qué citar]
+\begin{enumerate}
+\item Para el límite regulatorio cita la Resolución CREG 024 de 2005 (numeral 6.2.1.1 del Reglamento de Distribución, Resolución CREG 070 de 1998) y presenta los ±5\,\% como un criterio de modelación más estricto.
+\item Para el RETIE cita la versión vigente, la Resolución 40284 de 2026 (23 de junio de 2026, Diario Oficial 53.539 del 1 de julio de 2026). Según la nota de vigencia del normograma de la DIAN, la 40117 de 2024 queda derogada con ella una vez cumplidos los periodos transitorios, y el artículo 3 de la 40284 dice que el periodo de productos terminó el 31 de diciembre de 2025. Usa el RETIE para los niveles de tensión, no para la banda.
+\end{enumerate}
+\begin{eng}
+Voltage is checked against a ±5\% band, the default in EV2Gym, which is stricter than the 90--110\% steady-state range that CREG Resolution 024 of 2005 sets for distribution networks.
+\end{eng}
+\end{tarea}
+
+\begin{duda}[la NTC 1340]
+No pude consultar el texto de la NTC 1340, que es una norma de ICONTEC de acceso pago, así que no sé si fija tolerancias de la tensión de servicio ni cuáles. Si quieres citarla, consúltala en la biblioteca y cita la edición y el numeral exactos. Mientras tanto, la referencia verificable para el rango de tensión es la CREG 024 de 2005.
+\end{duda}
+
+Otros puntos de esta parte:
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{Di por qué 100\,kW.} En la bitácora de la semana 1 cuentas que barriste 250, 150, 100, 75 y 50\,kW y escogiste el mayor valor con sobrecarga bajo AFAP. En el artículo solo dice \foreignlanguage{english}{\emph{``Set in this study''}}. Es una decisión legítima (necesitabas una restricción activa), pero el lector debe saber que el problema se construyó para que el transformador limitara.
+\item \textbf{El factor de potencia de 0,894 es el umbral regulatorio, no el del cargador.} Los cargadores DC con rectificador activo suelen operar cerca de 1 (revisa la ficha técnica de un cargador de 50\,kW). Usar 0,894 es conservador; dilo. Con 0,98, por ejemplo, 100\,kW equivalen a unos 102\,kVA.
+\item \textbf{El criterio del percentil 95 permite unos cinco días de cada cien por encima del límite.} Justifícalo con la capacidad de sobrecarga temporal del transformador o usa el máximo.
+\item \textbf{En la Tabla I el transformador aparece en kW;} los transformadores se especifican en kVA. Escribe, por ejemplo, ``100 kW (112.5 kVA class at PF 0.894)''.
+\item \textbf{La métrica de tensión esconde el efecto local.} La tensión mínima diaria del alimentador la fija la carga de fondo; reporta además la tensión en el nodo de la estación.
+\end{itemize}
+
+% ------------------------------------------------------------
+\subsection{Supuestos económicos}
+\prioridad{Media} \verificado{} \pordudar
+
+\textbf{Qué es el 1.450 en tu artículo.} Es el precio por kWh que paga el usuario por la recarga (\foreignlanguage{english}{\emph{retail price}} en la Tabla I). El costo del operador es la compra de energía a 865,76\,COP/kWh (\foreignlanguage{english}{\emph{purchase cost}}), y el margen por kWh es la diferencia, 584,24\,COP/kWh.
+
+\begin{idea}[el IVA no reduce tu margen, y conviene decirlo en el artículo]
+La DIAN respondió exactamente esta pregunta en el Concepto 100208192-840 del 5 de junio de 2025, de la Subdirección de Normativa y Doctrina: ``La venta de energía eléctrica destinada a la recarga de vehículos eléctricos [\ldots] se encuentra excluida del Impuesto sobre las ventas''. La razón es que el artículo 424 del Estatuto Tributario excluye la energía eléctrica sin condicionar su uso, y cuando se trata como servicio aplica la exclusión del numeral 11 del artículo 476. Por eso los 1.450\,COP/kWh no llevan IVA que haya que descontar y tu margen de 584,24\,COP/kWh se mantiene.
+
+Hay dos matices que debes conocer. Primero, \emph{excluido} no es lo mismo que \emph{exento}: en una operación excluida el operador no cobra IVA, pero tampoco puede descontar el IVA que paga en sus compras (cargadores, mantenimiento, software), y ese IVA se vuelve costo. Eso no toca tu margen bruto por kWh, pero sí la inversión que hoy no modelas. Segundo, la exclusión cubre la venta de energía, y el mismo concepto dice que le corresponde al contribuyente determinar si su operación es una venta de energía. Cobros distintos, como tiempo de parqueo o penalidades por ocupación, podrían tener otro tratamiento.
+\end{idea}
+
+\begin{ejemplo}[una frase para el artículo]
+\begin{eng}
+Under DIAN Concept 100208192-840 of 2025, the sale of electricity for EV charging is excluded from VAT (Article 424 of the Tax Statute), so the retail price carries no VAT and the margin per kWh is $p - c$.
+\end{eng}
+\end{ejemplo}
+
+\begin{duda}[de qué fecha y de qué red es el precio de 1.450]
+Dices que es el precio que Enel anunció en agosto de 2025 [10], pero la dirección de esa referencia hoy redirige a la portada de Enel y no pude abrirla. En la prensa encontré dos datos. Xataka (26 de noviembre de 2024) reporta para los puntos públicos de Enel X 1.450\,COP/kWh en carga rápida y 1.250 en carga lenta; Valora Analitik (17 de febrero de 2025) reporta 1.690 en carga rápida y 1.490 en carga lenta. Tu referencia puede hablar de otra red, por ejemplo la red pública de Bogotá, con otra tarifa, así que no lo marco como error. Pero si el precio vigente de carga rápida es 1.690, el margen sube de 584,24 a 824,24\,COP/kWh, un 41\,\% más, y tus márgenes absolutos y costos del límite se multiplican por 1,41; las participaciones relativas no cambian, por tu propia álgebra. Guarda una copia fechada de la fuente (PDF o captura), revisa la tarifa actual de carga rápida en la aplicación de Enel X y usa el precio de la misma red y del mismo tipo de cargador que modelas.
+\end{duda}
+
+\begin{duda}[otros dos supuestos]
+\begin{enumerate}[leftmargin=1.5em]
+\item \textbf{``Cota inferior''.} Afirmas que toda cifra de rentabilidad es una cota inferior porque el precio es de 2025 y el costo de 2026. Eso solo es cierto si el precio subió, y los datos de prensa de arriba sugieren que sí; pero entonces lo correcto es usar el precio actual, no llamar cota inferior a una cifra desactualizada. Además, el margen bruto no incluye inversión, operación, mantenimiento, arriendo ni comisiones de pago, así que no es rentabilidad. Llámalo \foreignlanguage{english}{\emph{gross energy margin}} y di qué excluye.
+\item \textbf{Falsa precisión.} 865,7615\,COP/kWh con cuatro decimales sugiere una exactitud que no tiene sentido; escribe 865,76.
+\end{enumerate}
+\end{duda}
+
+% ------------------------------------------------------------
+\subsection{Escritura académica y referencias}
+\prioridad{Media} \confirmado{} \pordudar
+
+\begin{error}[el texto justifica decisiones con la asesora y no con argumentos]
+Tres frases del artículo usan a la asesora o al autor como razón. En III-C, \foreignlanguage{english}{\emph{``Following the advisor's decision, neither duration model is treated as the correct one''}}; en IV-B, \foreignlanguage{english}{\emph{``the advisor asked for the best agent to be trained until its learning curve stabilized''}} y \foreignlanguage{english}{\emph{``the author's choice''}}. En un artículo cada decisión se justifica por sí misma.
+\end{error}
+
+\begin{ejemplo}[reescrituras posibles]
+\begin{eng}
+Because no Colombian session data are available to choose between them, neither duration model is treated as the correct one, and every result is reported under both.
+
+To rule out an insufficient training budget, the three agents were retrained until their validation curves met a predefined convergence criterion.
+
+The model carried into every later result is the seed-102 agent at 850,000 steps, selected by the rule fixed before training: [state the rule].
+\end{eng}
+\end{ejemplo}
+
+Otros puntos de escritura:
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{Falta una revisión de literatura.} Tienes 17 referencias y unas seis son académicas. El jurado va a preguntar cómo se comparan tus resultados con los de otros. Agrega una subsección con 10 a 15 trabajos sobre heurísticas de carga con límite de transformador, MPC y RL aplicados a carga de vehículos eléctricos (busca revisiones recientes en IEEE Xplore y Scopus), simuladores y datos abiertos (por ejemplo, los de Caltech, ACN-Data y ACN-Sim, que además tienen duraciones reales de sesiones) y estudios en Colombia o América Latina. La frase \foreignlanguage{english}{\emph{``To our knowledge, no study has evaluated\ldots''}} necesita esa búsqueda detrás.
+\item \textbf{Cifras de la introducción (verificadas).} Las dos cifras del primer párrafo están bien. El boletín de FENALCO y ANDI de agosto de 2026, con datos del RUNT, dice que entre enero y agosto de 2026 se matricularon 33.889 vehículos eléctricos nuevos, un crecimiento de 222,5\,\% frente al mismo periodo de 2025. El comunicado de MinEnergía del 29 de octubre de 2025 reporta 229 estaciones de carga pública, 401 cargadores y 746 conectores, concentrados en Antioquia, Bogotá y Valle del Cauca. Agrega a las referencias [1] y [3] la dirección web y la fecha de consulta. No encontré la fuente de las 447 estaciones y 844 conectores que usaste en la presentación y la bitácora; si no la tienes, no las uses.
+\item \textbf{La resolución de interoperabilidad (duda).} Ese mismo comunicado anunciaba el proyecto de resolución con conectores Tipo 2 y CCS2 y el protocolo OCPI. La prensa (ABC Economía y un despacho de abogados) reporta que se expidió como Resolución 40559 del 21 de noviembre de 2025, pero no la encontré en las compilaciones oficiales. Si se expidió, la frase de V-F \foreignlanguage{english}{\emph{``If it is issued''}} quedó desactualizada y debes revisar si cambia la exigencia de CCS Combo 1 de la Resolución 40223 de 2021.
+\item \textbf{Ecuaciones.} Las ecuaciones (1) a (3) están como texto plano; escríbelas con el editor de ecuaciones y define cada símbolo.
+\item \textbf{Figuras con jerga interna.} La leyenda de la Figura 1 incluye \foreignlanguage{english}{\emph{``Checkpoint A rule: 90 min (Enel Colombia 2024\ldots)''}}, una regla y una fuente que no aparecen en el texto ni en las referencias. La Figura 3 habla de \foreignlanguage{english}{\emph{``closure run''}} y de \foreignlanguage{english}{\emph{``the Week 1 spawn multiplier''}}, y el título de la Figura 2 dice \foreignlanguage{english}{\emph{``Extended TD3\_vanilla training''}}. Usa los nombres del artículo (RR, RR-TA, TD3, 1,0×).
+\end{itemize}
+
+% ------------------------------------------------------------
+\subsection{Detalles menores}
+\prioridad{Baja} \confirmado
+
+\begin{itemize}[leftmargin=1.2em]
+\item En VI-C dices que 9.230 está \foreignlanguage{english}{\emph{``within 4\%''}} de 9.619; la diferencia es $(9619-9230)/9619 = 4{,}04$\,\%. Escribe \foreignlanguage{english}{\emph{``about 4\%''}}.
+\item En III-A dices \foreignlanguage{english}{\emph{``No model file of the library was modified''}} y en la frase siguiente \foreignlanguage{english}{\emph{``One correction inside the library was needed''}}. Redáctalo para que no parezca una contradicción.
+\item En IV-C mencionas \foreignlanguage{english}{\emph{``all fifteen TD3 checkpoints trained in this study''}}; el texto describe tres agentes iniciales, tres extendidos, una ablación y dos adaptaciones. Explica de dónde salen quince.
+\item La semana 2 de la bitácora (degradación de batería con la temperatura de Bogotá, perfiles de clima por ciudad, sensibilidad a 2, 8 y 16 puertos) no aparece en el artículo. Decide si entra en un párrafo o si la declaras fuera de alcance; una semana de trabajo no debería desaparecer sin rastro. Revisa también que todo el texto use la batería de 70\,kWh y no la de 60\,kWh de la semana 1.
+\end{itemize}
+
+% ============================================================
+\section{Preguntas que te haría un jurado}
+% ============================================================
+
+Prepara una respuesta corta para cada una. Varias se resuelven con las correcciones de arriba.
+
+\begin{enumerate}[itemsep=4pt]
+\item ¿Por qué 100\,kW? ¿Existe en Bogotá una estación con 400\,kW instalados detrás de un transformador de esa capacidad?
+\item Si un carro que no recibe energía obtiene 77\,\% de satisfacción, ¿qué significa cumplir la meta del 90\,\%?
+\item Su agente de RL no supera a una política aleatoria en ninguna métrica de la Tabla II. ¿Qué aprendió? ¿Por qué lo mantiene en el artículo?
+\item ¿Por qué un operador colombiano querría seguir la consigna de EV2Gym? ¿Quién se la enviaría?
+\item ¿Cómo sabe que 1,6× representa el crecimiento del 60\,\% que planteó en el anteproyecto?
+\item ¿Su RR-TA es mejor que limitar cada puerto a 12,5\,kW, que es lo que haría cualquier instalador?
+\item ¿Por qué no entrenó el agente en el régimen DC, si es el que usa para recomendar?
+\item ¿Qué pasaría si los conductores se quedaran hasta completar su carga en lugar de irse a los 42 minutos?
+\item ¿Cuánto cambian sus recomendaciones con un paso de 5 minutos?
+\item ¿De qué año y de qué red es el precio de 1.450\,COP/kWh? ¿Por qué no le descuenta IVA?
+\item ¿Qué norma colombiana fija la banda de ±5\,\%?
+\item ¿Cuánto cuesta un transformador de 300\,kVA frente a un gestor de carga? Sin esa cifra, ¿cómo sabe que el gestor es la mejor inversión?
+\item Si Enel le entregara mañana datos de sesiones, ¿qué datos pediría y cómo validaría su modelo con ellos?
+\end{enumerate}
+
+% ============================================================
+\section{Próximos pasos}
+% ============================================================
+
+Te propongo este orden, que va de lo más barato y de mayor impacto a lo que requiere más cómputo.
+
+\begin{enumerate}[itemsep=4pt]
+\item \textbf{Métrica de satisfacción energética} (3.3). Se calcula con las trayectorias que ya tienes guardadas; vuelve a evaluar las metas.
+\item \textbf{Tabla IV y tablas automáticas} (3.9), con la prueba de coherencia entre margen, energía y DNS.
+\item \textbf{Diagnóstico del RL} (3.4): descomposición de la recompensa y recompensa del TD3 calculada para las demás estrategias. También sale de datos guardados.
+\item \textbf{Niveles de demanda por energía} (3.8): como mínimo, recalibra el multiplicador; si alcanzas, genera llegadas a nivel de estación.
+\item \textbf{Comparación justa} (3.5): capa de seguridad, línea base de 12,5\,kW por puerto, oráculo de máxima energía en DC y MPC con restricciones blandas. Decide con qué camino te quedas para el TD3 en DC.
+\item \textbf{Formulaciones y tabla de información} (3.6 y 3.7).
+\item \textbf{Objetivos y alcance} (3.2): reformula el objetivo general y declara los cambios de alcance.
+\item \textbf{Reporte estadístico} (3.10).
+\item \textbf{Sensibilidades DC} (3.11), si el tiempo alcanza: paso de 5 minutos y salida que depende de la carga.
+\item \textbf{Regulación y economía} (3.12 y 3.13): cita de la banda de tensión (CREG 024 de 2005) y del RETIE de 2026, fuente y fecha del precio de venta, frase sobre el IVA.
+\item \textbf{Escritura} (3.1 y 3.14): revisión de literatura, limitaciones, conclusiones y, de último, el resumen.
+\item Envíame la nueva versión con una lista corta en la que, para cada comentario de este documento, me digas qué hiciste o por qué decidiste no hacerlo.
+\end{enumerate}
+
+Me gustaría que nos reuniéramos pronto para mirar juntos las secciones 3.4 y 3.5, que son las que más decisiones requieren y donde más pesa el tiempo que te queda. Tienes una base muy buena; con estos ajustes, la tesis va a quedar sólida y defendible.
+
+\bigskip
+Un abrazo,
+
+\smallskip
+\textbf{Aleja}
+
+\end{document}

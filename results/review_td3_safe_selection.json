@@ -1,0 +1,43 @@
+{
+  "selection_rule": "week8_review_2026-11-03",
+  "carried_model_rule": "best validation total_energy_charged among the seeds' final checkpoints",
+  "seeds": {
+    "100": {
+      "converged": true,
+      "convergence_step": 130000,
+      "final_step": 150000,
+      "last_step": 230000,
+      "stop_reason": "converged_plus_confirmation",
+      "validation_energy_kwh": 528.9567964904246,
+      "checkpoint": "experiments/phase2_algorithms/models/TD3_safe_dc42_ts100/td3_safe_dc42_ts100_150000_steps.zip"
+    },
+    "101": {
+      "converged": true,
+      "convergence_step": 130000,
+      "final_step": 200000,
+      "last_step": 230000,
+      "stop_reason": "converged_plus_confirmation",
+      "validation_energy_kwh": 519.479030216741,
+      "checkpoint": "experiments/phase2_algorithms/models/TD3_safe_dc42_ts101/td3_safe_dc42_ts101_200000_steps.zip"
+    },
+    "102": {
+      "converged": true,
+      "convergence_step": 200000,
+      "final_step": 280000,
+      "last_step": 300000,
+      "stop_reason": "converged_plus_confirmation",
+      "validation_energy_kwh": 527.3442086205041,
+      "checkpoint": "experiments/phase2_algorithms/models/TD3_safe_dc42_ts102/td3_safe_dc42_ts102_280000_steps.zip"
+    }
+  },
+  "carried_model": {
+    "train_seed": 100,
+    "converged": true,
+    "convergence_step": 130000,
+    "final_step": 150000,
+    "last_step": 230000,
+    "stop_reason": "converged_plus_confirmation",
+    "validation_energy_kwh": 528.9567964904246,
+    "checkpoint": "experiments/phase2_algorithms/models/TD3_safe_dc42_ts100/td3_safe_dc42_ts100_150000_steps.zip"
+  }
+}

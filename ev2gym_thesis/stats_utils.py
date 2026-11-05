@@ -163,3 +163,54 @@ def paired_cluster_bootstrap_ci(values_a, values_b, cluster_ids, n_bootstrap: in
         "n_clusters": n_clusters,
     }
 # doc:end paired_cluster_bootstrap
+
+
+# doc:begin cluster_bootstrap_ratio
+def cluster_bootstrap_ratio(num, den, cluster_ids, num_b=None, den_b=None, n_bootstrap: int = 10000,
+                            ci: float = 0.95, seed: int = 0):
+    """Week 8 advisor review, A2: the ratio-of-totals rule for energy
+    percentages, with the ratio recomputed inside every bootstrap resample.
+
+    One arm:   R = sum(num) / sum(den)                 (num_b/den_b None)
+    Paired:    D = sum(num_b)/sum(den_b) - sum(num)/sum(den), same rows.
+    Resampling unit: the cluster (scenario seed); all rows of a cluster are
+    drawn together. Percentile interval. Returns point estimate, CI,
+    n_rows, n_clusters, n_bootstrap and the method label."""
+    num, den = np.asarray(num, float), np.asarray(den, float)
+    cluster_ids = np.asarray(cluster_ids)
+    uniq, inv = np.unique(cluster_ids, return_inverse=True)
+    k = len(uniq)
+    sums = lambda v: np.bincount(inv, weights=v, minlength=k)
+    cn, cd = sums(num), sums(den)
+    paired = num_b is not None
+    if paired:
+        cnb, cdb = sums(np.asarray(num_b, float)), sums(np.asarray(den_b, float))
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, k, size=(n_bootstrap, k))
+    counts = np.apply_along_axis(lambda r: np.bincount(r, minlength=k), 1, idx)
+    ratio = lambda a, b, w: (w @ a) / (w @ b)
+    ones = np.ones(k)
+    if paired:
+        point = ratio(cnb, cdb, ones) - ratio(cn, cd, ones)
+        boots = ratio(cnb, cdb, counts) - ratio(cn, cd, counts)
+    else:
+        point = ratio(cn, cd, ones)
+        boots = ratio(cn, cd, counts)
+    alpha = 1 - ci
+    lo, hi = np.percentile(boots, [100 * alpha / 2, 100 * (1 - alpha / 2)])
+    return {"point_estimate": float(point), "ci_low": float(lo), "ci_high": float(hi), "n_rows": len(num),
+            "n_clusters": k, "n_bootstrap": n_bootstrap,
+            "method": "cluster bootstrap (scenario seed), ratio of totals per resample, percentile"}
+# doc:end cluster_bootstrap_ratio
+
+
+def cluster_bootstrap_mean(values, cluster_ids, values_b=None, n_bootstrap: int = 10000, ci: float = 0.95,
+                           seed: int = 0):
+    """Mean per case (or paired mean difference b - a) with the cluster
+    bootstrap; equal-weight cases, i.e. the ratio of totals with den = 1."""
+    v = np.asarray(values, float)
+    ones = np.ones(len(v))
+    if values_b is None:
+        return cluster_bootstrap_ratio(v, ones, cluster_ids, n_bootstrap=n_bootstrap, ci=ci, seed=seed)
+    return cluster_bootstrap_ratio(v, ones, cluster_ids, np.asarray(values_b, float), ones,
+                                   n_bootstrap=n_bootstrap, ci=ci, seed=seed)

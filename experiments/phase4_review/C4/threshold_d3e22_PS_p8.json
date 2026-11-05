@@ -1,0 +1,21 @@
+{
+  "arm": "PS",
+  "ports": 8,
+  "transformer_kw": 100.0,
+  "threshold_arrivals_per_day": null,
+  "energy_scale": 1.3552883714437485,
+  "criteria": "DNS CI high <= 0.15 and mean f incl. rejected CI low >= 0.9",
+  "log": [
+    {
+      "arrivals_per_day": 19.15285,
+      "dns": 0.16146720955576105,
+      "dns_ci_high": 0.1747150058876756,
+      "mean_f_all": 0.8874600236728605,
+      "mean_f_all_ci_low": 0.8780189709204501,
+      "offered_kwh": 434.0627462714428,
+      "offered_arrivals": 19.62,
+      "meets": false,
+      "n_clusters": 50
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+TD3_safe long-budget sensitivity (pre-registered; seeds retrained from
+scratch to 2,000,000 steps with no stopping rule): mean energy delivered on the 20 validation cells at every
+10,000-step checkpoint. Stars: best validation value per seed (tested on the C3 test grid together with the
+2,000,000-step checkpoint). Dotted: the carried TD3_safe checkpoint (seed 100, 150,000 steps, C3 rule), which
+does not change. Validation peaks between 310,000 and 580,000 steps and drifts back to the C3 plateau.

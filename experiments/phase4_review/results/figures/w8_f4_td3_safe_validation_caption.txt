@@ -1,0 +1,7 @@
+TD3_safe validation curves (DC regime, station-level arrivals, 1.0x):
+mean energy delivered on the 20 validation cells (seeds 1,000,000-1,000,009 x one weekday and one weekend
+day) at every 10,000-step checkpoint, deterministic policy with the safety layer. Dotted: convergence
+declaration (2%/5% rule on 50,000-step windows; seeds 100 and 101 both converge at 130,000 steps, so their
+lines coincide); star: each seed's final checkpoint (best validation value at or after convergence,
+config_safe.py). Each run stops 100,000 steps after convergence. The carried model is the seed whose final
+checkpoint has the best validation value (seed 100, 150,000 steps); selection uses validation only.

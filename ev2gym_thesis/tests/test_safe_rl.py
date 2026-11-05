@@ -24,7 +24,7 @@ from ev2gym_thesis.rl.env_factory import make_env, reset_for_evaluation
 from ev2gym_thesis.rl.reward_service import ServedEnergyReward, served_energy_scale_kwh
 from ev2gym_thesis.rl.safe_training import SafeTrainingEnv
 from ev2gym_thesis.rl.safety import project_actions, safe_step, port_rated_kw
-from ev2gym_thesis.rl.state_service import ServiceState, service_state_dim
+from ev2gym_thesis.rl.state_service import ServiceState, ServiceStateCausal, service_state_dim
 
 BUDGET = 0.999 * 100.0
 TOL_KW = 1e-4  # float32 representation of transformer power (99.9 is stored as 99.9000015); 3 orders below the 0.1 kW margin to 100 kW
@@ -35,12 +35,10 @@ class _RegimeCase(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
-        self.cfg_path = cfg.REGIME_CONFIGS[self.regime]
-        if self.regime == "dc42":
-            dc_sessions.enable(dc_sessions.model_for_config(self.cfg_path))
+        self.cfg_path = cfg.enable_regime(self.regime)  # Week 8 review: dc42 = station-level arrivals
 
     def tearDown(self):
-        dc_sessions.disable()
+        cfg.disable_regime()
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def env(self, seed, day=EVAL_DAYS[0], reward_fn=ServedEnergyReward):
@@ -160,10 +158,14 @@ class TestServiceState(_RegimeCase):
 
     def test_dimension_and_finiteness(self):
         env = self.env(0)
-        self.assertEqual(env.observation_space.shape, (service_state_dim(env.number_of_ports),))
+        # the configured state is ServiceStateCausal (2026-11-03): ServiceState minus the setpoint
+        self.assertIs(cfg.STATE_FN, ServiceStateCausal)
+        self.assertEqual(env.observation_space.shape, (service_state_dim(env.number_of_ports) - 1,))
         self.assertEqual(service_state_dim(8), 36)
+        self.assertEqual(len(ServiceState(env)), 36)
         stats, _, _, _ = self.run_episode(env, _all_on)
         self.assertTrue(np.all(np.isfinite(ServiceState(env))))
+        self.assertTrue(np.all(np.isfinite(ServiceStateCausal(env))))
 
     def test_does_not_use_departure_times(self):
         env = self.env(0)
@@ -208,7 +210,7 @@ class TestSafeTrainingEnv(_RegimeCase):
         self.assertEqual(float(info["total_transformer_overload"]), 0.0)
         self.assertIn("projection_active_share", info)
         self.assertGreater(info["projection_active_share"], 0.0)
-        self.assertEqual(env.observation_space.shape, (36,))
+        self.assertEqual(env.observation_space.shape, (35,))  # ServiceStateCausal
 
 
 class TestConfig(unittest.TestCase):
@@ -219,7 +221,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual((cfg.POLICY_DELAY, cfg.TARGET_POLICY_NOISE, cfg.TARGET_NOISE_CLIP), (2, 0.2, 0.5))
         self.assertEqual((cfg.ACTION_NOISE_SIGMA, cfg.LEARNING_STARTS, cfg.BUFFER_SIZE), (0.1, 10_000, 300_000))
         self.assertEqual((cfg.VECNORMALIZE_NORM_OBS, cfg.VECNORMALIZE_NORM_REWARD), (True, False))
-        self.assertIs(cfg.STATE_FN, ServiceState)
+        self.assertIs(cfg.STATE_FN, ServiceStateCausal)
         self.assertEqual(cfg.SELECTION["served_energy"], ("total_energy_charged", False))
         self.assertEqual(cfg.arm_name("dc42", "served_energy"), "TD3_safe_dc42")
 

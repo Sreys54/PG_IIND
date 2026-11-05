@@ -5,7 +5,7 @@ The five fixed Objective 4 arms on the grid-enabled station, along two one-at-a-
 - Runs behind this figure: 2500
 - Configs: station_v0_bogota_grid[base], station_v0_bogota_grid[load1.3], station_v0_bogota_grid[load1.6], station_v0_bogota_grid[spawn1.3], station_v0_bogota_grid[spawn1.6]
 - Algorithms: AFAP, Round Robin, MPC (tracking), TD3 extended seed 102 (final RL), Oracle (tracking-only)
-- Git commit: ebf3634998ec91a8e99e6aae3a86b812e1c2d681
-- Generated: 2026-10-06T05:42:33.006609Z
+- Git commit: 8b2fc5016d2b49fab79de6d11fb985afe5f0d0bc
+- Generated: 2026-11-03T19:20:57.938350Z
 
 MPC_TrackingG2V and the oracle are non-causal (know departure times); they bound, not compete.

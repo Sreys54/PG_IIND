@@ -8,7 +8,13 @@ produces: #/##/### headers, pipe tables, ```-fenced code blocks, **bold**,
 `inline code`, and plain paragraphs -- not a general-purpose Markdown
 renderer.
 
-Usage: PYTHONPATH=. python scripts/render_docx.py <input.md> <output.docx>
+Usage: PYTHONPATH=. python scripts/render_docx.py <input.md> <output.docx> [--unwrap]
+
+--unwrap (added 2026-11-03 for the Week 8 handback, which is hard-wrapped):
+joins each continuation line onto the paragraph, bullet or numbered item it
+continues, so a wrapped paragraph becomes one Word paragraph. Without the
+flag the behaviour is unchanged (one line = one paragraph), as the earlier
+handbacks were written.
 """
 import re
 import sys
@@ -96,9 +102,32 @@ def parse_table_block(lines: list) -> tuple:
     return header, data_rows
 
 
-def render(md_path: str, docx_path: str):
+_BLOCK_START = re.compile(r"^(#|\||```|- |\d+\. |\*\(|> )")
+
+
+def unwrap(lines: list) -> list:
+    """Join hard-wrapped continuation lines (see --unwrap in the module doc)."""
+    out, in_code = [], False
+    for line in lines:
+        if line.startswith("```"):
+            in_code = not in_code
+            out.append(line)
+            continue
+        prev = out[-1] if out else ""
+        joinable = (not in_code and line.strip() and prev.strip() and not prev.startswith(("#", "|", "```"))
+                    and not _BLOCK_START.match(line.strip()))
+        if joinable:
+            out[-1] = prev.rstrip() + " " + line.strip()
+        else:
+            out.append(line)
+    return out
+
+
+def render(md_path: str, docx_path: str, unwrap_lines: bool = False):
     with open(md_path, encoding="utf-8") as f:
         lines = f.read().split("\n")
+    if unwrap_lines:
+        lines = unwrap(lines)
 
     doc = Document()
     style = doc.styles["Normal"]
@@ -157,7 +186,8 @@ def render(md_path: str, docx_path: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: PYTHONPATH=. python scripts/render_docx.py <input.md> <output.docx>")
+    args = [a for a in sys.argv[1:] if a != "--unwrap"]
+    if len(args) != 2:
+        print("Usage: PYTHONPATH=. python scripts/render_docx.py <input.md> <output.docx> [--unwrap]")
         sys.exit(1)
-    render(sys.argv[1], sys.argv[2])
+    render(args[0], args[1], unwrap_lines="--unwrap" in sys.argv)

@@ -1,0 +1,18 @@
+file,what,number
+results/degradation_by_ambient.csv,"calendar degradation, ChargeAsFastAsPossible, bogota_outdoor vs 25 C default (100 rows: 50 seeds x 2 days)",-51.88% (mean per case)
+results/degradation_by_ambient.csv,"calendar degradation, ChargeAsFastAsPossible, bogota_outdoor_plus5 vs 25 C default (100 rows: 50 seeds x 2 days)",-46.16% (mean per case)
+results/degradation_by_ambient.csv,"calendar degradation, ChargeAsFastAsPossible, bogota_underground vs 25 C default (100 rows: 50 seeds x 2 days)",-59.26% (mean per case)
+results/degradation_by_ambient.csv,"calendar degradation, RoundRobin, bogota_outdoor vs 25 C default (100 rows: 50 seeds x 2 days)",-51.71% (mean per case)
+results/degradation_by_ambient.csv,"calendar degradation, RoundRobin, bogota_outdoor_plus5 vs 25 C default (100 rows: 50 seeds x 2 days)",-44.21% (mean per case)
+results/degradation_by_ambient.csv,"calendar degradation, RoundRobin, bogota_underground vs 25 C default (100 rows: 50 seeds x 2 days)",-59.09% (mean per case)
+results/master_results.csv (Week 2 size sensitivity),"station_n02_tx025, ChargeAsFastAsPossible, 50 rows","energy 53.30 kWh/day, overload 98.71 kWh/day, EVs 3.20/day"
+results/master_results.csv (Week 2 size sensitivity),"station_n02_tx025, RoundRobin, 50 rows","energy 52.87 kWh/day, overload 0.47 kWh/day, EVs 3.20/day"
+results/master_results.csv (Week 2 size sensitivity),"station_n02_tx100, ChargeAsFastAsPossible, 50 rows","energy 53.30 kWh/day, overload 0.00 kWh/day, EVs 3.20/day"
+results/master_results.csv (Week 2 size sensitivity),"station_n02_tx100, RoundRobin, 50 rows","energy 52.87 kWh/day, overload 0.00 kWh/day, EVs 3.20/day"
+results/master_results.csv (Week 2 size sensitivity),"station_n16_tx100, ChargeAsFastAsPossible, 50 rows","energy 421.94 kWh/day, overload 73.97 kWh/day, EVs 26.64/day"
+results/master_results.csv (Week 2 size sensitivity),"station_n16_tx100, RoundRobin, 50 rows","energy 419.75 kWh/day, overload 1.64 kWh/day, EVs 26.64/day"
+results/master_results.csv (Week 2 size sensitivity),"station_n16_tx200, ChargeAsFastAsPossible, 50 rows","energy 421.94 kWh/day, overload 0.00 kWh/day, EVs 26.64/day"
+results/master_results.csv (Week 2 size sensitivity),"station_n16_tx200, RoundRobin, 50 rows","energy 419.75 kWh/day, overload 0.00 kWh/day, EVs 26.64/day"
+ev2gym_thesis/ambient_bogota.py,"Bogota ambient profiles (IDEAM station 21205791, El Dorado, 1981-2010 normals)","annual mean 13.68 C, mean daily max 19.31 C, mean daily min 7.88 C"
+ev2gym_thesis/degradation_bogota.py,"calendar-ageing recomputation at Bogota temperatures, outside the library (theta = 298.15 K hard-coded in ev2gym/models/ev.py line 480)","total battery_degradation change vs 25 C: -26.13% outdoor, -24.37% outdoor +5 C, -32.49% underground (02_model_validation.md)"
+thesis_docs/chapters/02_model_validation.md,10-row realism table (validated / empirically set / declared limitation),-

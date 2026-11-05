@@ -1,0 +1,6 @@
+baseline,vs,reward_baseline_minus_td3,reward_baseline_minus_td3_ci_low,reward_baseline_minus_td3_ci_high,n_clusters,baseline_beats_td3_on_its_own_reward
+ChargeAsFastAsPossible,TD3_vanilla_extended_ts102,-4801.642979188124,-6924.584534506835,-2692.1254684435194,50,False
+RoundRobin,TD3_vanilla_extended_ts102,18335.120901179263,16667.075605078695,20116.3309259845,50,True
+RoundRobin_TransformerCapped,TD3_vanilla_extended_ts102,20.87251055964589,-1525.8150338091757,1636.499037737583,50,False
+RandomPolicy,TD3_vanilla_extended_ts102,3575.6051752168423,1860.3129840592014,5343.464223337254,50,True
+MPC_TrackingG2V,TD3_vanilla_extended_ts102,15696.196524253204,14063.016446268766,17482.460051048292,50,True

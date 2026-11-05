@@ -1,5 +1,243 @@
 # Lab Log
 
+## 2026-11-03 (UTC−5) — Week 8 advisor review: Gate 0, Block B (station-level arrivals), Gate 1 + 2 measurements (branch `semana-8`, staged, uncommitted)
+
+**Gate 0.** Branch `semana-8`, clean tree at `8b2fc50`. Full suite: `Ran 174
+tests ... OK` (the brief expected 155; the difference is the Week 8 safe-RL
+tests). Gurobi academic licence 2853634 solves a 3,000-variable model. Every
+EV2Gym code fact the advisor cited matches this repo's copy (file and line
+in the handback), except one: `generate_power_setpoints` no longer weights by
+Dutch prices (`prices = np.ones`, `ev2gym/utilities/utils.py` line 694,
+2026-09-08). Measured cost per case (seed 0, weekday): heuristics
+0.35-0.44 s, MPC-T 2.7-2.8 s, MPC-E 4.3-4.8 s, oracles 0.7-1.1 s, TD3
+0.48 s, node_123 grid 1.06 s; one TD3_safe gradient step 11.0 ms
+(`experiments/phase4_review/gate0_timing.csv`). The per-case time series
+store only station power, transformer power and connected EVs, so A1/A4 need
+an instrumented re-simulation; A2, A3, A7 and A8 are post-processing.
+
+**Block B — station-level arrivals** (`ev2gym_thesis/demand/station_arrivals.py`).
+Poisson count per step with λ_s = τ(clock(s)) / Στ × arrivals/day (τ =
+EV2Gym's 15-min profile read from 05:00), inverse-CDF counts from one keyed
+uniform per step (streams nested across demand levels), each driver's energy
+drawn by the library's own `spawn_single_EV` under a keyed seed, dwell from
+`DwellModel(42, 0.5)`. Ports are assigned online, first free port by index,
+no dead time; a driver who finds every port busy is rejected with the
+requested energy, so DNS is exact. Under fixed departures the online
+assignment is asserted equal to the reset-time plan at every step.
+Calibration (`scripts/calibrate_station_arrivals.py`,
+`experiments/phase4_review/calibration.csv`): EV2Gym's weekday and weekend
+τ both sum to 100, so one arrivals/day per level serves both day types:
+1.0× 38.31 arrivals/day → 627.3 kWh/day offered (38.6 drivers); 1.3× 49.32
+→ 814.3; 1.6× 60.70 → 1,002.4 (relative errors < 0.1%). Tests:
+`ev2gym_thesis/tests/test_station_arrivals.py`, 9/9 passing.
+
+**Two findings while testing.**
+- *Connection window.* An EV with arrival a and departure d is connected,
+  and charged, during steps a..d inclusive (d − a + 1 steps; spawned at the
+  end of step a − 1, departs after charging in step d; the library's own
+  degradation model counts d − a + 1, `ev.py` line 477). `dc_sessions.py`
+  set d = a + n for a sampled n-step duration, so every DC session was
+  connected one step (15 min) longer than labelled: measured on 43/43 EVs.
+  The generator's default connects the EV exactly n steps; the old
+  convention is available (`extra_connected_steps = 1`).
+- *Delivered energy per EV.* EV2Gym rounds `current_capacity` up to 0.01 kWh
+  after every step (`ev.py`, `step`, `my_ceil`), so `current − arrival`
+  overstates delivered energy (0.18 kWh on one test day). The recorder
+  (`ev2gym_thesis/metrics/service.py`) uses `total_energy_exchanged`.
+  The Gate 1 grid was first run before this fix; it was re-run with the
+  fixed recorder (biased files kept under
+  `experiments/phase4_review/gate1/superseded_recorder_bias/`): mean f moved
+  by at most 0.03 points, the service level by 0.05 points, DNS and
+  overload not at all; every conclusion below is unchanged.
+
+**Gate 1** (`scripts/review_gate1.py`, `review_gate1_analyze.py`; 3,800
+cases; 1.0×, 8 ports, AFAP and RR-TA). V0 = EV2Gym spawner + DC transform;
+V1 = station arrivals with the old connection convention and EV2Gym's dead
+time; V2 = V1 without dead time; V3 = V2 with the exact connection window.
+- Pooling arrivals at station level (V0 → V1) barely matters: 0.83
+  rejected drivers/day against the old lower bound of 0.88; the old upper
+  bound (21.6/day, DNS 35.5% for AFAP) was an artefact of per-port draws.
+- The dead time is 2 idle steps (30 min) after the departure step
+  (measured), not 45 min; removing it (V1 → V2) cuts rejections from 0.83 to
+  0.15/day.
+- The exact connection window (V2 → V3) moves the binding constraint from
+  ports to power: RR-TA DNS 5.5% → 11.8%, AFAP 1.2% → 6.4%, port occupancy
+  19.1% → 14.2%.
+- Capacity: with the dead time (V1) RR-TA fails at 1.6× with 8 ports and
+  passes with 10 (old criteria) — the earlier 10-port recommendation. Without
+  it (V2) 8 ports pass the old criteria at 1.6×: **the 10-port recommendation
+  was an artefact of the dead time.** With the A1 criterion (mean f incl.
+  rejected ≥ 0.90) neither 8 nor 10 ports suffice at 1.6×; with the exact
+  window (V3) RR-TA fails at 1.3× and 10 ports change nothing.
+
+**Gate 2 calibration** (`C:/ev2gym_runs/w8_calib`, 15,000 steps, eval every
+5,000): gradient-phase speed 58.5 steps/s for one seed alone, 50.7 with one
+evaluation worker alongside, 49.0 and 47.8 for two seeds in parallel;
+validation of 20 cells ≈ 10-11.5 s. Three seeds in parallel not measured
+(standing two-process limit). Training is not launched until the user
+approves (CLAUDE.md rule 2).
+
+**Gate 1 + 2 decisions (the author, 2026-11-03).** (1) Connection
+convention V3 (EV2Gym's own window, an EV with arrival a and departure d is
+connected d − a + 1 steps; no dead time), as used in every C and D run.
+(2) TD3_safe observes `ServiceStateCausal` (35 elements: `ServiceState`
+without EV2Gym's non-causal power setpoint); `config_safe.STATE_FN` now
+defaults to it and `test_safe_rl` pins it. (3) Training approved, with the
+final deadline moved by the author from 2026-11-04 14:00 to **2026-11-05
+23:59 UTC−5** "so that it has plenty of time". Launched 2026-11-03 18:37:
+`scripts/train_td3_safe_chain.py --final-deadline 2026-11-05T23:59:00-05:00
+--seeds 100 101 102 --state service_causal --output-root
+C:/ev2gym_runs/w8_td3_safe`, one process slot, seeds in sequence; each seed's
+deadline is an equal share of the time left at its launch (seed 100:
+2026-11-04 12:24), and a seed that converges early (convergence + 100,000
+steps) leaves its time to the next. Consequence declared: the brief's
+Thursday 20:00 deadline for Blocks A-C cannot include the TD3_safe test
+results if training uses its full window; every other A-C item is
+complete.
+
+**C3 — TD3_safe trained, selected and tested (2026-11-03 18:37-22:45).**
+Every seed met the pre-registered convergence rule well before its deadline
+share, so the extended window was not used and the stopping rule was not
+changed: seed 100 converged at 130,000 steps (final checkpoint 150,000,
+stopped 230,000, 1.12 h), seed 101 at 130,000 (200,000; 230,000; 1.09 h),
+seed 102 at 200,000 (280,000; 300,000; 1.44 h). Zero overload in every
+validation evaluation. `scripts/select_td3_safe.py`: carried model = seed
+100 (validation 529.0 kWh/day; 101: 519.5; 102: 527.3); the three final
+checkpoints and their `_vecnormalize.pkl` copied to
+`experiments/phase2_algorithms/models/TD3_safe_dc42_ts<seed>/` (gitignored,
+as every model directory there). Test path check: the 20k checkpoint gives
+488.6534 kWh/day through `review_dc.run_case` on the validation cells, the
+same value training logged. Test grid: 900 cases (3 seeds × 3 levels × 100)
+appended to `results/review_registry.csv` (10,500 → 11,400 data lines);
+the carried seed is reported as `TD3_safe` in C6 (`review_C6_tables.py`
+maps it from the selection file), the other seeds as `TD3_safe_ts101/102`.
+Result: 0 of 900 days with overload; at 1.0× 536.1 kWh/day, DNS 14.5%
+[13.6, 15.4], mean f 89.3% [88.6, 90.0]; minus RR-TA −16.9 kWh/day [−20.1,
+−13.7], minus PS −6.0 [−8.2, −3.9], minus Random+S +95.9 [90.7, 101.2];
+the gap to RR-TA widens to −29.4 at 1.6×. No service target met at any
+level. Seed 102 is marginally better on test (539.9) than the carried seed;
+not changed, selection is on validation only. Analysis
+`scripts/review_C3_analyze.py`; figures w8_f1 (with TD3_safe) and w8_f4
+regenerated; f2 excludes the non-carried seeds. Gate 3: no stop; report in
+the handback summary.
+
+**C3 follow-up — long-budget sensitivity, pre-registered 2026-11-03 23:00
+before launch.** After seeing the C3 results the author asked whether more
+training would change them and approved "option A" (CLAUDE.md rule 2):
+seeds 100/101/102, same design as C3, trained from scratch to a fixed
+1,000,000 steps (amended to 2,000,000 below) with no convergence stop (`train_td3_safe.py
+--fixed-budget --max-steps 1000000`, root `C:/ev2gym_runs/w8_td3_safe_long`).
+Two checkpoints per seed are tested on the C3 test grid: the last (1M) and
+the best validation value over the whole run (arms
+`TD3_safe_long_last_ts<seed>`, `TD3_safe_long_bestval_ts<seed>`). **The
+carried TD3_safe model does not change whatever these runs give**, and the
+results are reported in full as a sensitivity (rule text:
+`config_safe.py`, doc `long_budget_sensitivity`). Schedule: seeds 100 and
+101 in parallel (two training processes, the laptop limit), then 102; tests
+in the free slot; expected about 11 h (Gate 2 speeds 48-58 steps/s).
+Hard stop at 2026-11-05 23:59 UTC−5 in any case. `--fixed-budget` was
+smoke-tested (2,000 steps, manifest records the rule).
+**Amendment, 2026-11-03 23:15, before any long-run result.** The author
+raised the budget to **2,000,000 steps per seed**, everything else as
+above. The 1,000,000-step launch had reached only its first validation
+(10,000 steps; seed 100 identical to C3, 449.17 kWh/day) and was stopped and
+moved to `C:/ev2gym_runs/w8_td3_safe_long_aborted_1M` (not used). While it
+was stopped, the slot-A queue script started seed 102 for under a minute
+before being killed too (same folder). Relaunched from scratch at 2M.
+Expected duration: seeds 100/101 in parallel ≈ 12 h, then 102 alone ≈ 10 h,
+so about 22 h, ending around 2026-11-05 21:30 — close to the 23:59 hard
+stop; a seed stopped by it is reported with stop_reason "deadline" and its
+last checkpoint, not extended.
+
+**Long-budget sensitivity — results (2026-11-04 20:50).** All three seeds
+reached 2,000,000 steps (stop_reason max_steps; seeds 100/101 in parallel,
+11.3 h each, 45 steps/s; seed 102 alone, 10.1 h, 56 steps/s); zero overload
+in every validation. The first 230,000 steps of seed 100 reproduce C3
+exactly. Best validation: 535.9 @ 490k / 533.5 @ 580k / 530.1 @ 310k; at
+2M: 525.7 / 524.6 / 526.2 (back on the C3 plateau). Test grid: 1,800 cases
+(6 checkpoints × 300) appended to `results/review_registry.csv` (11,400 →
+13,200 data lines); 0 overload days. At 1.0× the best checkpoints are +9.7
+/ +8.3 / +4.9 kWh/day over the carried TD3_safe and −7.2 / −8.5 / −11.9
+below RR-TA; the 2M checkpoints −10.3 to −12.0; at 1.6× −16.2 to −28.3. All
+six checkpoints are below RR-TA at every level (intervals exclude zero);
+none meets the mean-f target. Carried model unchanged, as pre-registered.
+`results/review_C3_long_budget.csv`, sheet "C3 long-budget sensitivity"
+in `review_C_dc_comparison.xlsx`, numbers file section.
+
+**Block A — instrumented re-simulation** (`scripts/review_A_resim.py`, 4,100
+cases: the 22 long-dwell registry arms + RR-TA, and the Final-capacity-brief
+DC grid at 1.0/1.3/1.6× for AFAP, RR, RR-TA, the final RL model, MPC-T and
+Oracle-T). Every case reproduced its registry row on energy, overload,
+tracking error, EV2Gym satisfaction and EVs served (asserted; no failure).
+Analysis: `scripts/review_A_analyze.py`, `review_A2_A3.py`,
+`review_A8_week1_sweep.py`, `review_A8_facts.py`; workbook
+`results/review_A_post_processing.xlsx` (17 sheets); tests
+`ev2gym_thesis/tests/test_review_A.py`.
+
+**Finding: EV2Gym's overload is not in kWh.** `total_transformer_overload`
+is the sum over steps of the overload in kW (`ev2gym_env.py` line 526,
+`utils.py` line 26), never multiplied by the step length, although
+`utils.py` line 172 prints it as kWh. At 15-min steps it is 4 × the energy:
+verified on all 1,310 re-simulated cases with overload (ratio 4.000). Every
+"overload (kWh/day)" reported since Week 1 is in kW·steps; divide by 4 for
+kWh (Week 1: 0.132 → 0.033 kWh; final RL model, long-dwell: 3.58 → 0.895
+kWh/day). Week 8 tables report true kWh. The A4 reward term is unaffected
+(the reward uses kW per step, −100 × 3.58 = −358 per day for the final
+model, not the −1,432 the advisor estimated from a kWh reading).
+
+**A1** (served / incl. rejected, rejected count = lower bound):
+- long-dwell: mean f of served drivers 0.98-1.00 for every non-RL arm,
+  0.82-0.99 for the TD3 checkpoints; including rejected drivers (8.9/day
+  lower bound) it is ≈ 0.60 for every arm, so the 90% target fails
+  everywhere in this regime — the ports bind;
+- DC (old spawner, 1.0×): AFAP 0.975, RR-TA 0.956 (CI low 0.943), RR 0.786,
+  final RL 0.731, Oracle-T 0.639, MPC-T 0.537; at 1.6× RR-TA 0.859;
+- the advisor's identity s = 1 − (R/C)(1 − f) holds on every arm within
+  0.1 points (test).
+
+**A4** (long-dwell): the decomposition reproduces the environment's
+`total_reward` to 1e-11 for every arm evaluated with
+`SqTrError_TrPenalty_UserIncentives`. From the 60k to the 850k checkpoint
+(seed 102) the squared deviation from min(setpoint, potential, rating)
+improved by 2,492 [308, 4,747] per day while the reported tracking error
+worsened by 8,620 [6,877, 10,419]: the advisor's hypothesis holds, for
+every seed and checkpoint. The user term moved by +48 per day. On TD3's
+own reward the random policy beats the final model by 3,576 [1,860, 5,344]
+per day, EV2Gym RR by 18,335 and MPC-T by 15,696; AFAP is worse (−4,802)
+and RR-TA ties (21 [−1,526, 1,637]). TD3 final vs Random on the six Table II
+metrics: worse on energy (−4.14 kWh/day), EV2Gym satisfaction (−0.41
+points), ENS_rel (+2.05 points) and margin (−2,417 COP/day), all CIs
+excluding 0; overload and tracking error not significantly different.
+
+**A7** long-dwell DNS bounds (ratio of totals): AFAP 38.3% (lower) to
+72.2% (upper); every arm within 38.3-50.5% (lower) and 72.2-77.7% (upper).
+**A8** DC peaks: AFAP P95 199.7 / max 260.7 kW at 1.0× (97/100 days above
+100 kW); RR-TA 99.9 kW on every day.
+
+**Block A facts established so far.**
+- A2: the advisor's three numbers are reproduced exactly as aggregation
+  effects: RR tracking-error reduction 75.50% (mean of per-case ratios) vs
+  75.86% (ratio of totals); DC RR-TA ENS_rel 2.67% vs 2.84%; long-dwell AFAP
+  DNS lower bound 34.29% vs 38.28% (`experiments/phase4_review/A/A2_recomputed.csv`).
+- A3: every Table IV margin equals E × 584.24 exactly. The "constant station
+  demand" scaling (spawn × 8/P) holds the offered energy only at 10 ports
+  (912 kWh/day); at 12/14/16 ports it is 968/1,008/1,062 kWh/day. The RR
+  14-port row (E = 877.4 kWh, DNS 13.1%) is consistent with 1,009.5 kWh
+  offered: the error is the offered-demand denominator, not the margin or
+  the DNS.
+- A5: MPC-E's "+3.1 COP/day" over AFAP is +0.0053 kWh/day (per case
+  −0.020 to +0.024 kWh, higher in 67/100, lower in 33/100): solver
+  tolerance.
+- A8: the Week 1 transformer sweep has no stored rows (the progress log
+  says the raw output is in this lab log; it is not). Re-run with the Week 1
+  protocol (seed 42, 2022-01-17): AFAP overload 0 / 0 / 0.132 / 49.9 /
+  130.2 kWh at 250 / 150 / 100 / 75 / 50 kW (0.132 kWh reproduces
+  `baseline_afap.csv`).
+- A6: `ServiceState` (TD3_safe) passes EV2Gym's power setpoint, which is
+  built from every EV's departure and energy and the next two steps'
+  arrivals, so TD3_safe as configured is not causal;
+  `ServiceStateCausal` (setpoint removed) is offered at Gate 1 + 2.
+
 ## 2026-10-14 (UTC−5, later) — Review fixes: f06, stale numbers, two new limitations, f07/f11 notes (uncommitted)
 
 **f06 was empty, and now has data.** Every size-sweep row is

@@ -1,0 +1,7 @@
+metric,random,td3_final,diff_td3_minus_random,ci_low,ci_high,significant,n_clusters,statistics
+energy_kwh_per_day,202.02547325580394,197.88768688671817,-4.137786369085774,-6.409499752535742,-2.2279252773764826,True,50,"cluster bootstrap over scenario seed, 10,000 resamples, percentile, per comparison"
+ev2gym_satisfaction,1.0,0.9958723033843279,-0.004127696615672138,-0.006379624831624585,-0.002267821795833855,True,50,"cluster bootstrap over scenario seed, 10,000 resamples, percentile, per comparison"
+ens_rel_ratio_of_totals,0.00044826570462474467,0.020920592657803362,0.02047232695317862,0.010928709826350217,0.03203050344392441,True,50,"cluster bootstrap over scenario seed, 10,000 resamples, percentile, per comparison"
+overload_kwh_per_day,0.8291020934787403,0.8944653876490943,0.06536329417035402,-0.5866651398639856,0.6985102903834202,False,50,"cluster bootstrap over scenario seed, 10,000 resamples, percentile, per comparison"
+tracking_error_kw2,39857.75851613989,41195.033473756004,1337.274957616115,-754.0443017006337,3323.5990266837275,False,50,"cluster bootstrap over scenario seed, 10,000 resamples, percentile, per comparison"
+gross_margin_cop_per_day,118031.05945676104,115613.60535516591,-2417.4541015951254,-3744.6765211718216,-1301.6397221665263,True,50,"cluster bootstrap over scenario seed, 10,000 resamples, percentile, per comparison"

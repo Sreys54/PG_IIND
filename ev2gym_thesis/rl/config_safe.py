@@ -34,7 +34,7 @@ import numpy as np
 from stable_baselines3.common.noise import NormalActionNoise
 
 from ev2gym_thesis.rl.reward_service import ServedEnergyReward, CappedTrackingReward
-from ev2gym_thesis.rl.state_service import ServiceState
+from ev2gym_thesis.rl.state_service import ServiceState, ServiceStateCausal
 
 # doc:begin safe_td3_hyperparams
 POLICY = "MlpPolicy"            # SB3 default for a flat vector observation
@@ -75,15 +75,29 @@ VECNORMALIZE_GAMMA = GAMMA
 # doc:end safe_vecnormalize
 
 # doc:begin safe_design
-STATE_FN = ServiceState
+STATE_FN = ServiceStateCausal
+# Week 8 review (A6/C1): ServiceState passes EV2Gym's power setpoint, which
+# is built from every EV's departure time and energy and the next arrivals
+# (non-causal). ServiceStateCausal drops it. Author's decision, 2026-11-03
+# (Gate 1+2): TD3_safe uses ServiceStateCausal, so the trained agent is a
+# causal arm. ServiceState stays selectable with train_td3_safe.py --state;
+# the choice is recorded in the run manifest.
+STATE_FNS = {"service": ServiceState, "service_causal": ServiceStateCausal}
 REWARD_FNS = {"served_energy": ServedEnergyReward, "tracking": CappedTrackingReward}
 DEFAULT_REWARD = "served_energy"
 
 # Regimes (06 S6.8). The DC regime config is the dwell brief's own 1.0x
 # variant: the reference YAML plus a <config>.dwell.json sidecar with the
 # 42-minute lognormal session model (ev2gym_thesis/demand/dc_sessions.py).
+#
+# Week 8 advisor review (2026-11-01), C3: the dc42 regime now uses the
+# station-level arrival generator (ev2gym_thesis/demand/station_arrivals.py)
+# at 1.0x (627 kWh/day offered), with the config's <config>.arrivals.json
+# sidecar. The dwell brief's per-port-spawner config is kept under
+# "dc42_spawner" for provenance only; no TD3_safe model was ever trained on it.
 REGIME_CONFIGS = {
-    "dc42": "experiments/phase3_infra_replicability/configs/dwell/station_v0_bogota_dc42_sp30.yaml",
+    "dc42": "experiments/phase4_review/configs/station_v0_bogota_dc42_poisson_1.00x_p8_tr100.yaml",
+    "dc42_spawner": "experiments/phase3_infra_replicability/configs/dwell/station_v0_bogota_dc42_sp30.yaml",
     "long": "experiments/phase1_baseline/configs/station_v0_bogota.yaml",
 }
 DEFAULT_REGIME = "dc42"
@@ -95,7 +109,76 @@ DEFAULT_REGIME = "dc42"
 SELECTION = {"served_energy": ("total_energy_charged", False), "tracking": ("tracking_error", True)}
 VALIDATION_LOG_METRICS = ["total_energy_charged", "average_user_satisfaction", "energy_user_satisfaction",
                           "total_transformer_overload", "tracking_error", "total_ev_served"]
+# Week 8 review C3 (advisor 3.4): also logged at every validation, so the
+# advisor's comparison can be made on the new agent too -- the three terms of
+# the retired reward SqTrError_TrPenalty_UserIncentives (computed post hoc
+# per step by ev2gym_thesis/metrics/service.py, summed per episode), and the
+# A1 service metrics (exact DNS, mean energy satisfaction f including
+# rejected drivers, service level f >= 0.9 including rejected drivers).
+VALIDATION_EXTRA_METRICS = ["old_r_tracking", "old_r_overload", "old_r_user", "dns_exact", "mean_f_all",
+                            "service_level_all", "arrivals_rejected"]
 # doc:end safe_design
+
+# doc:begin safe_selection_rule
+# Checkpoint-selection rule and carried-model rule (Week 8 review C3), fixed
+# here BEFORE the training run and copied verbatim into the handback:
+#  1. Every 10,000 steps the checkpoint is validated (deterministic policy,
+#     frozen VecNormalize, safety layer on) on the 20 validation cells
+#     (seeds 1,000,000-1,000,009 x {2022-01-31 weekday, 2022-03-12 weekend});
+#     the criterion is the mean energy delivered (total_energy_charged,
+#     higher is better).
+#  2. Convergence (ev2gym_thesis/rl/extended_training.py,
+#     convergence_index): over windows of W = 5 evaluations (50,000 steps),
+#     |mean(last W) - mean(previous W)| / |mean(previous W)| < 2% and
+#     std(last W) / |mean(last W)| < 5%, on 3 consecutive evaluations.
+#  3. The seed's final checkpoint is the one with the best validation value at
+#     or after the convergence declaration (select_primary_index). If the seed
+#     never converges before the deadline, it is the best-validation
+#     checkpoint over the whole run, and non-convergence is reported as a
+#     result (brief C3, after training).
+#  4. Carried model: of the training seeds 100, 101, 102, the seed whose final
+#     checkpoint has the best validation value is THE TD3_safe model used in
+#     every later table; the test results (seeds 0-49 x 2 days) of every
+#     seed's final checkpoint are reported next to it.
+SELECTION_RULE_VERSION = "week8_review_2026-11-03"
+CARRIED_MODEL_RULE = "best validation total_energy_charged among the seeds' final checkpoints"
+
+
+# doc:begin long_budget_sensitivity
+# Long-budget sensitivity (Week 8 review, C3 follow-up), approved by the
+# author on 2026-11-03 ("opcion A") and fixed HERE BEFORE the runs started,
+# after the C3 results were known:
+#  1. Seeds 100, 101, 102, the same design, state (service_causal), reward,
+#     hyperparameters, validation cells and cadence as C3, trained from
+#     scratch to a fixed budget of 2,000,000 steps with NO convergence stop
+#     (train_td3_safe.py --fixed-budget --max-steps 2000000), run root
+#     C:/ev2gym_runs/w8_td3_safe_long. Amended by the author at 23:15, before
+#     any long-run result: the first launch (1,000,000 steps, 23:05) was
+#     stopped after its first validation (10,000 steps, identical to C3) and
+#     moved to C:/ev2gym_runs/w8_td3_safe_long_aborted_1M; it is not used.
+#     Seeds 100 and 101 run in parallel, then 102; hard stop 2026-11-05
+#     23:59 UTC-5 (a seed stopped by it is reported with stop_reason
+#     "deadline" and its last checkpoint).
+#  2. Two checkpoints per seed are tested on the C3 test grid (300 cases,
+#     1.0/1.3/1.6x): the last one (2,000,000 steps) and the best validation
+#     value over the whole run. Registry arms TD3_safe_long_last_ts<seed> and
+#     TD3_safe_long_bestval_ts<seed>.
+#  3. The carried TD3_safe model does NOT change, whatever these runs give:
+#     it is the C3 rule's output (seed 100, 150,000 steps). The results are
+#     reported as a sensitivity, in full, whether better or worse.
+LONG_BUDGET_STEPS = 2_000_000
+LONG_BUDGET_RULE = ("fixed 2,000,000 steps, no convergence stop; test the last and the best-validation checkpoint "
+                    "per seed; carried model unchanged; reported in full as a sensitivity (2026-11-03)")
+# doc:end long_budget_sensitivity
+
+
+def final_index(m, conv_idx, lower_is_better=False):
+    """Rule 3 above: best at/after convergence, else best over the run."""
+    m = np.asarray(m, dtype=float)
+    lo = 0 if conv_idx is None else conv_idx
+    w = m[lo:]
+    return lo + int(np.argmin(w) if lower_is_better else np.argmax(w))
+# doc:end safe_selection_rule
 
 
 def arm_name(regime: str, reward: str) -> str:
@@ -107,3 +190,32 @@ def hyperparameters_dict() -> dict:
         "POLICY", "NET_ARCH", "LEARNING_RATE", "BUFFER_SIZE", "LEARNING_STARTS", "BATCH_SIZE", "TAU", "GAMMA",
         "TRAIN_FREQ", "GRADIENT_STEPS", "POLICY_DELAY", "TARGET_POLICY_NOISE", "TARGET_NOISE_CLIP",
         "ACTION_NOISE_SIGMA", "VECNORMALIZE_NORM_OBS", "VECNORMALIZE_NORM_REWARD", "VECNORMALIZE_CLIP_OBS")}
+
+
+# doc:begin enable_regime
+def enable_regime(regime: str) -> str:
+    """Install the regime's demand model process-wide, before any EV2Gym is
+    built; return the config path. dc42: the station-level arrival generator
+    (sidecar <config>.arrivals.json); dc42_spawner: EV2Gym's spawner with the
+    42-minute duration transform (sidecar <config>.dwell.json); long: none."""
+    from ev2gym_thesis.demand import dc_sessions, station_arrivals
+    config_path = REGIME_CONFIGS[regime]
+    if regime == "dc42":
+        spec = station_arrivals.spec_for_config(config_path)
+        assert spec is not None and spec.dwell.mean_min == 42.0 and abs(spec.level - 1.0) < 1e-9, \
+            f"{config_path} must carry the 1.0x station-arrivals sidecar"
+        station_arrivals.enable(spec)
+    elif regime == "dc42_spawner":
+        model = dc_sessions.model_for_config(config_path)
+        assert model is not None and model.mean_min == 42.0
+        dc_sessions.enable(model)
+    else:
+        assert dc_sessions.model_for_config(config_path) is None
+    return config_path
+
+
+def disable_regime():
+    from ev2gym_thesis.demand import dc_sessions, station_arrivals
+    station_arrivals.disable()
+    dc_sessions.disable()
+# doc:end enable_regime

@@ -1,0 +1,21 @@
+regime,arm,seconds,total_energy_charged
+long,ChargeAsFastAsPossible,4.42,214.4048646260611
+long,RoundRobin,0.37,214.33665961352244
+long,RoundRobin_TransformerCapped,0.35,214.3895999652483
+long,RandomPolicy,0.38,214.24590249838724
+long,MPC_TrackingG2V,2.7,213.3539458234504
+long,MPC_EnergyMaxG2V,4.34,214.40557225822556
+long,Optimal_Oracle_Tracking,0.73,213.2557109278976
+long,Optimal_Oracle_Balanced,1.11,214.17200382790412
+long,TD3_vanilla_extended_ts102,3.96,214.4048646260611
+dc42_1.0x,ChargeAsFastAsPossible,0.42,645.1125428894029
+dc42_1.0x,RoundRobin,0.44,500.25598927924796
+dc42_1.0x,RoundRobin_TransformerCapped,0.43,622.2336206760084
+dc42_1.0x,RandomPolicy,0.42,590.6348605931692
+dc42_1.0x,MPC_TrackingG2V,2.78,428.57296553353166
+dc42_1.0x,MPC_EnergyMaxG2V,4.78,425.0991969546514
+dc42_1.0x,Optimal_Oracle_Tracking,0.86,452.7229044056765
+dc42_1.0x,Optimal_Oracle_Balanced,1.01,458.1988833483515
+dc42_1.0x,TD3_vanilla_extended_ts102,0.48,416.37295147927716
+dc42_1.0x node_123 grid,ChargeAsFastAsPossible,1.06,645.1125428894029
+n/a,"TD3_safe gradient step (256x256, batch 256)",0.01103,

@@ -1,0 +1,109 @@
+{
+  "arm": "RR-TA",
+  "ports": 10,
+  "transformer_kw": 100.0,
+  "threshold_arrivals_per_day": 40.220985,
+  "energy_scale": 1.0,
+  "criteria": "DNS CI high <= 0.15 and mean f incl. rejected CI low >= 0.9",
+  "log": [
+    {
+      "arrivals_per_day": 19.15285,
+      "dns": 0.08047600487131905,
+      "dns_ci_high": 0.09065693632098484,
+      "mean_f_all": 0.9465749584405404,
+      "mean_f_all_ci_low": 0.9398826118646004,
+      "offered_kwh": 320.7931958573684,
+      "offered_arrivals": 19.62,
+      "meets": true,
+      "n_clusters": 50
+    },
+    {
+      "arrivals_per_day": 61.289120000000004,
+      "dns": 0.17938956625083746,
+      "dns_ci_high": 0.18756341764922244,
+      "mean_f_all": 0.8570570809787459,
+      "mean_f_all_ci_low": 0.8497796710188426,
+      "offered_kwh": 1011.4290909813125,
+      "offered_arrivals": 62.29,
+      "meets": false,
+      "n_clusters": 50
+    },
+    {
+      "arrivals_per_day": 40.220985,
+      "dns": 0.12282147874227477,
+      "dns_ci_high": 0.1324514855252289,
+      "mean_f_all": 0.9081443292410347,
+      "mean_f_all_ci_low": 0.9005246731596968,
+      "offered_kwh": 658.8669126320891,
+      "offered_arrivals": 40.58,
+      "meets": true,
+      "n_clusters": 50
+    },
+    {
+      "arrivals_per_day": 50.755052500000005,
+      "dns": 0.15265802515301896,
+      "dns_ci_high": 0.16077041713682153,
+      "mean_f_all": 0.8815327552641958,
+      "mean_f_all_ci_low": 0.8750067143419892,
+      "offered_kwh": 833.8528138529235,
+      "offered_arrivals": 51.36,
+      "meets": false,
+      "n_clusters": 50
+    },
+    {
+      "arrivals_per_day": 45.48801875,
+      "dns": 0.1383579415340393,
+      "dns_ci_high": 0.14810375121508432,
+      "mean_f_all": 0.895415990744965,
+      "mean_f_all_ci_low": 0.8876623360681013,
+      "offered_kwh": 747.3404308042268,
+      "offered_arrivals": 46.05,
+      "meets": false,
+      "n_clusters": 50
+    },
+    {
+      "arrivals_per_day": 42.854501875,
+      "dns": 0.13221567656004318,
+      "dns_ci_high": 0.1415465132407709,
+      "mean_f_all": 0.9000673010668288,
+      "mean_f_all_ci_low": 0.8923757313413092,
+      "offered_kwh": 706.3898383660506,
+      "offered_arrivals": 43.49,
+      "meets": false,
+      "n_clusters": 50
+    },
+    {
+      "arrivals_per_day": 41.5377434375,
+      "dns": 0.1278230249487583,
+      "dns_ci_high": 0.13702256317868608,
+      "mean_f_all": 0.9031290923175643,
+      "mean_f_all_ci_low": 0.8955128002892474,
+      "offered_kwh": 684.6419373279341,
+      "offered_arrivals": 42.17,
+      "meets": false,
+      "n_clusters": 50
+    },
+    {
+      "arrivals_per_day": 40.87936421875,
+      "dns": 0.12479561654638778,
+      "dns_ci_high": 0.1345731045350672,
+      "mean_f_all": 0.9059351506012594,
+      "mean_f_all_ci_low": 0.8979423581413001,
+      "offered_kwh": 670.954914051556,
+      "offered_arrivals": 41.37,
+      "meets": false,
+      "n_clusters": 50
+    },
+    {
+      "arrivals_per_day": 40.550174609375,
+      "dns": 0.12401948384060962,
+      "dns_ci_high": 0.13376717547260825,
+      "mean_f_all": 0.9070901906847605,
+      "mean_f_all_ci_low": 0.8994350412265659,
+      "offered_kwh": 664.3801281565579,
+      "offered_arrivals": 40.97,
+      "meets": false,
+      "n_clusters": 50
+    }
+  ]
+}

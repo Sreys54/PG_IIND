@@ -1,0 +1,6 @@
+Exact demand not served (left) and mean energy satisfaction f including
+rejected drivers at f = 0 (right) for every C1 arm at 1.0x, 1.3x and 1.6x (627 / 814 / 1,002 kWh/day
+offered), 8 ports, 100 kW. Points: ratio of totals over 100 days; bars: 95% cluster-bootstrap
+intervals over the scenario seed (n_clusters = 50, 10,000 resamples, per comparison). Dashed:
+targets (DNS <= 15%, f >= 90%). Arms are offset horizontally for legibility; MPC-soft and Oracle-E
+coincide to within 0.1 kWh per day.
