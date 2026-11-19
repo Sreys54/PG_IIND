@@ -1,3 +1,32 @@
+# EV charging station operation in Colombia (undergraduate thesis, Industrial Engineering, Universidad de los Andes)
+
+This repository is the code of the paper *"Optimizing the operation of an Electric Vehicle charging station in Colombia through simulation and smart charging algorithms with infrastructure guidelines for future demand scenarios"* (S. Reyes Cortes and A. Tabares Pozos, Universidad de los Andes, term 2026-20).
+
+It is a fork of [EV2Gym](https://github.com/StavrosOrf/EV2Gym) (Orfanoudakis et al., IEEE T-ITS 2025, MIT license). The library's EV, charger, transformer and grid models are kept; everything the study adds lives in separate modules:
+
+| Path | Contents |
+|---|---|
+| `ev2gym_thesis/` | Colombian tariffs (`prices/`), DC session durations and the station-level arrival generator (`demand/`), service metrics (`metrics/`), the safety layer and RL setup (`rl/`), MPC and oracle controllers (`mpc/`, `oracle/`), the transformer-aware round robin (`heuristics.py`), grid placement and voltage checks (`grid/`), statistics (`stats_utils.py`) and tests (`tests/`) |
+| `experiments/` | Configuration files and per-case results of every run (`phase4_review/` holds the runs reported in the paper) |
+| `results/` | Result registries (`review_registry.csv`, `dwell_registry.csv`, `master_results.csv`) and derived tables |
+| `scripts/` | Run, analysis, figure and table scripts |
+| `thesis_docs/` | Lab log, chapter drafts, decision records and the public sources used (`sources/`) |
+
+Reproducing the paper's numbers (from the repository root, after `pip install -e .` plus `pandapower numba multicopula stable-baselines3`):
+
+```bash
+PYTHONPATH=. python scripts/build_paper_tables.py          # article tables from the registries
+PYTHONPATH=. python scripts/review_numbers.py              # every reported number with its source file
+PYTHONPATH=. python scripts/barranquilla_two_band_dc.py    # Section VII-C, Barranquilla two-band cost
+PYTHONPATH=. python -m unittest discover ev2gym_thesis/tests
+```
+
+The MPC and oracle arms need a Gurobi license (not included). Trained RL checkpoints and per-step time series are not tracked in git because of their size.
+
+---
+
+*The original EV2Gym README follows.*
+
 
 # EV2Gym: A Realistic EV-V2G-Gym Simulator for EV Smart Charging
 
